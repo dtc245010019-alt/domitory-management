@@ -1,0 +1,67 @@
+﻿@model IEnumerable<QLKTX.Models.ViPham>
+@{
+    ViewData["Title"] = "Quản lý Kỷ luật";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow border-danger">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-shield-exclamation"></i> DANH SÁCH SINH VIÊN VI PHẠM</h4>
+            <a asp-action="Create" class="btn btn-light btn-sm fw-bold text-danger"><i class="bi bi-plus-circle"></i> Ghi nhận vi phạm mới</a>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table table-hover border align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ngày vi phạm</th>
+                        <th>Sinh viên</th>
+                        <th>Lỗi vi phạm</th>
+                        <th>Hình thức xử lý</th>
+                        <th>Ghi chú</th>
+                        <th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="6" class="text-center text-muted py-4">Chưa có bản ghi vi phạm nào.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@item.NgayViPham.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <strong>@item.SinhVien?.HoTen</strong><br />
+                                    <small class="text-muted">@item.MaSV</small>
+                                </td>
+                                <td class="text-danger fw-bold">@item.NoiDungViPham</td>
+                                <td>
+                                    @{
+                                        var badgeColor = item.HinhThucXuLy switch
+                                        {
+                                            "Nhắc nhở" => "bg-warning text-dark",
+                                            "Cảnh cáo" => "bg-orange", // Tự custom css hoặc dùng warning
+                                            "Phạt tiền" => "bg-secondary",
+                                            "Đình chỉ" => "bg-dark text-white",
+                                            _ => "bg-danger"
+                                        };
+                                    }
+                                    <span class="badge @badgeColor">@item.HinhThucXuLy</span>
+                                </td>
+                                <td><small>@item.GhiChu</small></td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Edit" asp-route-id="@item.MaViPham" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil"></i></a>
+                                        <a asp-action="Delete" asp-route-id="@item.MaViPham" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

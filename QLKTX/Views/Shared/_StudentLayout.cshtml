@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Cổng Thông Tin Sinh Viên KTX</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="bg-light">
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-dark bg-success shadow-sm mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" asp-controller="Portal" asp-action="Index">
+                    <i class="bi bi-mortarboard-fill"></i> Cổng SV Ký Túc Xá
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-controller="Portal" asp-action="Index"><i class="bi bi-house-door"></i> Trang chủ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-controller="Portal" asp-action="HoaDon"><i class="bi bi-receipt"></i> Hóa đơn của tôi</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-controller="Portal" asp-action="BaoCaoSuCo"><i class="bi bi-tools"></i> Báo cáo sự cố</a>
+                        </li>
+                    </ul>
+                    <!-- Đã bổ sung Nút Đăng Xuất tại đây -->
+                    <div class="navbar-nav d-flex align-items-center gap-2">
+                        <span class="nav-link text-white fw-bold p-0 me-2"><i class="bi bi-person-circle"></i> Xin chào, Sinh viên!</span>
+                        <a class="btn btn-outline-light btn-sm fw-semibold" asp-controller="DN" asp-action="Dangxuat" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất?');">
+                            <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted text-center mt-5 bg-white">
+        <div class="container py-3">
+            &copy; 2026 - Cổng Thông Tin Sinh Viên KTX
+        </div>
+    </footer>
+
+    <!-- ========================================== -->
+    <!-- Bổ sung: Bong bóng Chatbot AI ở góc phải -->
+    <!-- ========================================== -->
+    <div id="chat-widget" style="position: fixed; bottom: 25px; right: 25px; z-index: 9999;">
+        <button id="chat-toggle-btn" class="btn btn-success rounded-circle shadow p-0" style="width: 55px; height: 55px; font-size: 24px;">💬</button>
+
+        <div id="chat-box" class="card shadow d-none mt-2" style="width: 340px; height: 430px; position: absolute; bottom: 65px; right: 0;">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
+                <strong>🤖 Trợ Lý AI KTX</strong>
+                <button id="chat-close-btn" class="btn btn-sm text-white p-0" style="font-size: 18px;">✕</button>
+            </div>
+            <div id="chat-messages" class="card-body overflow-auto p-2" style="height: 320px; background-color: #f8f9fa;">
+                <div class="mb-2"><span class="d-inline-block p-2 rounded bg-white shadow-sm border small">Xin chào! Mình là Trợ lý AI KTX. Bạn cần hỗ trợ thông tin gì? 😊</span></div>
+            </div>
+            <div class="card-footer p-2 bg-white">
+                <div class="input-group">
+                    <input type="text" id="chat-input" class="form-control form-control-sm" placeholder="Nhập câu hỏi..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                    <button class="btn btn-success btn-sm" onclick="sendChatMessage()">Gửi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.getElementById('chat-toggle-btn').onclick = () => document.getElementById('chat-box').classList.toggle('d-none');
+        document.getElementById('chat-close-btn').onclick = () => document.getElementById('chat-box').classList.add('d-none');
+
+        async function sendChatMessage() {
+            let input = document.getElementById('chat-input');
+            let msg = input.value.trim();
+            if (!msg) return;
+
+            let chatMsgs = document.getElementById('chat-messages');
+            chatMsgs.innerHTML += `<div class="mb-2 text-end"><span class="d-inline-block p-2 rounded bg-success text-white shadow-sm small">${msg}</span></div>`;
+            input.value = '';
+            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+
+            let loadingId = 'load-' + Date.now();
+            chatMsgs.innerHTML += `<div id="${loadingId}" class="mb-2 text-start"><span class="d-inline-block p-2 rounded bg-white shadow-sm border text-muted small">Đang suy nghĩ... 🤔</span></div>`;
+            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+
+            try {
+                let res = await fetch('/Chatbot/Ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                let data = await res.json();
+                document.getElementById(loadingId).remove();
+                chatMsgs.innerHTML += `<div class="mb-2 text-start"><span class="d-inline-block p-2 rounded bg-white shadow-sm border small">${data.response}${data.source ? `<br><small class="text-muted">📌 Nguồn: ${data.source}</small>` : ''}</span></div>`;
+            } catch (err) {
+                console.error('Chatbot fetch error:', err);
+                document.getElementById(loadingId).remove();
+                chatMsgs.innerHTML += `<div class="mb-2 text-start"><span class="d-inline-block p-2 rounded bg-danger text-white small">Không thể kết nối AI Chatbot! (${err.message}) — mở Console (F12) để xem chi tiết.</span></div>`;
+            }
+            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+        }
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

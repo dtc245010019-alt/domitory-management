@@ -1,0 +1,87 @@
+﻿@model QLKTX.Models.HopDong
+
+@{
+    ViewData["Title"] = "Tạo Hợp Đồng Mới";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 800px; margin: auto;">
+        <div class="card-header bg-secondary text-white">
+            <h4 class="mb-0"><i class="bi bi-file-earmark-plus"></i> Lập Hợp Đồng Lưu Trú Mới</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create">
+                <div asp-validation-summary="All" class="text-danger mb-3 alert alert-danger"></div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="MaHopDong" class="form-label fw-bold">Mã Hợp Đồng</label>
+                        <input asp-for="MaHopDong" class="form-control" placeholder="VD: HD001..." required />
+                        <span asp-validation-for="MaHopDong" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="MaSV" class="form-label fw-bold">Sinh Viên</label>
+                        <select asp-for="MaSV" class="form-select" asp-items="ViewBag.MaSV" required>
+                            <option value="">-- Chọn sinh viên --</option>
+                        </select>
+                        <span asp-validation-for="MaSV" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="MaPhong" class="form-label fw-bold">Phòng</label>
+                        <select asp-for="MaPhong" class="form-select" asp-items="ViewBag.MaPhong" required>
+                            <option value="">-- Chọn phòng --</option>
+                        </select>
+                        <span asp-validation-for="MaPhong" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="NgayBatDau" class="form-label fw-bold">Ngày Bắt Đầu</label>
+                        <input asp-for="NgayBatDau" type="date" class="form-control" required />
+                        <span asp-validation-for="NgayBatDau" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="NgayKetThuc" class="form-label fw-bold">Ngày Kết Thúc</label>
+                        <input asp-for="NgayKetThuc" type="date" class="form-control" required />
+                        <span asp-validation-for="NgayKetThuc" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TienDatCoc" class="form-label fw-bold">Tiền Đặt Cọc (VNĐ)</label>
+                        <input asp-for="TienDatCoc" type="number" step="1000" class="form-control" required />
+                        <span asp-validation-for="TienDatCoc" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TrangThai" class="form-label fw-bold">Trạng Thái</label>
+                        <select asp-for="TrangThai" class="form-select">
+                            <option value="Còn hiệu lực">Còn hiệu lực</option>
+                            <option value="Hết hiệu lực">Hết hiệu lực</option>
+                            <option value="Đã hủy">Đã hủy</option>
+                        </select>
+                        <span asp-validation-for="TrangThai" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="DieuKhoan" class="form-label fw-bold">Điều Khoản / Ghi Chú</label>
+                    <textarea asp-for="DieuKhoan" class="form-control" rows="3" placeholder="Ghi chú thêm về hợp đồng..."></textarea>
+                    <span asp-validation-for="DieuKhoan" class="text-danger"></span>
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <button type="submit" class="btn btn-secondary">Lưu Hợp Đồng</button>
+                    <a asp-action="Index" class="btn btn-outline-dark">Quay lại danh sách</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,0 +1,30 @@
+﻿@model QLKTX.Models.HopDong
+
+@{
+    ViewData["Title"] = "Xóa Hợp Đồng";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow border-danger" style="max-width: 600px; margin: auto;">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> CẢNH BÁO XÓA HỢP ĐỒNG</h4>
+        </div>
+        <div class="card-body text-center">
+            <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">Bạn có chắc chắn muốn xóa hợp đồng này?</h5>
+                <p>Hành động này <strong>không thể hoàn tác</strong>. Dữ liệu lịch sử thuê phòng của sinh viên này sẽ bị mất.</p>
+            </div>
+
+            <div class="mt-4 mb-4">
+                <h3 class="text-danger">@Model.MaHopDong</h3>
+                <p class="text-muted fs-5">Sinh viên: <strong>@(Model.SinhVien?.HoTen ?? "N/A")</strong> | Phòng: <strong>@(Model.Phong?.MaPhong ?? "N/A")</strong></p>
+            </div>
+
+            <form asp-action="Delete" class="mt-4 border-top pt-3">
+                <input type="hidden" asp-for="MaHopDong" />
+                <button type="submit" class="btn btn-danger btn-lg px-4">Xác nhận Xóa</button>
+                <a asp-action="Index" class="btn btn-secondary btn-lg px-4">Hủy bỏ</a>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,87 @@
+﻿@model IEnumerable<QLKTX.Models.HopDong>
+
+@{
+    ViewData["Title"] = "Quản lý Hợp đồng";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">QUẢN LÝ HỢP ĐỒNG KÝ TÚC XÁ</h4>
+            <a asp-action="Create" class="btn btn-light btn-sm fw-bold text-primary"><i class="bi bi-plus-lg"></i> Thêm hợp đồng mới</a>
+        </div>
+        <div class="card-body">
+
+            <form asp-action="Index" method="get" class="mb-4 d-flex">
+                <div class="input-group w-50 shadow-sm border-primary">
+                    <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
+                    <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Nhập Mã HĐ, Tên SV, Mã SV, Mã phòng..." />
+                    <button type="submit" class="btn btn-primary fw-bold">Tìm kiếm</button>
+                </div>
+                @if (ViewData["CurrentFilter"] != null && ViewData["CurrentFilter"].ToString() != "")
+                {
+                    <a asp-action="Index" class="btn btn-outline-danger ms-2 fw-bold"><i class="bi bi-x-circle"></i> Xóa bộ lọc</a>
+                }
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover border align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Mã HĐ</th>
+                            <th>Sinh Viên</th>
+                            <th>Phòng</th>
+                            <th>Ngày Bắt Đầu</th>
+                            <th>Ngày Kết Thúc</th>
+                            <th>Trạng Thái</th>
+                            <th class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td><strong>@item.MaHopDong</strong></td>
+                                    <td>
+                                        <span class="fw-bold">@item.SinhVien?.HoTen</span><br />
+                                        <small class="text-muted"><i class="bi bi-person-badge"></i> @item.MaSV</small>
+                                    </td>
+                                    <td><span class="badge bg-info text-dark fs-6">@item.MaPhong</span></td>
+                                    <td>@item.NgayBatDau.ToString("dd/MM/yyyy")</td>
+                                    <td>@item.NgayKetThuc.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        @if (item.TrangThai == "Còn hiệu lực")
+                                        {
+                                            <span class="badge bg-success">@item.TrangThai</span>
+                                        }
+                                        else if (item.TrangThai == "Đã hết hạn")
+                                        {
+                                            <span class="badge bg-danger">@item.TrangThai</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@item.TrangThai</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="Edit" asp-route-id="@item.MaHopDong" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil-square"></i> Sửa</a>
+                                        <a asp-action="Details" asp-route-id="@item.MaHopDong" class="btn btn-outline-info btn-sm"><i class="bi bi-info-circle"></i> Chi tiết</a>
+                                        <a asp-action="Delete" asp-route-id="@item.MaHopDong" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Xóa</a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">Không tìm thấy hợp đồng nào khớp với từ khóa tìm kiếm.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

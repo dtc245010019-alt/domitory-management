@@ -1,0 +1,73 @@
+﻿@model QLKTX.Models.CoSoVatChat
+
+@{
+    ViewData["Title"] = "Sửa Thiết Bị";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 700px; margin: auto;">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Cập Nhật Thông Tin Thiết Bị</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Edit">
+                <div asp-validation-summary="All" class="text-danger mb-3 alert alert-danger"></div>
+                <input type="hidden" asp-for="MaThietBi" />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Mã Thiết Bị</label>
+                        <input class="form-control" value="@Model.MaThietBi" disabled />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TenThietBi" class="form-label fw-bold">Tên Thiết Bị</label>
+                        <input asp-for="TenThietBi" class="form-control" required />
+                        <span asp-validation-for="TenThietBi" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="LoaiThietBi" class="form-label fw-bold">Loại Thiết Bị</label>
+                        <input asp-for="LoaiThietBi" class="form-control" />
+                        <span asp-validation-for="LoaiThietBi" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="SoLuong" class="form-label fw-bold">Số Lượng</label>
+                        <input asp-for="SoLuong" type="number" min="1" class="form-control" required />
+                        <span asp-validation-for="SoLuong" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="MaPhong" class="form-label fw-bold">Vị Trí (Phòng)</label>
+                        <select asp-for="MaPhong" class="form-select" asp-items="ViewBag.MaPhong" required></select>
+                        <span asp-validation-for="MaPhong" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TinhTrang" class="form-label fw-bold">Tình Trạng</label>
+                        <select asp-for="TinhTrang" class="form-select" required>
+                            <option value="Mới">Mới</option>
+                            <option value="Đang sử dụng">Đang sử dụng</option>
+                            <option value="Đang sửa chữa">Đang sửa chữa</option>
+                            <option value="Hỏng">Hỏng</option>
+                        </select>
+                        <span asp-validation-for="TinhTrang" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <button type="submit" class="btn btn-warning text-dark">Lưu Thay Đổi</button>
+                    <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

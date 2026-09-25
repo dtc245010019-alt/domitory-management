@@ -1,0 +1,145 @@
+﻿@model IEnumerable<QLKTX.Models.HoaDon>
+@{
+    ViewData["Title"] = "Hóa Đơn Của Tôi";
+    Layout = "~/Views/Shared/_StudentLayout.cshtml";
+}
+
+<div class="card shadow-sm border-success mt-3">
+    <div class="card-header bg-success text-white fw-bold">
+        <i class="bi bi-receipt"></i> DANH SÁCH HÓA ĐƠN
+    </div>
+    <div class="card-body">
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i> @TempData["ErrorMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã Hóa Đơn</th>
+                        <th>Loại Hóa Đơn</th>
+                        <th>Ngày Lập</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="fw-bold">@item.MaHoaDon</td>
+                                <td><span class="badge bg-info text-dark">@item.LoaiHoaDon</span></td>
+                                <td>@item.NgayLap.ToString("dd/MM/yyyy")</td>
+                                <td class="text-danger fw-bold">@item.TongTien.ToString("N0") đ</td>
+                                <td>
+                                    @if (item.TrangThai == "Đã thanh toán")
+                                    {
+                                        <span class="badge bg-success"><i class="bi bi-check2"></i> Đã thanh toán</span>
+                                        <small class="d-block text-muted mt-1">Qua: @item.HinhThucThanhToan</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-clock-history"></i> Chưa thanh toán</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.TrangThai != "Đã thanh toán")
+                                    {
+                                        <button type="button" class="btn btn-sm btn-primary btn-pay"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#paymentModal"
+                                                data-id="@item.MaHoaDon"
+                                                data-tien="@item.TongTien.ToString("N0")">
+                                            <i class="bi bi-credit-card"></i> Thanh toán
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">Bạn chưa có hóa đơn nào.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock-fill"></i> CỔNG THANH TOÁN AN TOÀN</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form asp-action="ThanhToan" method="post">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="maHoaDon" id="modalMaHoaDon" value="" />
+
+                    <div class="text-center mb-4">
+                        <p class="text-muted mb-1">Số tiền cần thanh toán</p>
+                        <h2 class="text-danger fw-bold mb-0" id="modalSoTien">0 đ</h2>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="fw-bold mb-2">1. Chọn phương thức thanh toán</label>
+                        <select name="phuongThuc" class="form-select form-select-lg mb-3" required>
+                            <option value="Ví MoMo">Ví điện tử MoMo</option>
+                            <option value="VNPay">Cổng thanh toán VNPay</option>
+                            <option value="Thẻ Ngân hàng">Thẻ ATM / Internet Banking</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-bold mb-2">2. Xác minh danh tính</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-key-fill"></i></span>
+                            <input type="password" name="matKhauXacNhan" class="form-control" placeholder="Nhập mật khẩu tài khoản của bạn..." required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4"><i class="bi bi-check2-circle"></i> Xác nhận Thanh toán</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.body.appendChild(document.getElementById('paymentModal'));
+
+        var paymentBtns = document.querySelectorAll('.btn-pay');
+        paymentBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('modalMaHoaDon').value = this.getAttribute('data-id');
+                document.getElementById('modalSoTien').innerText = this.getAttribute('data-tien') + ' VNĐ';
+            });
+        });
+    </script>
+}

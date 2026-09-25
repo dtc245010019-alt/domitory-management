@@ -1,0 +1,162 @@
+@{
+    ViewData["Title"] = "Liên hệ quản trị viên";
+    Layout = "~/Views/Shared/_LoginLayout.cshtml";
+}
+
+<div class="login-container">
+    <div class="contact-card">
+        <!-- Header -->
+        <div class="contact-header">
+            <div class="icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <h1>Liên Hệ Quản Trị Viên</h1>
+            <p>Gửi yêu cầu của bạn và chúng tôi sẽ phản hồi sớm nhất</p>
+        </div>
+
+        <!-- Content -->
+        <div class="contact-body">
+            <div class="contact-grid">
+                <!-- Contact Info -->
+                <div class="contact-info">
+                    <h3>Thông tin liên hệ</h3>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon phone-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="label">Điện thoại</p>
+                            <p>024-1234-5678</p>
+                            <p>090-1234-567</p>
+                        </div>
+                    </div>
+
+                    <div class="contact-item">
+                        <div class="contact-icon email-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="label">Email</p>
+                            <p>admin@university.edu.vn</p>
+                            <p>support@university.edu.vn</p>
+                        </div>
+                    </div>
+
+                    <div class="contact-item">
+                        <div class="contact-icon location-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="label">Địa chỉ</p>
+                            <p>
+                                Ban quản lý ký túc xá<br />
+                                Toà A3, Ký túc xá<br />
+                                Trường Đại học công nghệ thông tin và truyền thông tin
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="office-hours">
+                        <h4>Giờ làm việc</h4>
+                        <p>
+                            Thứ 2 - Thứ 6: 7:30 - 11:30, 13:30 - 17:00<br />
+                            Thứ 7: 8:00 - 11:30<br />
+                            Chủ nhật: Nghỉ
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Contact Form -->
+                <div class="contact-form">
+                    @if (TempData["Success"] == null)
+                    {
+                        <form asp-controller="DN" asp-action="ContactAdmin" method="post">
+                            <div class="form-group">
+                                <label for="fullName">Họ và tên <span class="required">*</span></label>
+                                <input type="text" class="form-control" id="fullName" name="FullName" placeholder="Nguyễn Văn A" required />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email">Email <span class="required">*</span></label>
+                                <input type="email" class="form-control" id="email" name="Email" placeholder="example@email.com" required />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="phone">Số điện thoại</label>
+                                <input type="tel" class="form-control" id="phone" name="Phone" placeholder="0901234567" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="subject">Loại yêu cầu <span class="required">*</span></label>
+                                <select class="form-control" id="subject" name="Subject" required>
+                                    <option value="">Chọn loại yêu cầu</option>
+                                    <option value="account">Đăng ký tài khoản mới</option>
+                                    <option value="reset">Đặt lại mật khẩu</option>
+                                    <option value="support">Hỗ trợ kỹ thuật</option>
+                                    <option value="other">Khác</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="message">Nội dung <span class="required">*</span></label>
+                                <textarea class="form-control" id="message" name="Message" rows="4" placeholder="Mô tả chi tiết yêu cầu của bạn..." required></textarea>
+                            </div>
+
+                            <button type="submit" class="btn-submit btn-green">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                                Gửi yêu cầu
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="success-message">
+                            <div class="success-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                            </div>
+                            <h3>Gửi yêu cầu thành công!</h3>
+                            <p>Cảm ơn bạn đã liên hệ. Chúng tôi sẽ phản hồi trong vòng 24-48 giờ làm việc.</p>
+                            <a asp-controller="DN" asp-action="LienheQuanly" class="resend-link">Gửi yêu cầu khác</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Back to Login -->
+        <div class="back-link-footer">
+            <a asp-controller="DN" asp-action="Dangnhap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Quay lại đăng nhập
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer Note -->
+    <div class="copyright">
+        © 2026 Hệ Thống Quản Lý Sinh Viên
+    </div>
+</div>

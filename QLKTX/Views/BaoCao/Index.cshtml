@@ -1,0 +1,120 @@
+﻿@{
+    ViewData["Title"] = "Báo cáo thống kê";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-danger"><i class="bi bi-bar-chart-fill"></i> BÁO CÁO TỔNG QUAN KÝ TÚC XÁ</h3>
+        <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> In Báo Cáo</button>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-5 g-3 mb-4">
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-success border-5 h-100">
+                <div class="card-body px-3">
+                    <h6 class="text-success fw-bold" style="font-size: 0.8rem;">DOANH THU (CỌC)</h6>
+                    <h4 class="fw-bold mb-0">@(ViewBag.TongDoanhThu != null ? ViewBag.TongDoanhThu.ToString("N0") : "0") <small class="text-muted" style="font-size: 0.7rem;">VNĐ</small></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-primary border-5 h-100">
+                <div class="card-body px-3">
+                    <h6 class="text-primary fw-bold" style="font-size: 0.8rem;">SINH VIÊN ĐANG Ở</h6>
+                    <h4 class="fw-bold mb-0">@(ViewBag.TongSinhVien ?? 0) <small class="text-muted" style="font-size: 0.7rem;">người</small></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-danger border-5 h-100">
+                <div class="card-body px-3">
+                    <h6 class="text-danger fw-bold" style="font-size: 0.8rem;">BỊ KỶ LUẬT/ĐÌNH CHỈ</h6>
+                    <h4 class="fw-bold mb-0 text-danger">@(ViewBag.SinhVienViPham ?? 0) <small class="text-muted" style="font-size: 0.7rem;">người</small></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-info border-5 h-100">
+                <div class="card-body px-3">
+                    <h6 class="text-info fw-bold" style="font-size: 0.8rem;">TỔNG SỐ PHÒNG</h6>
+                    <h4 class="fw-bold mb-0">@(ViewBag.TongPhong ?? 0) <small class="text-muted" style="font-size: 0.7rem;">phòng</small></h4>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-warning border-5 h-100">
+                <div class="card-body px-3">
+                    <h6 class="text-warning fw-bold" style="font-size: 0.8rem;">PHÒNG CÒN CHỖ</h6>
+                    <h4 class="fw-bold mb-0">@(ViewBag.PhongConCho ?? 0) <small class="text-muted" style="font-size: 0.7rem;">phòng</small></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-bold">Tỉ lệ lấp đầy phòng KTX</div>
+                <div class="card-body d-flex justify-content-center">
+                    <div style="width: 100%; max-width: 350px;">
+                        <canvas id="roomChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-bold">Mật độ sinh viên theo Loại phòng</div>
+                <div class="card-body">
+                    <canvas id="studentChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // 1. Vẽ biểu đồ Tròn
+    var ctxRoom = document.getElementById('roomChart').getContext('2d');
+    var roomChart = new Chart(ctxRoom, {
+        type: 'doughnut',
+        data: {
+            labels: @Html.Raw(Json.Serialize(ViewBag.ChartPhongLabels ?? new string[] { })),
+            datasets: [{
+                data: @Html.Raw(Json.Serialize(ViewBag.ChartPhongData ?? new int[] { })),
+                backgroundColor: ['#28a745', '#dc3545'], // Xanh lá, Đỏ
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // 2. Vẽ biểu đồ Cột
+    var ctxStudent = document.getElementById('studentChart').getContext('2d');
+    var studentChart = new Chart(ctxStudent, {
+        type: 'bar',
+        data: {
+            labels: @Html.Raw(Json.Serialize(ViewBag.ChartSVLabels ?? new string[] { })),
+            datasets: [{
+                label: 'Số lượng sinh viên',
+                data: @Html.Raw(Json.Serialize(ViewBag.ChartSVData ?? new int[] { })),
+                backgroundColor: '#0d6efd',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>

@@ -1,0 +1,93 @@
+﻿@model QLKTX.Models.SinhVien
+
+@{
+    ViewData["Title"] = "Sửa thông tin Sinh viên";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 800px; margin: auto;">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Cập Nhật Thông Tin Sinh Viên</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Edit">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <input type="hidden" asp-for="MaSV" />
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Mã Sinh Viên</label>
+                        <input class="form-control" value="@Model.MaSV" disabled />
+                    </div>
+                    <div class="col-md-8 mb-3">
+                        <label asp-for="HoTen" class="form-label fw-bold">Họ và Tên</label>
+                        <input asp-for="HoTen" class="form-control" required />
+                        <span asp-validation-for="HoTen" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="NgaySinh" class="form-label fw-bold">Ngày Sinh</label>
+                        <input asp-for="NgaySinh" type="date" class="form-control" required />
+                        <span asp-validation-for="NgaySinh" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Lop" class="form-label fw-bold">Lớp</label>
+                        <input asp-for="Lop" class="form-control" required />
+                        <span asp-validation-for="Lop" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="SoDienThoai" class="form-label fw-bold">Số Điện Thoại</label>
+                        <input asp-for="SoDienThoai" class="form-control" required />
+                        <span asp-validation-for="SoDienThoai" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="CCCD" class="form-label fw-bold">Số CCCD</label>
+                        <input asp-for="CCCD" class="form-control" placeholder="Nhập 12 số CCCD..." />
+                        <span asp-validation-for="CCCD" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="MaPhong" class="form-label fw-bold">Phòng Lưu Trú</label>
+                        <select asp-for="MaPhong" class="form-select" asp-items="ViewBag.MaPhong">
+                            <option value="">-- Chưa xếp phòng --</option>
+                        </select>
+                        <span asp-validation-for="MaPhong" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TinhTrangLuuTru" class="form-label fw-bold">Tình Trạng</label>
+                        <select asp-for="TinhTrangLuuTru" class="form-select" required>
+                            <option value="Đang ở">Đang ở</option>
+                            <option value="Đã rời đi">Đã rời đi</option>
+                            <option value="Đình chỉ">Đình chỉ</option>
+                            <option value="Kỷ luật">Kỷ luật</option>
+                        </select>
+                        <span asp-validation-for="TinhTrangLuuTru" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="AnhThe" class="form-label fw-bold">Link Ảnh Thẻ (Tùy chọn)</label>
+                    <input asp-for="AnhThe" class="form-control" placeholder="Nhập tên file hoặc link ảnh..." />
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <button type="submit" class="btn btn-warning text-dark">Lưu Thay Đổi</button>
+                    <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

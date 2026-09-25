@@ -1,0 +1,76 @@
+﻿@model QLKTX.Models.SinhVien
+
+@{
+    ViewData["Title"] = "Chi Tiết Sinh Viên";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 700px; margin: auto;">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0"><i class="bi bi-person-badge"></i> Hồ Sơ Sinh Viên</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 text-center mb-3">
+                    @if (!string.IsNullOrEmpty(Model.AnhThe))
+                    {
+                        <img src="@Model.AnhThe" alt="Ảnh thẻ" class="img-thumbnail rounded" style="max-width: 150px; height: 200px; object-fit: cover;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png';" />
+                    }
+                    else
+                    {
+                        <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Mặc định" class="img-thumbnail rounded" style="max-width: 150px;" />
+                    }
+                    <h5 class="mt-2 fw-bold text-primary">@Model.MaSV</h5>
+                    <span class="badge @(Model.TinhTrangLuuTru == "Đang ở" ? "bg-success" : (Model.TinhTrangLuuTru == "Đình chỉ" ? "bg-danger" : "bg-secondary"))">
+                        @Model.TinhTrangLuuTru
+                    </span>
+                </div>
+
+                <div class="col-md-8">
+                    <table class="table table-bordered align-middle">
+                        <tbody>
+                            <tr>
+                                <th width="35%" class="bg-light">Họ và Tên:</th>
+                                <td class="fw-bold">@Model.HoTen</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light">Ngày Sinh:</th>
+                                <td>@Model.NgaySinh.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light">Lớp:</th>
+                                <td>@Model.Lop</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light">Số Điện Thoại:</th>
+                                <td>@Model.SoDienThoai</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light">CCCD:</th>
+                                <td class="text-danger fw-bold">@(string.IsNullOrEmpty(Model.CCCD) ? "Chưa cập nhật" : Model.CCCD)</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light">Phòng Đang Ở:</th>
+                                <td>
+                                    @if (Model.Phong != null)
+                                    {
+                                        <span class="badge bg-info text-dark">Phòng @Model.Phong.MaPhong</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Chưa xếp phòng</span>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center border-top pt-3">
+                <a asp-action="Edit" asp-route-id="@Model?.MaSV" class="btn btn-warning">Sửa Hồ Sơ</a>
+                <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+            </div>
+        </div>
+    </div>
+</div>

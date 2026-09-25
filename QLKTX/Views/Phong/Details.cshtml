@@ -1,0 +1,54 @@
+﻿@model QLKTX.Models.Phong
+
+@{
+    ViewData["Title"] = "Chi Tiết Phòng";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 600px; margin: auto;">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0">Thông Tin Chi Tiết Phòng: @Model.MaPhong</h4>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <tbody>
+                    <tr>
+                        <th width="40%" class="bg-light">Mã Phòng:</th>
+                        <td><strong>@Model.MaPhong</strong></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Loại Phòng:</th>
+                        <td>@Model.LoaiPhong</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Số Lượng Giường:</th>
+                        <td>@Model.SoLuongGiuong</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Giá Phòng:</th>
+                        <td class="text-success fw-bold">@Model.GiaPhong.ToString("N0") VNĐ / tháng</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Tình trạng:</th>
+                        <td>
+                            <span class="badge @(Model.TinhTrang == "Còn chỗ" ? "bg-success" : (Model.TinhTrang == "Đã đầy" ? "bg-danger" : "bg-warning"))">
+                                @Model.TinhTrang
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            @* Phần này có thể mở rộng sau này để hiển thị danh sách sinh viên trong phòng *@
+            @* <div class="mt-4">
+                <h5>Danh sách sinh viên đang ở</h5>
+                <p class="text-muted">Chức năng đang phát triển...</p>
+            </div> *@
+
+            <div class="mt-4 text-center border-top pt-3">
+                <a asp-action="Edit" asp-route-id="@Model?.MaPhong" class="btn btn-warning">Sửa thông tin</a>
+                <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+            </div>
+        </div>
+    </div>
+</div>

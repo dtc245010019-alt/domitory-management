@@ -1,0 +1,60 @@
+﻿@model QLKTX.Models.CoSoVatChat
+
+@{
+    ViewData["Title"] = "Chi Tiết Thiết Bị";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 600px; margin: auto;">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0"><i class="bi bi-info-circle"></i> Chi Tiết Tài Sản</h4>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <tbody>
+                    <tr>
+                        <th width="35%" class="bg-light">Mã Thiết Bị:</th>
+                        <td><strong>@Model.MaThietBi</strong></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Tên Thiết Bị:</th>
+                        <td class="fw-bold text-primary">@Model.TenThietBi</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Loại:</th>
+                        <td>@Model.LoaiThietBi</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Số Lượng:</th>
+                        <td>@Model.SoLuong</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Vị Trí Đặt:</th>
+                        <td><span class="badge bg-secondary">Phòng @(Model.Phong?.MaPhong ?? "N/A")</span></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Tình Trạng:</th>
+                        <td>
+                            @{
+                                var badgeClass = Model.TinhTrang switch
+                                {
+                                    "Mới" => "bg-success",
+                                    "Đang sử dụng" => "bg-primary",
+                                    "Đang sửa chữa" => "bg-warning text-dark",
+                                    "Hỏng" => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @badgeClass">@Model.TinhTrang</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="mt-4 text-center border-top pt-3">
+                <a asp-action="Edit" asp-route-id="@Model?.MaThietBi" class="btn btn-warning">Sửa thiết bị</a>
+                <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+            </div>
+        </div>
+    </div>
+</div>

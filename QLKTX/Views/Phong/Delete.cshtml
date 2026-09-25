@@ -1,0 +1,32 @@
+﻿@model QLKTX.Models.Phong
+
+@{
+    ViewData["Title"] = "Xóa Phòng";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow border-danger" style="max-width: 600px; margin: auto;">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">CẢNH BÁO XÓA PHÒNG</h4>
+        </div>
+        <div class="card-body text-center">
+            <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">Bạn có chắc chắn muốn xóa phòng này?</h5>
+                <p>Hành động này <strong>không thể hoàn tác</strong>. Xóa phòng sẽ ảnh hưởng đến dữ liệu lịch sử liên quan đến phòng này.</p>
+                <hr>
+                <p class="mb-0">Lưu ý: Nếu phòng đang có sinh viên ở, bạn cần chuyển sinh viên đi trước khi xóa.</p>
+            </div>
+
+            <div class="mt-4 mb-4">
+                <h3 class="text-danger">Phòng: @Model.MaPhong</h3>
+                <p class="text-muted">Loại: @Model.LoaiPhong | Giá: @Model.GiaPhong.ToString("N0") VNĐ</p>
+            </div>
+
+            <form asp-action="Delete" class="mt-4 border-top pt-3">
+                <input type="hidden" asp-for="MaPhong" />
+                <button type="submit" class="btn btn-danger btn-lg px-5">Xác nhận Xóa</button>
+                <a asp-action="Index" class="btn btn-secondary btn-lg px-5">Hủy bỏ</a>
+            </form>
+        </div>
+    </div>
+</div>

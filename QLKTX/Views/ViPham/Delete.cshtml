@@ -1,0 +1,30 @@
+﻿@model QLKTX.Models.ViPham
+@{
+    ViewData["Title"] = "Xóa Kỷ Luật";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow border-danger" style="max-width: 600px; margin: auto;">
+        <div class="card-header bg-dark text-white">
+            <h4 class="mb-0"><i class="bi bi-trash-fill"></i> XÓA BẢN GHI KỶ LUẬT</h4>
+        </div>
+        <div class="card-body text-center">
+            <div class="alert alert-danger">
+                Bạn có chắc chắn muốn xóa bản ghi vi phạm này khỏi hệ thống?
+            </div>
+
+            <div class="mt-4 mb-4 text-start bg-light p-3 rounded">
+                <p><strong>Sinh viên:</strong> @Model.SinhVien?.HoTen (@Model.MaSV)</p>
+                <p><strong>Lỗi vi phạm:</strong> <span class="text-danger">@Model.NoiDungViPham</span></p>
+                <p><strong>Hình thức:</strong> @Model.HinhThucXuLy</p>
+                <p><strong>Ngày:</strong> @Model.NgayViPham.ToString("dd/MM/yyyy")</p>
+            </div>
+
+            <form asp-action="Delete" class="mt-4 border-top pt-3">
+                <input type="hidden" asp-for="MaViPham" />
+                <button type="submit" class="btn btn-danger">Xác nhận Xóa</button>
+                <a asp-action="Index" class="btn btn-secondary">Hủy bỏ</a>
+            </form>
+        </div>
+    </div>
+</div>

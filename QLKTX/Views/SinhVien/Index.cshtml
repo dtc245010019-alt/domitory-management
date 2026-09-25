@@ -1,0 +1,107 @@
+﻿@model IEnumerable<QLKTX.Models.SinhVien>
+
+@{
+    ViewData["Title"] = "Danh sách Sinh viên";
+}
+
+<div class="container-fluid mt-4">
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card mb-4 shadow-sm border-success">
+        <div class="card-body bg-light">
+            <form asp-action="ImportExcel" asp-controller="SinhVien" method="post" enctype="multipart/form-data" class="d-flex align-items-center">
+                <label class="fw-bold me-3"><i class="bi bi-file-earmark-excel-fill text-success fs-4"></i> Nhập dữ liệu từ Excel:</label>
+                <input type="file" name="fileExcel" class="form-control w-25 me-2 border-success" accept=".xlsx" required />
+                <button type="submit" class="btn btn-success fw-bold me-2">
+                    <i class="bi bi-upload"></i> Import ngay
+                </button>
+                <a asp-action="DownloadTemplate" asp-controller="SinhVien" class="btn btn-outline-secondary fw-bold">
+                    <i class="bi bi-download"></i> Tải file mẫu
+                </a>
+            </form>
+            <small class="text-muted mt-2 d-block">* Cấu trúc cột bắt buộc: A(Mã SV), B(Họ Tên), C(Ngày Sinh), D(Lớp), E(SĐT), F(CCCD)</small>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">QUẢN LÝ SINH VIÊN TRONG KÝ TÚC XÁ</h4>
+            <a asp-action="Create" class="btn btn-light btn-sm fw-bold"><i class="bi bi-plus-lg"></i> Thêm sinh viên mới</a>
+        </div>
+        <div class="card-body">
+
+            <form asp-action="Index" method="get" class="mb-3 d-flex">
+                <div class="input-group w-50 shadow-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
+                    <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Nhập Mã SV, Họ tên, Lớp hoặc SĐT để tìm..." />
+                    <button type="submit" class="btn btn-primary fw-bold">Tìm kiếm</button>
+                </div>
+                @if (ViewData["CurrentFilter"] != null && ViewData["CurrentFilter"].ToString() != "")
+                {
+                    <a asp-action="Index" class="btn btn-outline-danger ms-2 fw-bold"><i class="bi bi-x-circle"></i> Xóa bộ lọc</a>
+                }
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover border align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Mã SV</th>
+                            <th>Họ Tên</th>
+                            <th>Lớp</th>
+                            <th>Phòng</th>
+                            <th>Số điện thoại</th>
+                            <th>Tình trạng</th>
+                            <th class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>@item.MaSV</td>
+                                    <td><strong>@item.HoTen</strong></td>
+                                    <td>@item.Lop</td>
+                                    <td><span class="badge bg-info text-dark">@item.Phong?.MaPhong</span></td>
+                                    <td>@item.SoDienThoai</td>
+                                    <td>
+                                        <span class="badge @(item.TinhTrangLuuTru == "Đang ở" ? "bg-success" : "bg-secondary")">
+                                            @item.TinhTrangLuuTru
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="Edit" asp-route-id="@item.MaSV" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil-square"></i> Sửa</a>
+                                        <a asp-action="Details" asp-route-id="@item.MaSV" class="btn btn-outline-info btn-sm"><i class="bi bi-info-circle"></i> Chi tiết</a>
+                                        <a asp-action="Delete" asp-route-id="@item.MaSV" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Xóa</a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">Không tìm thấy sinh viên nào khớp với từ khóa.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

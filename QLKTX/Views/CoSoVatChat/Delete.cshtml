@@ -1,0 +1,30 @@
+﻿@model QLKTX.Models.CoSoVatChat
+
+@{
+    ViewData["Title"] = "Xóa Thiết Bị";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow border-danger" style="max-width: 600px; margin: auto;">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0"><i class="bi bi-trash-fill"></i> CẢNH BÁO XÓA TÀI SẢN</h4>
+        </div>
+        <div class="card-body text-center">
+            <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">Xác nhận xóa thiết bị này?</h5>
+                <p>Bạn đang thao tác xóa một tài sản khỏi hệ thống quản lý cơ sở vật chất. Hành động này không thể hoàn tác.</p>
+            </div>
+
+            <div class="mt-4 mb-4">
+                <h3 class="text-danger">@Model.TenThietBi</h3>
+                <p class="text-muted fs-5">Mã: <strong>@Model.MaThietBi</strong> | Số lượng: <strong>@Model.SoLuong</strong> | Vị trí: <strong>Phòng @(Model.Phong?.MaPhong ?? "N/A")</strong></p>
+            </div>
+
+            <form asp-action="Delete" class="mt-4 border-top pt-3">
+                <input type="hidden" asp-for="MaThietBi" />
+                <button type="submit" class="btn btn-danger btn-lg px-4">Xác nhận Xóa</button>
+                <a asp-action="Index" class="btn btn-secondary btn-lg px-4">Hủy bỏ</a>
+            </form>
+        </div>
+    </div>
+</div>

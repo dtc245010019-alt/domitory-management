@@ -1,0 +1,78 @@
+﻿@model IEnumerable<QLKTX.Models.Phong>
+
+@{
+    ViewData["Title"] = "Quản lý Phòng";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">QUẢN LÝ PHÒNG KÝ TÚC XÁ</h4>
+            <a asp-action="Create" class="btn btn-light btn-sm fw-bold text-success"><i class="bi bi-plus-lg"></i> Thêm phòng mới</a>
+        </div>
+        <div class="card-body">
+
+            <form asp-action="Index" method="get" class="mb-4 d-flex">
+                <div class="input-group w-50 shadow-sm border-success">
+                    <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
+                    <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Nhập Mã phòng, Loại phòng hoặc Tình trạng..." />
+                    <button type="submit" class="btn btn-success fw-bold">Tìm kiếm</button>
+                </div>
+                @if (ViewData["CurrentFilter"] != null && ViewData["CurrentFilter"].ToString() != "")
+                {
+                    <a asp-action="Index" class="btn btn-outline-danger ms-2 fw-bold"><i class="bi bi-x-circle"></i> Xóa bộ lọc</a>
+                }
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover border align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Mã Phòng</th>
+                            <th>Loại Phòng</th>
+                            <th>Số Giường</th>
+                            <th>Giá Phòng (VNĐ)</th>
+                            <th>Tình trạng</th>
+                            <th class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td><strong>@item.MaPhong</strong></td>
+                                    <td>@item.LoaiPhong</td>
+                                    <td>@item.SoLuongGiuong</td>
+                                    <td>@item.GiaPhong.ToString("N0")</td>
+                                    <td>
+                                        @if (item.TinhTrang == "Đã đầy")
+                                        {
+                                            <span class="badge bg-danger">@item.TinhTrang</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">@item.TinhTrang</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="Edit" asp-route-id="@item.MaPhong" class="btn btn-outline-warning btn-sm">Sửa</a>
+                                        <a asp-action="Details" asp-route-id="@item.MaPhong" class="btn btn-outline-info btn-sm">Chi tiết</a>
+                                        <a asp-action="Delete" asp-route-id="@item.MaPhong" class="btn btn-outline-danger btn-sm">Xóa</a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">Không tìm thấy phòng nào khớp với từ khóa tìm kiếm.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

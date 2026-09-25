@@ -1,0 +1,87 @@
+@model QLKTX.Models.ForgotPasswordViewModel
+@{
+    ViewData["Title"] = "Quên mật khẩu";
+    Layout = "~/Views/Shared/_LoginLayout.cshtml";
+}
+
+<div class="login-container">
+    <div class="forgot-card">
+        <!-- Header -->
+        <div class="forgot-header">
+            <div class="icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+            </div>
+            <h1>Quên Mật Khẩu</h1>
+            <p>Nhập email để nhận liên kết đặt lại mật khẩu</p>
+        </div>
+
+        <!-- Form -->
+        <div class="forgot-body">
+            @if (TempData["Success"] == null)
+            {
+                <form asp-controller="DN" asp-action="ForgotPassword" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label asp-for="Email"></label>
+                        <input asp-for="Email" class="form-control" placeholder="dtcxxxxxxxxx@ictu.edu.vn" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="info-box">
+                        <p>
+                            Chúng tôi sẽ gửi liên kết đặt lại mật khẩu đến email của bạn. 
+                            Vui lòng kiểm tra cả hộp thư spam nếu không thấy email.
+                        </p>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-submit btn-purple">Gửi liên kết đặt lại</button>
+                </form>
+            }
+            else
+            {
+                <div class="success-message">
+                    <div class="success-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Email đã được gửi!</h3>
+                    <p>
+                        Chúng tôi đã gửi liên kết đặt lại mật khẩu đến <strong>@TempData["Email"]</strong>. 
+                        Vui lòng kiểm tra email và làm theo hướng dẫn.
+                    </p>
+                    <a asp-controller="DN" asp-action="QuenMK" class="resend-link">Gửi lại email</a>
+                </div>
+            }
+
+            <!-- Back to Login -->
+            <div class="back-link">
+                <a asp-controller="DN" asp-action="Dangnhap">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Quay lại đăng nhập
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Note -->
+    <div class="copyright">
+        © 2026 Hệ Thống Quản Lý Sinh Viên
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

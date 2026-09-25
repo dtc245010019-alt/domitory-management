@@ -1,0 +1,56 @@
+[
+  {
+    "intent": "XIN_CHAO",
+    "facts": [
+      "Xin chào! Mình là Trợ lý AI KTX.",
+      "Bạn cần hỗ trợ thông tin gì về nội quy, điện nước, báo hỏng hay thủ tục trả phòng ạ?"
+    ]
+  },
+  {
+    "intent": "HOADON_DIEN_NUOC",
+    "facts": [
+      "Hóa đơn điện nước được chốt từ ngày 25 đến ngày 28 hàng tháng.",
+      "Đơn giá điện: 2.000 VNĐ / kWh.",
+      "Đơn giá nước: 10.000 VNĐ / m3.",
+      "Sinh viên thanh toán trực tiếp tại mục Hóa đơn trên Student Portal hoặc tại Văn phòng Ban quản lý."
+    ]
+  },
+  {
+    "intent": "BAO_HONG_THIET_BI",
+    "facts": [
+      "Khi gặp sự cố điện, nước, bóng đèn hoặc thiết bị hư hỏng, bạn hãy vào mục 'Báo cáo sự cố' trên Portal.",
+      "Đội kỹ thuật KTX sẽ tiếp nhận và tiến hành xử lý trong vòng 24 giờ."
+    ]
+  },
+  {
+    "intent": "GIOGIAC_NOIQUY",
+    "facts": [
+      "Giờ mở cửa KTX: 05:00 sáng hàng ngày.",
+      "Giờ đóng cửa KTX: 23:00 tối hàng ngày.",
+      "Trường hợp về muộn do lý do học tập/công việc cần báo trước với bảo vệ hoặc Trưởng dãy."
+    ]
+  },
+  {
+    "intent": "GUI_XE_RA_VAO",
+    "facts": [
+      "Bãi xe phục vụ 24/7 cho sinh viên nội trú.",
+      "Phí gửi xe máy: 50.000 VNĐ / tháng.",
+      "Phí gửi xe điện: 80.000 VNĐ / tháng (đã bao gồm tiền sạc điện tại bãi)."
+    ]
+  },
+  {
+    "intent": "DANG_KY_TRA_PHONG",
+    "facts": [
+      "Thủ tục trả phòng cần đăng ký trước ít nhất 15 ngày khi hết hạn hợp đồng.",
+      "Sinh viên dọn dẹp vệ sinh phòng sạch sẽ và bàn giao lại chìa khóa, thẻ ra vào cho Trưởng nhà."
+    ]
+  },
+  {
+    "intent": "TIEP_KHACH_BAN_BE",
+    "facts": [
+      "Khách đến thăm phải xuất trình CCCD/CMND tại cổng bảo vệ.",
+      "Giờ tiếp khách: Từ 08:00 đến 20:00 tại phòng tiếp khách chung.",
+      "Khách không được phép ở lại qua đêm trong phòng ở của sinh viên."
+    ]
+  }
+]

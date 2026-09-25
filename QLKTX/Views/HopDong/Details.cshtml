@@ -1,0 +1,56 @@
+﻿@model QLKTX.Models.HopDong
+
+@{
+    ViewData["Title"] = "Chi Tiết Hợp Đồng";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 700px; margin: auto;">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0"><i class="bi bi-file-text"></i> Chi Tiết Hợp Đồng: @Model.MaHopDong</h4>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <tbody>
+                    <tr>
+                        <th width="35%" class="bg-light">Mã Hợp Đồng:</th>
+                        <td><strong>@Model.MaHopDong</strong></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Bên Thuê (Sinh Viên):</th>
+                        <td class="text-primary fw-bold">@(Model.SinhVien?.HoTen ?? "N/A") - @Model.MaSV</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Phòng Thuê:</th>
+                        <td><span class="badge bg-success">Phòng @(Model.Phong?.MaPhong ?? "N/A")</span></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Thời Hạn:</th>
+                        <td>@Model.NgayBatDau.ToString("dd/MM/yyyy") - @Model.NgayKetThuc.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Tiền Cọc:</th>
+                        <td class="text-danger fw-bold">@Model.TienDatCoc.ToString("N0") VNĐ</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Trạng Thái:</th>
+                        <td>
+                            <span class="badge @(Model.TrangThai == "Còn hiệu lực" ? "bg-success" : "bg-danger")">
+                                @Model.TrangThai
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Điều Khoản:</th>
+                        <td>@(string.IsNullOrEmpty(Model.DieuKhoan) ? "Không có ghi chú đặc biệt." : Model.DieuKhoan)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="mt-4 text-center border-top pt-3">
+                <a asp-action="Edit" asp-route-id="@Model?.MaHopDong" class="btn btn-warning">Sửa hợp đồng</a>
+                <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+            </div>
+        </div>
+    </div>
+</div>

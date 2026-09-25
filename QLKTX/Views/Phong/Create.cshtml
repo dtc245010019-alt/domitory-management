@@ -1,0 +1,69 @@
+﻿@model QLKTX.Models.Phong
+
+@{
+    ViewData["Title"] = "Thêm Phòng Mới";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow" style="max-width: 700px; margin: auto;">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">Thêm Phòng Ký Túc Xá Mới</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="MaPhong" class="form-label fw-bold">Mã Phòng</label>
+                        <input asp-for="MaPhong" class="form-control" placeholder="Ví dụ: A101" required />
+                        <span asp-validation-for="MaPhong" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="LoaiPhong" class="form-label fw-bold">Loại Phòng</label>
+                        <select asp-for="LoaiPhong" class="form-select" required>
+                            <option value="Phòng thường">Phòng thường</option>
+                            <option value="Phòng có điều hoà">Phòng có điều hoà</option>
+                            <option value="Phòng điều hoà + nóng lạnh">Phòng điều hoà + nóng lạnh</option>
+                        </select>
+                        <span asp-validation-for="LoaiPhong" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="SoLuongGiuong" class="form-label fw-bold">Số Lượng Giường</label>
+                        <input asp-for="SoLuongGiuong" type="number" min="1" class="form-control" required />
+                        <span asp-validation-for="SoLuongGiuong" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="GiaPhong" class="form-label fw-bold">Giá Phòng (VNĐ/tháng)</label>
+                        <input asp-for="GiaPhong" type="number" step="1000" class="form-control" required />
+                        <span asp-validation-for="GiaPhong" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3 mx-width-50">
+                    <label asp-for="TinhTrang" class="form-label fw-bold">Tình Trạng</label>
+                    <select asp-for="TinhTrang" class="form-select">
+                        <option value="Còn chỗ">Còn chỗ</option>
+                        <option value="Đã đầy">Đã đầy</option>
+                        <option value="Đang sửa chữa">Đang sửa chữa</option>
+                    </select>
+                    <span asp-validation-for="TinhTrang" class="text-danger"></span>
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <button type="submit" class="btn btn-success">Lưu Phòng</button>
+                    <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

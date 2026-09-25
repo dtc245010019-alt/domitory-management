@@ -1,0 +1,58 @@
+﻿@model QLKTX.Models.ViPham
+@{
+    ViewData["Title"] = "Cập nhật kỷ luật";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow border-warning" style="max-width: 700px; margin: auto;">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Cập Nhật Biên Bản</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Edit">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <input type="hidden" asp-for="MaViPham" />
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label asp-for="MaSV" class="form-label fw-bold">Sinh Viên</label>
+                        <select asp-for="MaSV" class="form-select" asp-items="ViewBag.MaSV" required></select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label asp-for="NoiDungViPham" class="form-label fw-bold">Lỗi Vi Phạm</label>
+                        <input asp-for="NoiDungViPham" class="form-control" required />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="HinhThucXuLy" class="form-label fw-bold">Hình Thức</label>
+                        <select asp-for="HinhThucXuLy" class="form-select" required>
+                            <option value="Nhắc nhở">Nhắc nhở</option>
+                            <option value="Cảnh cáo">Cảnh cáo toàn KTX</option>
+                            <option value="Phạt tiền">Phạt tiền</option>
+                            <option value="Đình chỉ">Đình chỉ lưu trú</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="NgayViPham" class="form-label fw-bold">Ngày Vi Phạm</label>
+                        <input asp-for="NgayViPham" type="date" class="form-control" required />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="GhiChu" class="form-label fw-bold">Ghi chú</label>
+                    <textarea asp-for="GhiChu" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <button type="submit" class="btn btn-warning text-dark">Lưu Thay Đổi</button>
+                    <a asp-action="Index" class="btn btn-secondary">Hủy bỏ</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

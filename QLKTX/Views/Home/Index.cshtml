@@ -1,0 +1,100 @@
+﻿@{
+    ViewData["Title"] = "Bảng Điều Khiển";
+}
+
+<div class="container mt-2">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="p-4 bg-white shadow-sm rounded-3 border-start border-primary border-5">
+                <h2 class="fw-bold text-primary mb-1">BẢNG ĐIỀU KHIỂN BAN QUẢN LÝ</h2>
+                <p class="text-muted mb-0">Hệ thống tổng hợp và quản lý mọi hoạt động của Ký túc xá.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-4 col-sm-6">
+            <a asp-controller="SinhVien" asp-action="Index" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 bg-primary text-white dashboard-card">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-people-fill display-4"></i>
+                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ SINH VIÊN</h5>
+                        <p class="card-text opacity-75 small">Thêm, sửa, xóa thông tin lưu trú của sinh viên.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4 col-sm-6">
+            <a asp-controller="Phong" asp-action="Index" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 bg-success text-white dashboard-card">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-door-open-fill display-4"></i>
+                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ PHÒNG</h5>
+                        <p class="card-text opacity-75 small">Sắp xếp phòng, xem tình trạng giường trống.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4 col-sm-6">
+            <a asp-controller="HopDong" asp-action="Index" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 bg-warning text-dark dashboard-card">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-file-earmark-text-fill display-4"></i>
+                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ HỢP ĐỒNG</h5>
+                        <p class="card-text opacity-75 small">Lập hợp đồng lưu trú, gia hạn, thanh lý.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4 col-sm-6">
+            <a asp-controller="CoSoVatChat" asp-action="Index" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 bg-info text-white dashboard-card">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-pc-display display-4"></i>
+                        <h5 class="card-title mt-3 fw-bold">CƠ SỞ VẬT CHẤT</h5>
+                        <p class="card-text opacity-75 small">Quản lý trang thiết bị, tài sản trong phòng.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4 col-sm-6">
+            <a asp-controller="ViPham" asp-action="Index" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 bg-danger text-white dashboard-card">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-shield-exclamation display-4"></i>
+                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ KỶ LUẬT</h5>
+                        <p class="card-text opacity-75 small">Ghi nhận vi phạm, xử lý kỷ luật sinh viên.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4 col-sm-6">
+            <a asp-controller="BaoCao" asp-action="Index" class="text-decoration-none">
+                <div class="card h-100 shadow-sm border-0 bg-dark text-white dashboard-card">
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-bar-chart-fill display-4"></i>
+                        <h5 class="card-title mt-3 fw-bold">BÁO CÁO THỐNG KÊ</h5>
+                        <p class="card-text opacity-75 small">Xem doanh thu, công nợ, tỉ lệ lấp đầy phòng.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+            filter: brightness(1.05);
+        }
+</style>
