@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using QLKTX.Models;
@@ -24,19 +24,59 @@ namespace QLKTX.Controllers
             // Truyền lại từ khóa ra View để giữ lại chữ người dùng vừa gõ trong ô tìm kiếm
             ViewData["CurrentFilter"] = searchString;
 
-            // Khởi tạo câu truy vấn (chưa chạy ngay vào DB)
-            var query = _context.SinhViens.Include(s => s.Phong).AsQueryable();
+            // Khởi tạo câu truy vấn (chỉ lấy sinh viên đang ở)
+            var query = _context.SinhViens.Include(s => s.Phong).Where(s => s.TinhTrangLuuTru == "Đang ở").AsQueryable();
 
             // Nếu người dùng có gõ từ khóa tìm kiếm
             if (!string.IsNullOrEmpty(searchString))
             {
-                query = query.Where(s => s.MaSV.Contains(searchString)
-                                      || s.HoTen.Contains(searchString)
-                                      || s.Lop.Contains(searchString)
-                                      || s.SoDienThoai.Contains(searchString));
+                // Chuẩn hóa từ khóa cho riêng tìm kiếm phòng: bỏ chữ 'P.' ở đầu do UI thêm vào tĩnh
+                string phongSearch = searchString.Trim().ToUpper();
+                if (phongSearch.StartsWith("P.")) phongSearch = phongSearch.Substring(2);
+                else if (phongSearch.StartsWith("P ") || phongSearch.StartsWith("P-")) phongSearch = phongSearch.Substring(2);
+                
+                // Bỏ tiếp các dấu gạch, chấm, khoảng trắng để so sánh linh hoạt nhất
+                phongSearch = phongSearch.Replace(".", "").Replace(" ", "").Replace("-", "");
+
+                query = query.Where(s => 
+                    s.MaSV.Contains(searchString)
+                    || s.HoTen.Contains(searchString)
+                    || s.Lop.Contains(searchString)
+                    || s.SoDienThoai.Contains(searchString)
+                    || (s.MaPhong != null && s.MaPhong.Replace(".", "").Replace(" ", "").Replace("-", "").ToUpper().Contains(phongSearch))
+                );
             }
 
             // Thực thi truy vấn và lấy kết quả
+            var danhSach = await query.ToListAsync();
+            return View(danhSach);
+        }
+
+        // GET: SinhVien/LichSu
+        public async Task<IActionResult> LichSu(string searchString)
+        {
+            ViewData["CurrentFilter"] = searchString;
+
+            // Lọc sinh viên "Đã rời đi"
+            var query = _context.SinhViens.Include(s => s.Phong).Where(s => s.TinhTrangLuuTru == "Đã rời đi").AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                string phongSearch = searchString.Trim().ToUpper();
+                if (phongSearch.StartsWith("P.")) phongSearch = phongSearch.Substring(2);
+                else if (phongSearch.StartsWith("P ") || phongSearch.StartsWith("P-")) phongSearch = phongSearch.Substring(2);
+                
+                phongSearch = phongSearch.Replace(".", "").Replace(" ", "").Replace("-", "");
+
+                query = query.Where(s => 
+                    s.MaSV.Contains(searchString)
+                    || s.HoTen.Contains(searchString)
+                    || s.Lop.Contains(searchString)
+                    || s.SoDienThoai.Contains(searchString)
+                    || (s.MaPhong != null && s.MaPhong.Replace(".", "").Replace(" ", "").Replace("-", "").ToUpper().Contains(phongSearch))
+                );
+            }
+
             var danhSach = await query.ToListAsync();
             return View(danhSach);
         }
@@ -111,6 +151,22 @@ namespace QLKTX.Controllers
                 {
                     _context.Update(sv);
                     await _context.SaveChangesAsync();
+
+                    // Yêu cầu: Cập nhật tình trạng phòng nếu sinh viên "Đã rời đi"
+                    if (sv.TinhTrangLuuTru == "Đã rời đi" && !string.IsNullOrEmpty(sv.MaPhong))
+                    {
+                        var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
+                        if (phong != null && phong.TinhTrang == "Đã đầy")
+                        {
+                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở");
+                            if (soDangO < phong.SoLuongGiuong)
+                            {
+                                phong.TinhTrang = "Còn chỗ";
+                                _context.Update(phong);
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+                    }
                 }
                 catch (DbUpdateConcurrencyException)
                 {

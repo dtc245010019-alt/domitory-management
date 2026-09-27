@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QLKTX.Models;
 
@@ -20,7 +20,7 @@ namespace QLKTX.Controllers
             ViewData["CurrentFilter"] = searchString;
 
             // Khởi tạo câu truy vấn
-            var query = _context.Phongs.AsQueryable();
+            var query = _context.Phongs.Include(p => p.SinhViens).AsQueryable();
 
             // Nếu có gõ từ khóa thì tiến hành lọc
             if (!string.IsNullOrEmpty(searchString))

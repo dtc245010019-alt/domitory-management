@@ -24,8 +24,19 @@ namespace QLKTX.Controllers
         [HttpPost]
         public async Task<IActionResult> Dangnhap(string Username, string Password)
         {
+            Username = Username?.Trim();
+            Password = Password?.Trim();
+
+            if (string.IsNullOrEmpty(Username) || string.IsNullOrEmpty(Password))
+            {
+                ModelState.AddModelError(string.Empty, "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!");
+                return View();
+            }
+
             var account = await _context.TaiKhoans
-                .FirstOrDefaultAsync(a => a.TenDangNhap == Username && a.MatKhau == Password);
+                .FirstOrDefaultAsync(a => 
+                    (a.TenDangNhap == Username || a.MaSV == Username) 
+                    && a.MatKhau == Password);
 
             if (account != null)
             {

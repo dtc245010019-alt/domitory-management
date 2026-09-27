@@ -1,4 +1,4 @@
-﻿@model IEnumerable<QLKTX.Models.BaoCaoSuCo>
+@model IEnumerable<QLKTX.Models.BaoCaoSuCo>
 @{
     ViewData["Title"] = "Báo Cáo Sự Cố";
     Layout = "~/Views/Shared/_StudentLayout.cshtml";
@@ -22,21 +22,21 @@
 
 <div class="row mt-3 g-4">
     <div class="col-md-5">
-        <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger text-white fw-bold">
-                <i class="bi bi-exclamation-triangle-fill"></i> TẠO BÁO CÁO MỚI
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-danger text-white p-3 border-0">
+                <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-exclamation-triangle-fill me-2"></i> TẠO BÁO CÁO MỚI</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <form asp-action="GuiBaoCao" method="post" enctype="multipart/form-data">
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Tên sự cố (Ngắn gọn):</label>
-                        <input type="text" name="TenSuCo" class="form-control" placeholder="VD: Hỏng vòi nước, Cháy bóng đèn..." required maxlength="100" />
+                        <label class="form-label fw-semibold small text-muted text-uppercase">Tên sự cố (Ngắn gọn):</label>
+                        <input type="text" name="TenSuCo" class="form-control form-control-sm border-secondary-subtle" placeholder="VD: Hỏng vòi nước, Cháy bóng đèn..." required maxlength="100" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Mức độ khẩn cấp:</label>
-                        <select name="MucDoKhanCap" class="form-select">
+                        <label class="form-label fw-semibold small text-muted text-uppercase">Mức độ khẩn cấp:</label>
+                        <select name="MucDoKhanCap" class="form-select form-select-sm border-secondary-subtle">
                             <option value="Bình thường">Bình thường</option>
                             <option value="Nghiêm trọng">Nghiêm trọng (Ảnh hưởng sinh hoạt)</option>
                             <option value="Khẩn cấp">Khẩn cấp (Nguy hiểm/Chập điện)</option>
@@ -44,17 +44,17 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Mô tả chi tiết:</label>
-                        <textarea name="MoTa" class="form-control" rows="4" placeholder="Mô tả rõ tình trạng để kỹ thuật viên chuẩn bị dụng cụ..." required></textarea>
+                        <label class="form-label fw-semibold small text-muted text-uppercase">Mô tả chi tiết:</label>
+                        <textarea name="MoTa" class="form-control form-control-sm border-secondary-subtle" rows="4" placeholder="Mô tả rõ tình trạng để kỹ thuật viên chuẩn bị dụng cụ..." required></textarea>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold">Đính kèm hình ảnh minh họa:</label>
-                        <input type="file" name="HinhAnhFile" class="form-control" accept="image/png, image/jpeg, image/jpg" />
+                        <label class="form-label fw-semibold small text-muted text-uppercase">Đính kèm hình ảnh minh họa:</label>
+                        <input type="file" name="HinhAnhFile" class="form-control form-control-sm border-secondary-subtle" accept="image/png, image/jpeg, image/jpg" />
                     </div>
 
-                    <button type="submit" class="btn btn-danger w-100 fw-bold">
-                        <i class="bi bi-send-fill"></i> Gửi Ban Quản Lý
+                    <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm">
+                        <i class="bi bi-send-fill me-1"></i> Gửi Ban Quản Lý
                     </button>
                 </form>
             </div>
@@ -62,9 +62,9 @@
     </div>
 
     <div class="col-md-7">
-        <div class="card shadow-sm border-secondary">
-            <div class="card-header bg-secondary text-white fw-bold">
-                <i class="bi bi-clock-history"></i> LỊCH SỬ BÁO CÁO CỦA PHÒNG
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+            <div class="card-header bg-light p-3 border-bottom">
+                <h5 class="mb-0 fw-semibold fs-6 text-dark"><i class="bi bi-clock-history me-2 text-secondary"></i> LỊCH SỬ BÁO CÁO CỦA PHÒNG</h5>
             </div>
             <div class="card-body p-0">
                 <ul class="list-group list-group-flush">
@@ -72,34 +72,47 @@
                     {
                         foreach (var item in Model)
                         {
-                            <li class="list-group-item p-3">
+                            <li class="list-group-item p-4">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <h6 class="fw-bold mb-0 text-primary">@item.TenSuCo</h6>
                                     @if (item.TrangThai == "Đã xử lý")
                                     {
-                                        <span class="badge bg-success">Đã xử lý</span>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-medium">
+                                            <i class="bi bi-check-circle me-1"></i>Đã xử lý
+                                        </span>
+                                    }
+                                    else if (item.TrangThai == "Đang xử lý")
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fw-medium">
+                                            <i class="bi bi-hammer me-1"></i>Đang xử lý
+                                        </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
+                                            <i class="bi bi-clock me-1"></i>Chờ xử lý
+                                        </span>
                                     }
                                 </div>
                                 <p class="text-muted small mb-2">
                                     <i class="bi bi-calendar-event"></i> @item.NgayBaoCao.ToString("dd/MM/yyyy HH:mm") |
                                     <span class="text-danger"><i class="bi bi-exclamation-circle"></i> @item.MucDoKhanCap</span>
                                 </p>
-                                <p class="mb-2">@item.MoTa</p>
+                                <p class="mb-2 text-dark">@item.MoTa</p>
 
                                 @if (!string.IsNullOrEmpty(item.HinhAnh))
                                 {
-                                    <img src="@item.HinhAnh" alt="Ảnh sự cố" class="img-thumbnail mt-2" style="max-height: 150px; border-radius: 8px;" />
+                                    <img src="@item.HinhAnh" alt="Ảnh sự cố" class="img-thumbnail mt-2 shadow-sm" style="max-height: 150px; border-radius: 8px;" />
                                 }
                             </li>
                         }
                     }
                     else
                     {
-                        <li class="list-group-item text-center text-muted py-4">Chưa có sự cố nào được ghi nhận.</li>
+                        <li class="list-group-item text-center text-muted py-5">
+                            <i class="bi bi-shield-check fs-1 d-block mb-3 opacity-50"></i>
+                            Chưa có sự cố nào được ghi nhận.
+                        </li>
                     }
                 </ul>
             </div>

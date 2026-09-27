@@ -1,0 +1,125 @@
+@{
+    ViewData["Title"] = "Thêm Mới Hóa Đơn";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1 fw-bold text-dark">Thêm Mới Hóa Đơn</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="QuanLyHoaDonAdmin" class="text-decoration-none">Hóa Đơn</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Thêm mới</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a asp-action="QuanLyHoaDonAdmin" class="btn btn-outline-secondary btn-sm shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 col-xl-8">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white p-4 border-bottom-0">
+                <h5 class="mb-0 fw-semibold text-primary">
+                    <i class="bi bi-file-earmark-plus me-2"></i>Thông tin hóa đơn
+                </h5>
+            </div>
+            <div class="card-body p-4 pt-0">
+                
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger shadow-sm rounded-3 py-2 px-3 mb-4">
+                        <div asp-validation-summary="All" class="text-danger mb-0 small"></div>
+                    </div>
+                }
+
+                <form asp-action="TaoHoaDon" method="post">
+                    <div class="row g-4">
+                        <!-- Chọn sinh viên -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold text-dark">Sinh viên <span class="text-danger">*</span></label>
+                            <select name="maSV" class="form-select shadow-sm" required asp-items="ViewBag.SinhVienList">
+                                <option value="">-- Chọn sinh viên đang lưu trú --</option>
+                            </select>
+                            <div class="form-text">Hệ thống sẽ tự động lấy Mã phòng của sinh viên.</div>
+                        </div>
+
+                        <!-- Loại hóa đơn -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold text-dark">Loại hóa đơn <span class="text-danger">*</span></label>
+                            <select name="loaiHoaDon" id="loaiHoaDon" class="form-select shadow-sm" required onchange="toggleDienNuocFields()">
+                                <option value="Tiền phòng">Tiền phòng (Tự động lấy giá phòng)</option>
+                                <option value="Điện nước">Điện nước (Nhập chỉ số)</option>
+                            </select>
+                        </div>
+
+                        <!-- Khu vực nhập điện nước (ẩn mặc định) -->
+                        <div class="col-12" id="dienNuocFields" style="display: none;">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <h6 class="fw-semibold mb-3 text-secondary">Thông số Điện / Nước</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-medium text-dark">Chỉ số cũ <span class="text-danger">*</span></label>
+                                        <input type="number" name="chiSoCu" id="chiSoCu" class="form-control shadow-sm" min="0" placeholder="Ví dụ: 120" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-medium text-dark">Chỉ số mới <span class="text-danger">*</span></label>
+                                        <input type="number" name="chiSoMoi" id="chiSoMoi" class="form-control shadow-sm" min="0" placeholder="Ví dụ: 185" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-medium text-dark">Đơn giá</label>
+                                        <div class="input-group shadow-sm">
+                                            <input type="number" name="donGiaTuNhap" id="donGiaTuNhap" class="form-control" value="3500" min="0" step="500" />
+                                            <span class="input-group-text bg-white">VNĐ</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <hr class="my-4 text-muted">
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a asp-action="QuanLyHoaDonAdmin" class="btn btn-light border px-4 shadow-sm">Hủy</a>
+                        <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                            <i class="bi bi-save me-1"></i> Lưu Hóa Đơn
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleDienNuocFields() {
+            var loai = document.getElementById("loaiHoaDon").value;
+            var dienNuocDiv = document.getElementById("dienNuocFields");
+            var inputCu = document.getElementById("chiSoCu");
+            var inputMoi = document.getElementById("chiSoMoi");
+
+            if (loai === "Điện nước") {
+                dienNuocDiv.style.display = "block";
+                inputCu.required = true;
+                inputMoi.required = true;
+            } else {
+                dienNuocDiv.style.display = "none";
+                inputCu.required = false;
+                inputMoi.required = false;
+                // Xóa dữ liệu cũ nếu đổi loại
+                inputCu.value = "";
+                inputMoi.value = "";
+            }
+        }
+        
+        // Gọi lúc mới load form để set đúng trạng thái (trường hợp bị lỗi submit lại)
+        document.addEventListener('DOMContentLoaded', toggleDienNuocFields);
+    </script>
+}

@@ -1,14 +1,14 @@
-﻿@model IEnumerable<QLKTX.Models.HoaDon>
+@model IEnumerable<QLKTX.Models.HoaDon>
 @{
     ViewData["Title"] = "Hóa Đơn Của Tôi";
     Layout = "~/Views/Shared/_StudentLayout.cshtml";
 }
 
-<div class="card shadow-sm border-success mt-3">
-    <div class="card-header bg-success text-white fw-bold">
-        <i class="bi bi-receipt"></i> DANH SÁCH HÓA ĐƠN
+<div class="card border-0 shadow-sm rounded-4 mt-3 overflow-hidden">
+    <div class="card-header bg-primary text-white p-3 border-0">
+        <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-receipt me-2"></i> DANH SÁCH HÓA ĐƠN</h5>
     </div>
-    <div class="card-body">
+    <div class="card-body p-4">
 
         @if (TempData["SuccessMessage"] != null)
         {
@@ -27,42 +27,46 @@
         }
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-muted small text-uppercase">
                     <tr>
-                        <th>Mã Hóa Đơn</th>
-                        <th>Loại Hóa Đơn</th>
-                        <th>Ngày Lập</th>
-                        <th>Tổng tiền</th>
-                        <th>Trạng thái</th>
-                        <th class="text-center">Hành động</th>
+                        <th class="ps-4 fw-semibold">Mã Hóa Đơn</th>
+                        <th class="fw-semibold">Loại Hóa Đơn</th>
+                        <th class="fw-semibold">Ngày Lập</th>
+                        <th class="fw-semibold">Tổng tiền</th>
+                        <th class="fw-semibold">Trạng thái</th>
+                        <th class="pe-4 text-center fw-semibold">Hành động</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="border-top-0">
                     @if (Model != null && Model.Any())
                     {
                         foreach (var item in Model)
                         {
                             <tr>
-                                <td class="fw-bold">@item.MaHoaDon</td>
-                                <td><span class="badge bg-info text-dark">@item.LoaiHoaDon</span></td>
-                                <td>@item.NgayLap.ToString("dd/MM/yyyy")</td>
-                                <td class="text-danger fw-bold">@item.TongTien.ToString("N0") đ</td>
+                                <td class="ps-4 fw-medium text-dark">@item.MaHoaDon</td>
+                                <td><span class="badge bg-light text-dark border">@item.LoaiHoaDon</span></td>
+                                <td class="small text-muted">@item.NgayLap.ToString("dd/MM/yyyy")</td>
+                                <td><strong class="text-primary">@item.TongTien.ToString("N0") đ</strong></td>
                                 <td>
                                     @if (item.TrangThai == "Đã thanh toán")
                                     {
-                                        <span class="badge bg-success"><i class="bi bi-check2"></i> Đã thanh toán</span>
-                                        <small class="d-block text-muted mt-1">Qua: @item.HinhThucThanhToan</small>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-medium">
+                                            <i class="bi bi-check-circle me-1"></i>Đã thanh toán
+                                        </span>
+                                        <small class="d-block text-muted mt-1" style="font-size: 0.7rem;">Qua: @item.HinhThucThanhToan</small>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-warning text-dark"><i class="bi bi-clock-history"></i> Chưa thanh toán</span>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
+                                            <i class="bi bi-x-circle me-1"></i>Chưa thanh toán
+                                        </span>
                                     }
                                 </td>
                                 <td class="text-center">
                                     @if (item.TrangThai != "Đã thanh toán")
                                     {
-                                        <button type="button" class="btn btn-sm btn-primary btn-pay"
+                                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 btn-pay"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#paymentModal"
                                                 data-id="@item.MaHoaDon"

@@ -1,0 +1,173 @@
+@model IEnumerable<QLKTX.Models.HoaDon>
+
+@{
+    ViewData["Title"] = "Quản Lý Hóa Đơn Điện Nước";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1 fw-bold text-dark">Quản Lý Hóa Đơn Điện Nước</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Hóa đơn</li>
+            </ol>
+        </nav>
+    </div>
+    <div>
+        <a asp-action="TaoHoaDon" class="btn btn-primary btn-sm px-3 py-2 shadow-sm">
+            <i class="bi bi-plus-lg me-1"></i> Thêm hóa đơn mới
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-primary text-white p-3 border-0">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-receipt me-2"></i>Danh sách Hóa đơn</h5>
+        </div>
+    </div>
+    
+    <!-- Thanh Công Cụ Lọc (SaaS Theme) -->
+    <div class="bg-white p-3 border-bottom">
+        <form asp-action="QuanLyHoaDonAdmin" method="get" class="w-100">
+            <div class="row g-3 align-items-center justify-content-between">
+                
+                <!-- Ô tìm kiếm -->
+                <div class="col-12 col-md-5 col-lg-5">
+                    <div class="input-group input-group-sm shadow-sm rounded">
+                        <span class="input-group-text bg-light border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" 
+                               name="searchString" 
+                               value="@ViewData["CurrentSearch"]" 
+                               class="form-control bg-light border-start-0 ps-1" 
+                               placeholder="Tìm Mã hóa đơn, Mã SV, Họ tên, Phòng..." />
+                        <button type="submit" class="btn btn-primary px-3">
+                            Tìm kiếm
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lọc trạng thái & loại -->
+                <div class="col-12 col-md-7 col-lg-7">
+                    <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
+                        
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="form-label mb-0 small text-muted d-none d-sm-inline">Trạng thái:</label>
+                            <select name="trangThai" class="form-select form-select-sm shadow-sm" style="width: auto; min-width: 140px;" onchange="this.form.submit()">
+                                <option value="Tất cả">Tất cả trạng thái</option>
+                                <option value="Đã thanh toán" selected="@(ViewData["CurrentTrangThai"]?.ToString() == "Đã thanh toán" ? "selected" : null)">Đã thanh toán</option>
+                                <option value="Chưa thanh toán" selected="@(ViewData["CurrentTrangThai"]?.ToString() == "Chưa thanh toán" ? "selected" : null)">Chưa thanh toán</option>
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="form-label mb-0 small text-muted d-none d-sm-inline">Loại:</label>
+                            <select name="loaiHoaDon" class="form-select form-select-sm shadow-sm" style="width: auto; min-width: 130px;" onchange="this.form.submit()">
+                                <option value="Tất cả">Tất cả loại</option>
+                                <option value="Tiền phòng" selected="@(ViewData["CurrentLoai"]?.ToString() == "Tiền phòng" ? "selected" : null)">Tiền phòng</option>
+                                <option value="Điện nước" selected="@(ViewData["CurrentLoai"]?.ToString() == "Điện nước" ? "selected" : null)">Điện nước</option>
+                            </select>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(ViewData["CurrentSearch"]?.ToString()) || 
+                             (!string.IsNullOrEmpty(ViewData["CurrentTrangThai"]?.ToString()) && ViewData["CurrentTrangThai"]?.ToString() != "Tất cả") || 
+                             (!string.IsNullOrEmpty(ViewData["CurrentLoai"]?.ToString()) && ViewData["CurrentLoai"]?.ToString() != "Tất cả"))
+                        {
+                            <a asp-action="QuanLyHoaDonAdmin" class="btn btn-outline-danger btn-sm shadow-sm">
+                                <i class="bi bi-x-circle"></i> Xóa lọc
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-muted small text-uppercase">
+                    <tr>
+                        <th class="ps-4 fw-semibold">Mã Hóa Đơn</th>
+                        <th class="fw-semibold">Sinh Viên</th>
+                        <th class="fw-semibold">Phòng</th>
+                        <th class="fw-semibold">Loại</th>
+                        <th class="fw-semibold">Tổng Tiền</th>
+                        <th class="fw-semibold">Trạng Thái</th>
+                        <th class="fw-semibold">Ngày Lập</th>
+                        <th class="pe-4 text-end fw-semibold">Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-4 fw-medium text-dark">@item.MaHoaDon</td>
+                                <td>
+                                    <div class="fw-medium text-dark">@(item.SinhVien?.HoTen ?? "N/A")</div>
+                                    <div class="small text-muted">@item.MaSV</div>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.MaPhong))
+                                    {
+                                        <span class="badge bg-light text-dark border"><i class="bi bi-door-open me-1"></i>@item.MaPhong</span>
+                                    }
+                                </td>
+                                <td>@item.LoaiHoaDon</td>
+                                <td><strong class="text-primary">@item.TongTien.ToString("N0") ₫</strong></td>
+                                <td>
+                                    @if (item.TrangThai == "Đã thanh toán")
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-medium">
+                                            <i class="bi bi-check-circle me-1"></i>Đã thanh toán
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
+                                            <i class="bi bi-x-circle me-1"></i>Chưa thanh toán
+                                        </span>
+                                    }
+                                </td>
+                                <td class="small text-muted">@item.NgayLap.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="pe-4 text-end">
+                                    <form asp-action="CapNhatTrangThaiHoaDon" method="post" class="d-inline">
+                                        <input type="hidden" name="maHoaDon" value="@item.MaHoaDon" />
+                                        @if (item.TrangThai == "Đã thanh toán")
+                                        {
+                                            <input type="hidden" name="trangThaiMoi" value="Chưa thanh toán" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('Chuyển trạng thái hóa đơn @item.MaHoaDon thành CHƯA THANH TOÁN?');">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Hủy
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <input type="hidden" name="trangThaiMoi" value="Đã thanh toán" />
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Xác nhận ĐÃ THU TIỀN hóa đơn @item.MaHoaDon?');">
+                                                <i class="bi bi-check2"></i> Đã thu
+                                            </button>
+                                        }
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+                                Không có hóa đơn nào.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
