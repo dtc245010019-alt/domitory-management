@@ -1,0 +1,128 @@
+@model IEnumerable<QLKTX.Models.BaoCaoSuCo>
+
+@{
+    ViewData["Title"] = "Quản Lý Báo Cáo Sự Cố";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="h4 mb-1 fw-bold text-dark">Quản Lý Báo Cáo Sự Cố</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Báo cáo sự cố</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-danger text-white p-3 border-0">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-tools me-2"></i>Danh sách Sự cố cần xử lý</h5>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-muted small text-uppercase">
+                    <tr>
+                        <th class="ps-4 fw-semibold">Mã Sự Cố</th>
+                        <th class="fw-semibold">Phòng</th>
+                        <th class="fw-semibold">Người Báo</th>
+                        <th class="fw-semibold">Tên Sự Cố & Mô Tả</th>
+                        <th class="fw-semibold">Mức Độ</th>
+                        <th class="fw-semibold">Trạng Thái</th>
+                        <th class="fw-semibold">Ngày Báo</th>
+                        <th class="pe-4 text-end fw-semibold">Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-4 fw-medium text-dark">@item.MaSuCo</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.MaPhong))
+                                    {
+                                        <span class="badge bg-light text-dark border"><i class="bi bi-door-open me-1"></i>@item.MaPhong</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="fw-medium text-dark">@(item.SinhVien?.HoTen ?? "N/A")</div>
+                                    <div class="small text-muted">@item.MaSV</div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">@item.TenSuCo</div>
+                                    <div class="small text-muted text-truncate" style="max-width: 200px;" title="@item.MoTa">@item.MoTa</div>
+                                </td>
+                                <td>
+                                    @if (item.MucDoKhanCap == "Cao")
+                                    {
+                                        <span class="badge bg-danger">Cao</span>
+                                    }
+                                    else if (item.MucDoKhanCap == "Trung bình")
+                                    {
+                                        <span class="badge bg-warning text-dark">Trung bình</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info text-dark">Thấp</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.TrangThai == "Đã xử lý")
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 fw-medium">
+                                            <i class="bi bi-check-circle me-1"></i>Đã xử lý
+                                        </span>
+                                    }
+                                    else if (item.TrangThai == "Đang xử lý")
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 fw-medium">
+                                            <i class="bi bi-hammer me-1"></i>Đang xử lý
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 fw-medium">
+                                            <i class="bi bi-clock me-1"></i>Chờ xử lý
+                                        </span>
+                                    }
+                                </td>
+                                <td class="small text-muted">@item.NgayBaoCao.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="pe-4 text-end">
+                                    <form asp-action="CapNhatTrangThaiSuCo" method="post" class="d-inline">
+                                        <input type="hidden" name="maSuCo" value="@item.MaSuCo" />
+                                        <select name="trangThaiMoi" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+                                            <option value="Chờ xử lý" selected="@(item.TrangThai == "Chờ xử lý")">Chờ xử lý</option>
+                                            <option value="Đang xử lý" selected="@(item.TrangThai == "Đang xử lý")">Đang xử lý</option>
+                                            <option value="Đã xử lý" selected="@(item.TrangThai == "Đã xử lý")">Đã xử lý</option>
+                                        </select>
+                                    </form>
+                                    @if (!string.IsNullOrEmpty(item.HinhAnh))
+                                    {
+                                        <a href="@item.HinhAnh" target="_blank" class="btn btn-sm btn-outline-secondary ms-1" title="Xem ảnh đính kèm">
+                                            <i class="bi bi-image"></i>
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-shield-check fs-1 d-block mb-3 opacity-50"></i>
+                                Không có sự cố nào.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-﻿@model QLKTX.Models.SinhVien
+@model QLKTX.Models.SinhVien
 
 @{
     ViewData["Title"] = "Trang cá nhân";
@@ -8,11 +8,11 @@
 
 <div class="row g-4 mt-2">
     <div class="col-md-4">
-        <div class="card shadow-sm border-success h-100">
-            <div class="card-header bg-success text-white fw-bold">
-                <i class="bi bi-person-vcard"></i> THẺ LƯU TRÚ
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+            <div class="card-header bg-primary text-white p-3 border-0">
+                <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-person-vcard me-2"></i> THẺ LƯU TRÚ</h5>
             </div>
-            <div class="card-body text-center">
+            <div class="card-body text-center p-4">
                 @if (!string.IsNullOrEmpty(Model.AnhThe))
                 {
                     <img src="@Model.AnhThe" class="img-thumbnail rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png';" />
@@ -21,48 +21,50 @@
                 {
                     <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="img-thumbnail rounded-circle mb-3" style="width: 120px;" />
                 }
-                <h5 class="fw-bold text-success">@Model.HoTen</h5>
-                <p class="text-muted mb-1">Mã SV: <strong>@Model.MaSV</strong></p>
-                <p class="text-muted mb-3">Lớp: <strong>@Model.Lop</strong></p>
+                <h5 class="fw-bold text-dark">@Model.HoTen</h5>
+                <p class="text-muted mb-1 small">Mã SV: <strong>@Model.MaSV</strong></p>
+                <p class="text-muted mb-4 small">Lớp: <strong>@Model.Lop</strong></p>
 
-                <span class="badge bg-success fs-6 px-3 py-2">Trạng thái: @Model.TinhTrangLuuTru</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 fw-medium">
+                    <i class="bi bi-info-circle me-1"></i>Trạng thái: @Model.TinhTrangLuuTru
+                </span>
             </div>
         </div>
     </div>
 
     <div class="col-md-8">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-white fw-bold text-success border-bottom-0">
-                <i class="bi bi-door-open"></i> THÔNG TIN PHÒNG HIỆN TẠI
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-white p-3 border-bottom">
+                <h5 class="mb-0 fw-semibold fs-6 text-dark"><i class="bi bi-door-open me-2 text-primary"></i> THÔNG TIN PHÒNG HIỆN TẠI</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 @if (Model.Phong != null)
                 {
-                    <div class="row text-center mb-4">
-                        <div class="col-sm-4 mb-3">
-                            <div class="p-3 bg-light rounded shadow-sm">
-                                <h6 class="text-muted">Phòng</h6>
-                                <h2 class="fw-bold text-success mb-0">@Model.Phong.MaPhong</h2>
+                    <div class="row text-center mb-4 g-3">
+                        <div class="col-sm-4">
+                            <div class="p-3 bg-light rounded-4 border shadow-sm">
+                                <h6 class="text-muted small fw-semibold text-uppercase mb-2">Phòng</h6>
+                                <h2 class="fw-bold text-primary mb-0">@Model.Phong.MaPhong</h2>
                             </div>
                         </div>
-                        <div class="col-sm-4 mb-3">
-                            <div class="p-3 bg-light rounded shadow-sm">
-                                <h6 class="text-muted">Loại phòng</h6>
-                                <h5 class="fw-bold mb-0 mt-2">@Model.Phong.LoaiPhong</h5>
+                        <div class="col-sm-4">
+                            <div class="p-3 bg-light rounded-4 border shadow-sm">
+                                <h6 class="text-muted small fw-semibold text-uppercase mb-2">Loại phòng</h6>
+                                <h5 class="fw-bold text-dark mb-0 mt-2">@Model.Phong.LoaiPhong</h5>
                             </div>
                         </div>
-                        <div class="col-sm-4 mb-3">
-                            <div class="p-3 bg-light rounded shadow-sm">
-                                <h6 class="text-muted">Giá phòng/Tháng</h6>
+                        <div class="col-sm-4">
+                            <div class="p-3 bg-light rounded-4 border shadow-sm">
+                                <h6 class="text-muted small fw-semibold text-uppercase mb-2">Giá phòng/Tháng</h6>
                                 <h5 class="fw-bold text-danger mb-0 mt-2">@Model.Phong.GiaPhong.ToString("N0")đ</h5>
                             </div>
                         </div>
                     </div>
 
-                    <h6 class="fw-bold border-bottom pb-2">Hành động nhanh</h6>
-                    <div class="d-flex gap-2 mt-3">
-                        <a asp-action="HoaDon" class="btn btn-outline-success"><i class="bi bi-receipt"></i> Xem hóa đơn tháng này</a>
-                        <a asp-action="BaoCaoSuCo" class="btn btn-outline-danger"><i class="bi bi-tools"></i> Báo hỏng thiết bị</a>
+                    <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Hành động nhanh</h6>
+                    <div class="d-flex gap-2">
+                        <a asp-action="HoaDon" class="btn btn-primary rounded-pill px-4 shadow-sm"><i class="bi bi-receipt me-1"></i> Xem hóa đơn</a>
+                        <a asp-action="BaoCaoSuCo" class="btn btn-outline-danger rounded-pill px-4"><i class="bi bi-tools me-1"></i> Báo hỏng thiết bị</a>
                     </div>
                 }
                 else

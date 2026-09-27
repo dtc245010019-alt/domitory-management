@@ -1,69 +1,111 @@
-﻿@model QLKTX.Models.Phong
+@model QLKTX.Models.Phong
 
 @{
-    ViewData["Title"] = "Cập nhật Phòng";
+    ViewData["Title"] = "Cập Nhật Thông Tin Phòng - " + Model.MaPhong;
 }
 
-<div class="container-fluid mt-4">
-    <div class="card shadow" style="max-width: 700px; margin: auto;">
-        <div class="card-header bg-warning text-dark">
-            <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Cập Nhật Thông Tin Phòng: @Model.MaPhong</h4>
+<div class="container-fluid px-0" style="max-width: 850px; margin: 0 auto;">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a asp-action="Index" class="text-decoration-none text-muted small"><i class="bi bi-arrow-left me-1"></i>Danh sách phòng</a>
+                <span class="text-muted small">• Chỉnh sửa</span>
+            </div>
+            <h2 class="fw-bold text-dark mb-0">Cập Nhật Phòng @Model.MaPhong</h2>
+            <p class="text-muted small mb-0 mt-1">Cập nhật loại phòng, sức chứa giường, đơn giá và trạng thái kỹ thuật.</p>
         </div>
-        <div class="card-body">
-            <form asp-action="Edit">
-                <div asp-validation-summary="All" class="text-danger mb-3 alert alert-danger"></div>
+
+        <a asp-action="Index" class="btn btn-light btn-sm">
+            <i class="bi bi-x-lg me-1"></i> Hủy & Quay lại
+        </a>
+    </div>
+
+    <!-- Main Card -->
+    <div class="card border-0 shadow-xs mb-4">
+        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-pencil-square text-primary"></i>
+                <h5 class="fw-bold text-dark mb-0 fs-6">Chỉnh Sửa Thông Tin Phòng @Model.MaPhong</h5>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <form asp-action="Edit" method="post">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger small mb-3"></div>
 
                 <input type="hidden" asp-for="MaPhong" />
-
                 <input type="hidden" asp-for="TrangThaiThietBi" />
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Mã Phòng</label>
-                        <input class="form-control" value="@Model.MaPhong" disabled />
-                        <small class="text-muted">Không thể thay đổi mã phòng.</small>
+                <div class="row g-3">
+                    
+                    <!-- Mã Phòng (Disabled) -->
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Mã Phòng</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-hash text-muted"></i></span>
+                            <input class="form-control bg-light font-monospace fw-bold text-primary" value="@Model.MaPhong" disabled />
+                        </div>
+                        <span class="text-muted small" style="font-size: 0.74rem;">Mã phòng là định danh cố định không thể sửa.</span>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="LoaiPhong" class="form-label fw-bold">Loại Phòng</label>
+
+                    <!-- Loại Phòng -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="LoaiPhong" class="form-label">Loại Phòng <span class="text-danger">*</span></label>
                         <select asp-for="LoaiPhong" class="form-select" required>
                             <option value="Phòng thường">Phòng thường</option>
                             <option value="Phòng có điều hoà">Phòng có điều hoà</option>
                             <option value="Phòng điều hoà + nóng lạnh">Phòng điều hoà + nóng lạnh</option>
+                            <option value="Phòng chất lượng cao">Phòng chất lượng cao</option>
                         </select>
-                        <span asp-validation-for="LoaiPhong" class="text-danger"></span>
+                        <span asp-validation-for="LoaiPhong" class="text-danger small mt-1 d-block"></span>
                     </div>
+
+                    <!-- Số Giường -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="SoLuongGiuong" class="form-label">Số Lượng Giường <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-layout-text-window text-muted"></i></span>
+                            <input asp-for="SoLuongGiuong" type="number" min="1" max="16" class="form-control" required />
+                        </div>
+                        <span asp-validation-for="SoLuongGiuong" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <!-- Giá Phòng -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="GiaPhong" class="form-label">Giá Thuê (VNĐ / Tháng) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-cash-stack text-muted"></i></span>
+                            <input asp-for="GiaPhong" type="number" step="10000" class="form-control" required />
+                        </div>
+                        <span asp-validation-for="GiaPhong" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <!-- Tình Trạng -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="TinhTrang" class="form-label">Tình Trạng Phòng <span class="text-danger">*</span></label>
+                        <select asp-for="TinhTrang" class="form-select" required>
+                            <option value="Còn chỗ">Còn chỗ</option>
+                            <option value="Đã đầy">Đã đầy</option>
+                            <option value="Bảo trì">Bảo trì</option>
+                            <option value="Đang sửa chữa">Đang sửa chữa</option>
+                        </select>
+                        <span asp-validation-for="TinhTrang" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="SoLuongGiuong" class="form-label fw-bold">Số Lượng Giường</label>
-                        <input asp-for="SoLuongGiuong" type="number" min="1" class="form-control" required />
-                        <span asp-validation-for="SoLuongGiuong" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="GiaPhong" class="form-label fw-bold">Giá Phòng (VNĐ)</label>
-                        <input asp-for="GiaPhong" type="number" step="1000" class="form-control" required />
-                        <span asp-validation-for="GiaPhong" class="text-danger"></span>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label asp-for="TinhTrang" class="form-label fw-bold">Tình Trạng</label>
-                    <select asp-for="TinhTrang" class="form-select" required>
-                        <option value="Còn chỗ">Còn chỗ</option>
-                        <option value="Đã đầy">Đã đầy</option>
-                        <option value="Đang bảo trì">Đang bảo trì</option>
-                    </select>
-                    <span asp-validation-for="TinhTrang" class="text-danger"></span>
-                </div>
-
-                <div class="mt-4 border-top pt-3">
-                    <button type="submit" class="btn btn-warning text-dark fw-bold px-4">Lưu Thay Đổi</button>
-                    <a asp-action="Index" class="btn btn-secondary px-4">Hủy bỏ</a>
+                <!-- Action buttons -->
+                <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-light px-4">Hủy bỏ</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check-lg me-1"></i> Cập Nhật Phòng
+                    </button>
                 </div>
             </form>
         </div>
     </div>
+
 </div>
 
 @section Scripts {

@@ -1,74 +1,150 @@
-﻿@model QLKTX.Models.SinhVien
+@model QLKTX.Models.SinhVien
 
 @{
-    ViewData["Title"] = "Thêm Sinh Viên";
+    ViewData["Title"] = "Tiếp Nhận Sinh Viên Mới";
 }
 
-<div class="container-fluid mt-4">
-    <div class="card shadow" style="max-width: 800px; margin: auto;">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Thêm Sinh Viên Mới</h4>
+<div class="container-fluid px-0" style="max-width: 900px; margin: 0 auto;">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a asp-action="Index" class="text-decoration-none text-muted small"><i class="bi bi-arrow-left me-1"></i>Danh sách sinh viên</a>
+                <span class="text-muted small">• Tiếp nhận</span>
+            </div>
+            <h2 class="fw-bold text-dark mb-0">Tiếp Nhận Sinh Viên Mới</h2>
+            <p class="text-muted small mb-0 mt-1">Nhập đầy đủ thông tin cá nhân và xếp phòng lưu trú ký túc xá.</p>
         </div>
-        <div class="card-body">
-            <form asp-action="Create">
-                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="MaSV" class="form-label text-fw-bold">Mã Sinh Viên</label>
-                        <input asp-for="MaSV" class="form-control" placeholder="Nhập mã SV..." required />
-                        <span asp-validation-for="MaSV" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="HoTen" class="form-label text-fw-bold">Họ Tên</label>
-                        <input asp-for="HoTen" class="form-control" placeholder="Nhập họ tên..." required />
-                        <span asp-validation-for="HoTen" class="text-danger"></span>
-                    </div>
+        <a asp-action="Index" class="btn btn-light btn-sm">
+            <i class="bi bi-x-lg me-1"></i> Hủy & Quay lại
+        </a>
+    </div>
+
+    <!-- Main Form Card -->
+    <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger small mb-3"></div>
+
+        <!-- Group 1: Thông tin cá nhân & Học tập -->
+        <div class="card border-0 shadow-xs mb-4">
+            <div class="card-header bg-white py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-person-lines-fill text-primary"></i>
+                    <h5 class="fw-bold text-dark mb-0 fs-6">1. Thông Tin Cá Nhân & Học Tập</h5>
                 </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    
+                    <!-- Mã Sinh Viên -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="MaSV" class="form-label">Mã Sinh Viên <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-card-heading text-muted"></i></span>
+                            <input asp-for="MaSV" class="form-control" placeholder="Ví dụ: SV2026001" required />
+                        </div>
+                        <span asp-validation-for="MaSV" class="text-danger small mt-1 d-block"></span>
+                    </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="NgaySinh" class="form-label text-fw-bold">Ngày Sinh</label>
-                        <input asp-for="NgaySinh" type="date" class="form-control" required />
-                        <span asp-validation-for="NgaySinh" class="text-danger"></span>
+                    <!-- Họ và Tên -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="HoTen" class="form-label">Họ và Tên <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person text-muted"></i></span>
+                            <input asp-for="HoTen" class="form-control" placeholder="Nhập đầy đủ họ tên..." required />
+                        </div>
+                        <span asp-validation-for="HoTen" class="text-danger small mt-1 d-block"></span>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="Lop" class="form-label text-fw-bold">Lớp</label>
-                        <input asp-for="Lop" class="form-control" placeholder="Nhập tên lớp..." />
-                        <span asp-validation-for="Lop" class="text-danger"></span>
+
+                    <!-- Ngày Sinh -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="NgaySinh" class="form-label">Ngày Sinh <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-calendar-event text-muted"></i></span>
+                            <input asp-for="NgaySinh" type="date" class="form-control" required />
+                        </div>
+                        <span asp-validation-for="NgaySinh" class="text-danger small mt-1 d-block"></span>
                     </div>
+
+                    <!-- Lớp -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="Lop" class="form-label">Lớp / Khoa <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-mortarboard text-muted"></i></span>
+                            <input asp-for="Lop" class="form-control" placeholder="Ví dụ: KTPM-K20A" required />
+                        </div>
+                        <span asp-validation-for="Lop" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <!-- CCCD / Định danh -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="CCCD" class="form-label">Căn cước công dân (CCCD)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person-vcard text-muted"></i></span>
+                            <input asp-for="CCCD" class="form-control" placeholder="Nhập 12 số CCCD" />
+                        </div>
+                        <span asp-validation-for="CCCD" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
                 </div>
+            </div>
+        </div>
 
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label asp-for="SoDienThoai" class="form-label text-fw-bold">Số điện thoại</label>
-                        <input asp-for="SoDienThoai" class="form-control" placeholder="Nhập SĐT..." />
-                        <span asp-validation-for="SoDienThoai" class="text-danger"></span>
+        <!-- Group 2: Liên lạc & Xếp phòng lưu trú -->
+        <div class="card border-0 shadow-xs mb-4">
+            <div class="card-header bg-white py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-door-open-fill text-primary"></i>
+                    <h5 class="fw-bold text-dark mb-0 fs-6">2. Thông Tin Liên Lạc & Xếp Phòng Ở</h5>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    
+                    <!-- Số điện thoại -->
+                    <div class="col-12 col-md-4">
+                        <label asp-for="SoDienThoai" class="form-label">Số Điện Thoại <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-telephone text-muted"></i></span>
+                            <input asp-for="SoDienThoai" class="form-control" placeholder="09xxxxxxxx" required />
+                        </div>
+                        <span asp-validation-for="SoDienThoai" class="text-danger small mt-1 d-block"></span>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label asp-for="MaPhong" class="form-label text-fw-bold">Xếp Phòng</label>
+
+                    <!-- Xếp phòng -->
+                    <div class="col-12 col-md-4">
+                        <label asp-for="MaPhong" class="form-label">Xếp Vào Phòng</label>
                         <select asp-for="MaPhong" class="form-select" asp-items="ViewBag.Phongs">
-                            <option value="">-- Chọn phòng --</option>
+                            <option value="">-- Chọn phòng KTX --</option>
                         </select>
-                        <span asp-validation-for="MaPhong" class="text-danger"></span>
+                        <span asp-validation-for="MaPhong" class="text-danger small mt-1 d-block"></span>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label asp-for="TinhTrangLuuTru" class="form-label text-fw-bold">Tình Trạng</label>
+
+                    <!-- Tình trạng lưu trú -->
+                    <div class="col-12 col-md-4">
+                        <label asp-for="TinhTrangLuuTru" class="form-label">Tình Trạng Lưu Trú</label>
                         <select asp-for="TinhTrangLuuTru" class="form-select">
                             <option value="Đang ở">Đang ở</option>
                             <option value="Đã rời đi">Đã rời đi</option>
+                            <option value="Đình chỉ">Đình chỉ</option>
                         </select>
-                        <span asp-validation-for="TinhTrangLuuTru" class="text-danger"></span>
+                        <span asp-validation-for="TinhTrangLuuTru" class="text-danger small mt-1 d-block"></span>
                     </div>
-                </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary">Lưu Sinh Viên</button>
-                    <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <!-- Form Actions Footer -->
+        <div class="d-flex align-items-center justify-content-end gap-2 mb-5">
+            <a asp-action="Index" class="btn btn-light px-4">Hủy bỏ</a>
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-check-lg me-1"></i> Lưu Hồ Sơ Sinh Viên
+            </button>
+        </div>
+
+    </form>
 </div>
 
 @section Scripts {

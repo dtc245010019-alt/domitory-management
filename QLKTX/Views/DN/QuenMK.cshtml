@@ -4,81 +4,70 @@
     Layout = "~/Views/Shared/_LoginLayout.cshtml";
 }
 
-<div class="login-container">
-    <div class="forgot-card">
-        <!-- Header -->
-        <div class="forgot-header">
-            <div class="icon-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-            </div>
-            <h1>Quên Mật Khẩu</h1>
-            <p>Nhập email để nhận liên kết đặt lại mật khẩu</p>
+<div class="auth-card-glass">
+    <!-- Header -->
+    <div class="auth-header-gradient">
+        <div class="auth-logo-badge">
+            <i class="bi bi-key-fill"></i>
         </div>
-
-        <!-- Form -->
-        <div class="forgot-body">
-            @if (TempData["Success"] == null)
-            {
-                <form asp-controller="DN" asp-action="ForgotPassword" method="post">
-                    @Html.AntiForgeryToken()
-                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-                    <!-- Email -->
-                    <div class="form-group">
-                        <label asp-for="Email"></label>
-                        <input asp-for="Email" class="form-control" placeholder="dtcxxxxxxxxx@ictu.edu.vn" />
-                        <span asp-validation-for="Email" class="text-danger"></span>
-                    </div>
-
-                    <!-- Info -->
-                    <div class="info-box">
-                        <p>
-                            Chúng tôi sẽ gửi liên kết đặt lại mật khẩu đến email của bạn. 
-                            Vui lòng kiểm tra cả hộp thư spam nếu không thấy email.
-                        </p>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" class="btn-submit btn-purple">Gửi liên kết đặt lại</button>
-                </form>
-            }
-            else
-            {
-                <div class="success-message">
-                    <div class="success-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                    </div>
-                    <h3>Email đã được gửi!</h3>
-                    <p>
-                        Chúng tôi đã gửi liên kết đặt lại mật khẩu đến <strong>@TempData["Email"]</strong>. 
-                        Vui lòng kiểm tra email và làm theo hướng dẫn.
-                    </p>
-                    <a asp-controller="DN" asp-action="QuenMK" class="resend-link">Gửi lại email</a>
-                </div>
-            }
-
-            <!-- Back to Login -->
-            <div class="back-link">
-                <a asp-controller="DN" asp-action="Dangnhap">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
-                    </svg>
-                    Quay lại đăng nhập
-                </a>
-            </div>
-        </div>
+        <h3 class="fw-bold mb-1 fs-5 text-white">Quên Mật Khẩu</h3>
+        <p class="mb-0 text-white-50 small">Nhập email để nhận hướng dẫn khôi phục mật khẩu</p>
     </div>
 
-    <!-- Footer Note -->
-    <div class="copyright">
-        © 2026 Hệ Thống Quản Lý Sinh Viên
+    <!-- Body -->
+    <div class="auth-body">
+        @if (TempData["Success"] == null)
+        {
+            <form asp-controller="DN" asp-action="ForgotPassword" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger p-2 small mb-3"></div>
+
+                <!-- Email -->
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label">Email trường cấp / Email sinh viên</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-envelope-fill text-muted"></i>
+                        </span>
+                        <input asp-for="Email" class="form-control" placeholder="vidu@student.edu.vn" required />
+                    </div>
+                    <span asp-validation-for="Email" class="text-danger small mt-1 d-block"></span>
+                </div>
+
+                <!-- Info message box -->
+                <div class="alert alert-info py-2 px-3 small mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    Chúng tôi sẽ gửi liên kết đặt lại mật khẩu đến hòm thư của bạn. Vui lòng kiểm tra hộp thư Spam nếu không thấy trong Hộp thư đến.
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mb-3">
+                    <i class="bi bi-send-fill"></i> Gửi liên kết đặt lại
+                </button>
+            </form>
+        }
+        else
+        {
+            <div class="text-center py-3">
+                <div class="text-success mb-2" style="font-size: 2.5rem;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <h4 class="fw-bold text-dark fs-5">Email đã được gửi!</h4>
+                <p class="text-muted small">
+                    Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến <strong>@TempData["Email"]</strong>. Vui lòng kiểm tra email và làm theo hướng dẫn.
+                </p>
+                <a asp-controller="DN" asp-action="QuenMK" class="btn btn-outline-primary btn-sm mt-2">
+                    <i class="bi bi-arrow-repeat"></i> Gửi lại yêu cầu
+                </a>
+            </div>
+        }
+
+        <!-- Back to Login -->
+        <div class="text-center pt-3 border-top mt-3">
+            <a asp-controller="DN" asp-action="Dangnhap" class="text-secondary small fw-semibold text-decoration-none">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại trang Đăng nhập
+            </a>
+        </div>
     </div>
 </div>
 

@@ -1,54 +1,144 @@
-﻿@model QLKTX.Models.Phong
+@model QLKTX.Models.Phong
 
 @{
-    ViewData["Title"] = "Chi Tiết Phòng";
+    ViewData["Title"] = "Chi Tiết Phòng - " + (Model?.MaPhong ?? "");
+    var buildingCode = !string.IsNullOrEmpty(Model?.MaPhong) ? Model.MaPhong.Substring(0, 1) : "";
 }
 
-<div class="container-fluid mt-4">
-    <div class="card shadow" style="max-width: 600px; margin: auto;">
-        <div class="card-header bg-info text-white">
-            <h4 class="mb-0">Thông Tin Chi Tiết Phòng: @Model.MaPhong</h4>
+<div class="container-fluid px-0" style="max-width: 800px; margin: 0 auto;">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a asp-action="Index" class="text-decoration-none text-muted small"><i class="bi bi-arrow-left me-1"></i>Danh sách phòng</a>
+                <span class="text-muted small">• Chi tiết phòng</span>
+            </div>
+            <h2 class="fw-bold text-dark mb-0">Hồ Sơ Phòng @Model.MaPhong</h2>
+            <p class="text-muted small mb-0 mt-1">Thông số kỹ thuật, sức chứa và tình trạng lưu trú hiện tại.</p>
         </div>
-        <div class="card-body">
-            <table class="table table-bordered">
-                <tbody>
-                    <tr>
-                        <th width="40%" class="bg-light">Mã Phòng:</th>
-                        <td><strong>@Model.MaPhong</strong></td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light">Loại Phòng:</th>
-                        <td>@Model.LoaiPhong</td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light">Số Lượng Giường:</th>
-                        <td>@Model.SoLuongGiuong</td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light">Giá Phòng:</th>
-                        <td class="text-success fw-bold">@Model.GiaPhong.ToString("N0") VNĐ / tháng</td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light">Tình trạng:</th>
-                        <td>
-                            <span class="badge @(Model.TinhTrang == "Còn chỗ" ? "bg-success" : (Model.TinhTrang == "Đã đầy" ? "bg-danger" : "bg-warning"))">
-                                @Model.TinhTrang
-                            </span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
 
-            @* Phần này có thể mở rộng sau này để hiển thị danh sách sinh viên trong phòng *@
-            @* <div class="mt-4">
-                <h5>Danh sách sinh viên đang ở</h5>
-                <p class="text-muted">Chức năng đang phát triển...</p>
-            </div> *@
+        <div class="d-flex align-items-center gap-2">
+            <a asp-action="Edit" asp-route-id="@Model?.MaPhong" class="btn btn-primary btn-sm px-3">
+                <i class="bi bi-pencil-square me-1"></i> Sửa phòng
+            </a>
+            <a asp-action="Index" class="btn btn-light btn-sm px-3">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại
+            </a>
+        </div>
+    </div>
 
-            <div class="mt-4 text-center border-top pt-3">
-                <a asp-action="Edit" asp-route-id="@Model?.MaPhong" class="btn btn-warning">Sửa thông tin</a>
-                <a asp-action="Index" class="btn btn-secondary">Quay lại danh sách</a>
+    <!-- Main Room Profile Card -->
+    <div class="card border-0 shadow-xs mb-4">
+        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-door-open-fill text-primary"></i>
+                <h5 class="fw-bold text-dark mb-0 fs-6">Thông Tin Chi Tiết Phòng KTX</h5>
+            </div>
+            @if (Model.TinhTrang == "Đã đầy")
+            {
+                <span class="badge bg-danger">
+                    <span class="status-dot-pulse"></span>
+                    <span>@Model.TinhTrang</span>
+                </span>
+            }
+            else if (Model.TinhTrang == "Bảo trì" || Model.TinhTrang == "Đang sửa chữa")
+            {
+                <span class="badge bg-warning">
+                    <span class="status-dot-pulse"></span>
+                    <span>@Model.TinhTrang</span>
+                </span>
+            }
+            else
+            {
+                <span class="badge bg-success">
+                    <span class="status-dot-pulse"></span>
+                    <span>@Model.TinhTrang</span>
+                </span>
+            }
+        </div>
+        <div class="card-body p-4">
+            
+            <!-- Quick Stat Banner -->
+            <div class="p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background-color: var(--primary-light); border: 1px solid var(--primary-border);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center text-white" style="width: 48px; height: 48px; background: var(--primary-gradient); font-size: 1.5rem;">
+                        <i class="bi bi-door-closed-fill"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-dark mb-0">Phòng @Model.MaPhong</h4>
+                        <span class="text-muted small">Khu Tòa @buildingCode • @Model.LoaiPhong</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-muted small d-block text-md-end">Giá niêm yết</span>
+                    <strong class="text-primary fs-5">@Model.GiaPhong.ToString("N0") <span class="fs-6 fw-normal text-muted">đ/tháng</span></strong>
+                </div>
+            </div>
+
+            <!-- Details Table -->
+            <div class="table-responsive border-0">
+                <table class="table align-middle mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted fw-semibold py-3" style="width: 35%;">Mã Phòng</td>
+                            <td class="fw-bold font-monospace text-primary py-3">@Model.MaPhong</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold py-3">Loại Phòng</td>
+                            <td class="text-dark fw-medium py-3">@Model.LoaiPhong</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold py-3">Số Lượng Giường Quy Định</td>
+                            <td class="py-3">
+                                <span class="badge bg-secondary font-monospace">@Model.SoLuongGiuong giường</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold py-3">Đơn Giá Thuê</td>
+                            <td class="text-dark fw-bold py-3">@Model.GiaPhong.ToString("N0") VNĐ / sinh viên / tháng</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-semibold py-3">Tình Trạng Phòng</td>
+                            <td class="py-3">
+                                @if (Model.TinhTrang == "Đã đầy")
+                                {
+                                    <span class="badge bg-danger">@Model.TinhTrang</span>
+                                }
+                                else if (Model.TinhTrang == "Bảo trì" || Model.TinhTrang == "Đang sửa chữa")
+                                {
+                                    <span class="badge bg-warning">@Model.TinhTrang</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@Model.TinhTrang</span>
+                                }
+                            </td>
+                        </tr>
+                        @if (!string.IsNullOrEmpty(Model.TrangThaiThietBi))
+                        {
+                            <tr>
+                                <td class="text-muted fw-semibold py-3">Tình Trạng Thiết Bị</td>
+                                <td class="text-dark py-3">@Model.TrangThaiThietBi</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="card-footer bg-surface-subtle py-3 px-4 d-flex justify-content-between align-items-center">
+            <span class="small text-muted">Quản lý cơ sở lưu trú ký túc xá</span>
+            <div class="d-flex align-items-center gap-2">
+                <a asp-action="Delete" asp-route-id="@Model.MaPhong" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-trash me-1"></i> Xóa phòng
+                </a>
+                <a asp-action="Edit" asp-route-id="@Model.MaPhong" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil-square me-1"></i> Sửa thông tin
+                </a>
             </div>
         </div>
     </div>
+
 </div>

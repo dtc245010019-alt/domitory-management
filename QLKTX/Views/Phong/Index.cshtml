@@ -1,39 +1,196 @@
-﻿@model IEnumerable<QLKTX.Models.Phong>
+@model IEnumerable<QLKTX.Models.Phong>
 
 @{
     ViewData["Title"] = "Quản lý Phòng";
+
+    var tongSoPhong = Model?.Count() ?? 0;
+    var phongConTrong = Model?.Count(p => p.TinhTrang == "Còn chỗ" || p.TinhTrang == "Còn trống") ?? 0;
+    var phongDaDay = Model?.Count(p => p.TinhTrang == "Đã đầy") ?? 0;
+    var phongBaoTri = Model?.Count(p => p.TinhTrang == "Bảo trì" || p.TinhTrang == "Đang sửa chữa" || (p.TrangThaiThietBi != null && p.TrangThaiThietBi.Contains("bảo trì", StringComparison.OrdinalIgnoreCase))) ?? 0;
 }
 
-<div class="container-fluid mt-4">
-    <div class="card shadow">
-        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">QUẢN LÝ PHÒNG KÝ TÚC XÁ</h4>
-            <a asp-action="Create" class="btn btn-light btn-sm fw-bold text-success"><i class="bi bi-plus-lg"></i> Thêm phòng mới</a>
+<div class="container-fluid px-0">
+
+    <!-- Header Tiêu đề & Nút Thêm mới -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary rounded-pill">QUẢN LÝ PHÒNG Ở</span>
+                <span class="text-muted small">• Ký Túc Xá</span>
+            </div>
+            <h2 class="fw-bold text-dark mb-0">Hệ Thống Phòng Ký Túc Xá</h2>
+            <p class="text-muted small mb-0 mt-1">Theo dõi sức chứa, số giường trống, loại phòng và tình trạng phòng ở theo thời gian thực.</p>
         </div>
-        <div class="card-body">
 
-            <form asp-action="Index" method="get" class="mb-4 d-flex">
-                <div class="input-group w-50 shadow-sm border-success">
-                    <span class="input-group-text bg-white"><i class="bi bi-search text-success"></i></span>
-                    <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Nhập Mã phòng, Loại phòng hoặc Tình trạng..." />
-                    <button type="submit" class="btn btn-success fw-bold">Tìm kiếm</button>
+        <div>
+            <a asp-action="Create" class="btn btn-primary btn-sm px-3 py-2">
+                <i class="bi bi-plus-circle-fill me-1"></i>
+                <span>Thêm phòng mới</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. BỐN THẺ STAT CARDS NHANH (STATS WIDGETS) -->
+    <div class="row g-3 g-md-4 mb-4">
+        
+        <!-- Thẻ 1: Tổng số phòng -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-primary">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Tổng số phòng</div>
+                        <h3 class="stat-value-text">@tongSoPhong</h3>
+                        <div class="stat-subtext">
+                            <span class="text-primary fw-semibold"><i class="bi bi-buildings me-1"></i>Hệ thống phòng KTX</span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--primary-light); color: var(--primary);">
+                        <i class="bi bi-door-closed-fill"></i>
+                    </div>
                 </div>
-                @if (ViewData["CurrentFilter"] != null && ViewData["CurrentFilter"].ToString() != "")
-                {
-                    <a asp-action="Index" class="btn btn-outline-danger ms-2 fw-bold"><i class="bi bi-x-circle"></i> Xóa bộ lọc</a>
-                }
-            </form>
+            </div>
+        </div>
 
-            <div class="table-responsive">
-                <table class="table table-hover border align-middle">
-                    <thead class="table-light">
+        <!-- Thẻ 2: Phòng còn chỗ -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-success">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Phòng còn trống</div>
+                        <h3 class="stat-value-text text-success">@phongConTrong</h3>
+                        <div class="stat-subtext">
+                            <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Sẵn sàng xếp chỗ</span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--success-bg); color: var(--success-text);">
+                        <i class="bi bi-door-open-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thẻ 3: Phòng đã đầy -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-danger">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Phòng đã đầy</div>
+                        <h3 class="stat-value-text text-danger">@phongDaDay</h3>
+                        <div class="stat-subtext">
+                            <span class="text-danger fw-semibold"><i class="bi bi-people-fill me-1"></i>Đã đạt công suất</span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--danger-bg); color: var(--danger-text);">
+                        <i class="bi bi-slash-circle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thẻ 4: Bảo trì / Sự cố -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-warning">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Bảo trì / Sự cố</div>
+                        <h3 class="stat-value-text text-warning">@phongBaoTri</h3>
+                        <div class="stat-subtext">
+                            <span class="text-warning fw-semibold"><i class="bi bi-tools me-1"></i>Kiểm tra kỹ thuật</span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--warning-bg); color: var(--warning-text);">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 2. BẢNG DỮ LIỆU PHÒNG Ở -->
+    <div class="card border-0 shadow-xs">
+        
+        <!-- Thanh Công Cụ Toolbar -->
+        <div class="card-header bg-white py-3 px-4">
+            <form asp-action="Index" method="get" id="filterForm" class="w-100">
+                <div class="row g-3 align-items-center justify-content-between">
+                    
+                    <!-- Ô tìm kiếm dạng Input Group -->
+                    <div class="col-12 col-md-5 col-lg-4">
+                        <div class="input-group shadow-xs">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" 
+                                   name="searchString" 
+                                   id="searchStringInput"
+                                   value="@ViewData["CurrentFilter"]" 
+                                   class="form-control bg-light border-start-0 ps-1" 
+                                   placeholder="Tìm Mã phòng, Loại phòng, Tình trạng..." />
+                            <button type="submit" class="btn btn-primary btn-sm px-3">
+                                Tìm kiếm
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bộ lọc theo Tòa nhà & Trạng thái -->
+                    <div class="col-12 col-md-7 col-lg-8">
+                        <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
+                            
+                            <!-- Lọc nhanh Tòa nhà -->
+                            <div class="d-flex align-items-center gap-1">
+                                <label class="form-label mb-0 small text-muted d-none d-sm-inline">Tòa:</label>
+                                <select id="buildingFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                                    <option value="">Tất cả tòa</option>
+                                    <option value="A">Tòa A</option>
+                                    <option value="B">Tòa B</option>
+                                    <option value="C">Tòa C</option>
+                                    <option value="D">Tòa D</option>
+                                </select>
+                            </div>
+
+                            <!-- Lọc nhanh Trạng thái -->
+                            <div class="d-flex align-items-center gap-1">
+                                <label class="form-label mb-0 small text-muted d-none d-sm-inline">Trạng thái:</label>
+                                <select id="statusFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="Còn chỗ">Còn chỗ</option>
+                                    <option value="Đã đầy">Đã đầy</option>
+                                    <option value="Bảo trì">Bảo trì</option>
+                                </select>
+                            </div>
+
+                            <!-- Nút Xóa bộ lọc truy vấn -->
+                            @if (!string.IsNullOrEmpty(ViewData["CurrentFilter"]?.ToString()))
+                            {
+                                <a asp-action="Index" class="btn btn-outline-danger btn-sm" title="Xóa bộ lọc">
+                                    <i class="bi bi-x-circle me-1"></i> Xóa lọc
+                                </a>
+                            }
+
+                            <!-- Reset bộ lọc nhanh client-side -->
+                            <button type="button" id="resetFastFilterBtn" class="btn btn-light btn-sm text-muted d-none" title="Đặt lại bộ lọc nhanh">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+
+        <!-- BẢNG DỮ LIỆU -->
+        <div class="card-body p-0">
+            <div class="table-responsive border-0">
+                <table class="table table-hover align-middle mb-0" id="roomDataTable">
+                    <thead>
                         <tr>
-                            <th>Mã Phòng</th>
-                            <th>Loại Phòng</th>
-                            <th>Số Giường</th>
-                            <th>Giá Phòng (VNĐ)</th>
-                            <th>Tình trạng</th>
-                            <th class="text-center">Thao tác</th>
+                            <th class="ps-4 py-3">Mã Phòng</th>
+                            <th class="py-3">Loại Phòng</th>
+                            <th class="py-3">Số Giường</th>
+                            <th class="py-3">Giá Phòng (VNĐ)</th>
+                            <th class="py-3">Tình trạng</th>
+                            <th class="text-center pe-4 py-3">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -41,25 +198,97 @@
                         {
                             @foreach (var item in Model)
                             {
-                                <tr>
-                                    <td><strong>@item.MaPhong</strong></td>
-                                    <td>@item.LoaiPhong</td>
-                                    <td>@item.SoLuongGiuong</td>
-                                    <td>@item.GiaPhong.ToString("N0")</td>
-                                    <td>
+                                var buildingCode = !string.IsNullOrEmpty(item.MaPhong) ? item.MaPhong.Substring(0, 1) : "";
+                                <tr data-room="@item.MaPhong" data-status="@item.TinhTrang">
+                                    <!-- Mã Phòng -->
+                                    <td class="ps-4 py-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background-color: var(--primary-light); color: var(--primary);">
+                                                <i class="bi bi-door-closed-fill"></i>
+                                            </div>
+                                            <div>
+                                                <strong class="text-dark d-block">P.@item.MaPhong</strong>
+                                                <span class="text-muted small" style="font-size: 0.72rem;">Khu Tòa @buildingCode</span>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <!-- Loại Phòng -->
+                                    <td class="py-3">
+                                        <span class="text-dark fw-medium">@item.LoaiPhong</span>
+                                    </td>
+
+                                    <!-- Số Giường -->
+                                    <td class="py-3">
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-layout-text-window me-1"></i>@item.SoLuongGiuong giường
+                                        </span>
+                                    </td>
+
+                                    <!-- Giá Phòng -->
+                                    <td class="py-3">
+                                        <span class="fw-bold text-primary">
+                                            @item.GiaPhong.ToString("N0")
+                                        </span>
+                                        <span class="text-muted small"> đ/tháng</span>
+                                    </td>
+
+                                    <!-- Tình trạng -->
+                                    <td class="py-3">
+                                        @{
+                                            int soDangO = item.SinhViens?.Count(sv => sv.TinhTrangLuuTru == "Đang ở") ?? 0;
+                                        }
                                         @if (item.TinhTrang == "Đã đầy")
                                         {
-                                            <span class="badge bg-danger">@item.TinhTrang</span>
+                                            <span class="badge bg-danger">
+                                                <span class="status-dot-pulse"></span>
+                                                <span>@item.TinhTrang</span>
+                                            </span>
+                                        }
+                                        else if (item.TinhTrang == "Bảo trì" || item.TinhTrang == "Đang sửa chữa")
+                                        {
+                                            <span class="badge bg-warning">
+                                                <span class="status-dot-pulse"></span>
+                                                <span>@item.TinhTrang</span>
+                                            </span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-success">@item.TinhTrang</span>
+                                            <span class="badge bg-success">
+                                                <span class="status-dot-pulse"></span>
+                                                <span>@item.TinhTrang</span>
+                                            </span>
                                         }
+                                        <div class="mt-1">
+                                            <span class="text-muted small fw-medium" style="font-size: 0.75rem;"><i class="bi bi-people-fill me-1"></i>Sĩ số: @soDangO/@item.SoLuongGiuong</span>
+                                        </div>
                                     </td>
-                                    <td class="text-center">
-                                        <a asp-action="Edit" asp-route-id="@item.MaPhong" class="btn btn-outline-warning btn-sm">Sửa</a>
-                                        <a asp-action="Details" asp-route-id="@item.MaPhong" class="btn btn-outline-info btn-sm">Chi tiết</a>
-                                        <a asp-action="Delete" asp-route-id="@item.MaPhong" class="btn btn-outline-danger btn-sm">Xóa</a>
+
+                                    <!-- Nút thao tác -->
+                                    <td class="text-center pe-4 py-3">
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <a asp-action="Details" 
+                                               asp-route-id="@item.MaPhong" 
+                                               class="btn btn-outline-info btn-action-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Chi tiết phòng @item.MaPhong">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a asp-action="Edit" 
+                                               asp-route-id="@item.MaPhong" 
+                                               class="btn btn-outline-warning btn-action-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Chỉnh sửa phòng @item.MaPhong">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a asp-action="Delete" 
+                                               asp-route-id="@item.MaPhong" 
+                                               class="btn btn-outline-danger btn-action-icon" 
+                                               data-bs-toggle="tooltip" 
+                                               title="Xóa phòng @item.MaPhong">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -67,12 +296,101 @@
                         else
                         {
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">Không tìm thấy phòng nào khớp với từ khóa tìm kiếm.</td>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="py-4">
+                                        <i class="bi bi-inbox text-muted fs-1 d-block mb-2"></i>
+                                        <h5 class="fw-bold text-dark">Không tìm thấy phòng nào</h5>
+                                        <p class="text-muted small mb-3">Không có kết quả khớp với điều kiện tìm kiếm hiện tại.</p>
+                                        <a asp-action="Index" class="btn btn-light btn-sm px-3">
+                                            <i class="bi bi-arrow-repeat me-1"></i> Tải lại danh sách
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+
+            <!-- Footer Card: Thống kê số lượng -->
+            @if (Model != null && Model.Any())
+            {
+                <div class="card-footer bg-white border-top py-3 px-4 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+                    <span class="small text-muted" id="rowCountText">
+                        Hiển thị <strong>@Model.Count()</strong> phòng KTX trong hệ thống
+                    </span>
+                    <span class="small text-muted">
+                        Dữ liệu thời gian thực
+                    </span>
+                </div>
+            }
         </div>
+
     </div>
+
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, { boundary: document.body });
+            });
+
+            // Fast client-side filter
+            const buildingFilter = document.getElementById('buildingFilterSelect');
+            const statusFilter = document.getElementById('statusFilterSelect');
+            const resetBtn = document.getElementById('resetFastFilterBtn');
+            const rows = document.querySelectorAll('#roomDataTable tbody tr[data-room]');
+            const rowCountText = document.getElementById('rowCountText');
+            const totalRows = rows.length;
+
+            function applyClientFilter() {
+                const buildingVal = (buildingFilter ? buildingFilter.value.trim().toUpperCase() : '');
+                const statusVal = (statusFilter ? statusFilter.value.trim().toLowerCase() : '');
+                let count = 0;
+
+                if (buildingVal || statusVal) {
+                    if (resetBtn) resetBtn.classList.remove('d-none');
+                } else {
+                    if (resetBtn) resetBtn.classList.add('d-none');
+                }
+
+                rows.forEach(function (row) {
+                    const roomCode = (row.getAttribute('data-room') || '').toUpperCase();
+                    const roomStatus = (row.getAttribute('data-status') || '').toLowerCase();
+
+                    const matchBuilding = !buildingVal || roomCode.startsWith(buildingVal);
+                    const matchStatus = !statusVal || roomStatus.includes(statusVal);
+
+                    if (matchBuilding && matchStatus) {
+                        row.style.display = '';
+                        count++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (rowCountText) {
+                    if (buildingVal || statusVal) {
+                        rowCountText.innerHTML = `Hiển thị <strong>${count}</strong> / ${totalRows} phòng theo bộ lọc`;
+                    } else {
+                        rowCountText.innerHTML = `Hiển thị <strong>${totalRows}</strong> phòng KTX trong hệ thống`;
+                    }
+                }
+            }
+
+            if (buildingFilter) buildingFilter.addEventListener('change', applyClientFilter);
+            if (statusFilter) statusFilter.addEventListener('change', applyClientFilter);
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function () {
+                    if (buildingFilter) buildingFilter.value = '';
+                    if (statusFilter) statusFilter.value = '';
+                    applyClientFilter();
+                });
+            }
+        });
+    </script>
+}

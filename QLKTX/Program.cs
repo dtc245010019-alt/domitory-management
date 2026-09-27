@@ -4,37 +4,38 @@ using QLKTX.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Lấy chuỗi kết nối duy nhất một lần
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-// 2. Đăng ký DbContext sử dụng MySQL
+// 1. Đăng ký DbContext kết nối SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-// 3. Đăng ký các dịch vụ (Gộp lại cho gọn)
+// 2. Đăng ký MVC & Razor Pages
 builder.Services.AddControllersWithViews();
-builder.Services.AddRazorPages(); // Giữ lại nếu bạn có dùng trang Razor
+builder.Services.AddRazorPages();
 
-// 4. Cấu hình Session
+// 3. Cấu hình Session & HttpContextAccessor
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.Name = ".QLKTX.Session";
 });
-builder.Services.AddSession(); // Bật dịch vụ Session
 builder.Services.AddHttpContextAccessor();
 
-// Đăng ký HttpClient dùng chung (đúng chuẩn, tránh rò rỉ socket) cho ChatbotController
+// 4. Đăng ký HttpClient cho Chatbot
 builder.Services.AddHttpClient("Ollama", client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(20); // fail nhanh nếu Ollama không phản hồi, thay vì đợi 100s mặc định
+    client.Timeout = TimeSpan.FromSeconds(20);
 });
 
 var app = builder.Build();
+
+// 5. Khởi tạo dữ liệu mẫu (Seed Data)
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -50,7 +51,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 5. Cấu hình Pipeline (Thứ tự rất quan trọng)
+// 6. Cấu hình Pipeline Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -61,27 +62,25 @@ else
     app.UseHsts();
 }
 
-// Chỉ redirect sang HTTPS khi thực sự có cổng HTTPS được cấu hình,
-// tránh trường hợp fetch() bị lỗi kết nối khi chạy dev chỉ có profile "http"
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
 app.UseStaticFiles();
 app.UseRouting();
 
-app.UseSession(); // Bắt buộc nằm giữa Routing và Authorization
+app.UseSession();
 app.UseAuthorization();
 
-// Điểm kiểm tra chẩn đoán
+// Endpoint kiểm tra
 app.MapGet("/_diag", () => Results.Text("OK - server running", "text/plain"));
 
-// 6. Cấu hình Route (Đã trỏ đúng về Controller DN - Action Dangnhap)
+// Route mặc định (Trỏ về Controller DN - Action Dangnhap)
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=DN}/{action=Dangnhap}/{id?}");
 
 app.MapRazorPages();
-
 
 app.Run();

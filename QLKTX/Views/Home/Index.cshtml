@@ -1,100 +1,412 @@
-﻿@{
-    ViewData["Title"] = "Bảng Điều Khiển";
+@inject QLKTX.Models.ApplicationDbContext DbContext
+@using Microsoft.EntityFrameworkCore
+
+@{
+    ViewData["Title"] = "Bảng Điều Khiển Quản Trị KTX";
+
+    // Truy vấn dữ liệu thống kê an toàn
+    int tongSinhVien = 0;
+    int tongPhong = 0;
+    int phongConCho = 0;
+    int hopDongHieuLuc = 0;
+    decimal tongDoanhThu = 0;
+    int viPhamCount = 0;
+    List<QLKTX.Models.SinhVien> sinhVienMoi = new List<QLKTX.Models.SinhVien>();
+    List<QLKTX.Models.ViPham> viPhamMoi = new List<QLKTX.Models.ViPham>();
+
+    try
+    {
+        tongSinhVien = DbContext.SinhViens.Count(s => s.TinhTrangLuuTru == "Đang ở");
+        tongPhong = DbContext.Phongs.Count();
+        phongConCho = DbContext.Phongs.Count(p => p.TinhTrang == "Còn chỗ" || p.TinhTrang == "Còn trống");
+        hopDongHieuLuc = DbContext.HopDongs.Count(h => h.TrangThai == "Còn hiệu lực");
+        tongDoanhThu = DbContext.HopDongs.Where(h => h.TrangThai == "Còn hiệu lực").Sum(h => h.TienDatCoc);
+        viPhamCount = DbContext.ViPhams.Count();
+        sinhVienMoi = DbContext.SinhViens.Include(s => s.Phong).OrderByDescending(s => s.MaSV).Take(5).ToList();
+        viPhamMoi = DbContext.ViPhams.OrderByDescending(v => v.NgayViPham).Take(4).ToList();
+    }
+    catch
+    {
+        // Fallback default
+    }
+
+    var tyLeLapDay = tongPhong > 0 ? (int)Math.Round(((double)(tongPhong - phongConCho) / tongPhong) * 100) : 75;
 }
 
-<div class="container mt-2">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="p-4 bg-white shadow-sm rounded-3 border-start border-primary border-5">
-                <h2 class="fw-bold text-primary mb-1">BẢNG ĐIỀU KHIỂN BAN QUẢN LÝ</h2>
-                <p class="text-muted mb-0">Hệ thống tổng hợp và quản lý mọi hoạt động của Ký túc xá.</p>
+<div class="container-fluid px-0">
+    
+    <!-- Welcome Header SaaS Banner -->
+    <div class="card mb-4 border-0 shadow-xs">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-primary rounded-pill">TỔNG QUAN HỆ THỐNG</span>
+                        <span class="text-muted small">• Ký Túc Xá Sinh Viên</span>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">Bảng Điều Khiển Ban Quản Lý</h3>
+                    <p class="text-muted small mb-0">Theo dõi thời gian thực tình trạng phòng ở, lưu trú sinh viên, hợp đồng và dịch vụ ký túc xá.</p>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <a asp-controller="Phong" asp-action="Index" class="btn btn-light btn-sm px-3 py-2">
+                        <i class="bi bi-door-open me-1"></i> Tình trạng phòng
+                    </a>
+                    <a asp-controller="SinhVien" asp-action="Create" class="btn btn-primary btn-sm px-3 py-2">
+                        <i class="bi bi-person-plus-fill me-1"></i> Tiếp nhận sinh viên
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-md-4 col-sm-6">
-            <a asp-controller="SinhVien" asp-action="Index" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 bg-primary text-white dashboard-card">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-people-fill display-4"></i>
-                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ SINH VIÊN</h5>
-                        <p class="card-text opacity-75 small">Thêm, sửa, xóa thông tin lưu trú của sinh viên.</p>
+    <!-- 1. BỐN THẺ STAT CARDS CHUẨN SAAS (Nền trắng, viền mảnh, icon tròn pastel, chỉ số to rõ) -->
+    <div class="row g-3 g-md-4 mb-4">
+        
+        <!-- Thẻ 1: Sinh viên đang lưu trú -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-primary">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Sinh viên đang ở</div>
+                        <div class="stat-value-text">@tongSinhVien</div>
+                        <div class="stat-subtext d-flex align-items-center gap-1">
+                            <span class="badge bg-success" style="font-size: 0.68rem;"><i class="bi bi-arrow-up-short"></i> Đang lưu trú</span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--primary-light); color: var(--primary);">
+                        <i class="bi bi-people-fill"></i>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <div class="col-md-4 col-sm-6">
-            <a asp-controller="Phong" asp-action="Index" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 bg-success text-white dashboard-card">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-door-open-fill display-4"></i>
-                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ PHÒNG</h5>
-                        <p class="card-text opacity-75 small">Sắp xếp phòng, xem tình trạng giường trống.</p>
+        <!-- Thẻ 2: Phòng còn chỗ -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-success">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Phòng còn chỗ</div>
+                        <div class="stat-value-text text-success">@phongConCho <span class="fs-6 fw-normal text-muted">/ @tongPhong phòng</span></div>
+                        <div class="stat-subtext">
+                            <span class="text-success small fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Sẵn sàng xếp chỗ</span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--success-bg); color: var(--success-text);">
+                        <i class="bi bi-door-open-fill"></i>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <div class="col-md-4 col-sm-6">
-            <a asp-controller="HopDong" asp-action="Index" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 bg-warning text-dark dashboard-card">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-file-earmark-text-fill display-4"></i>
-                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ HỢP ĐỒNG</h5>
-                        <p class="card-text opacity-75 small">Lập hợp đồng lưu trú, gia hạn, thanh lý.</p>
+        <!-- Thẻ 3: Hợp đồng lưu trú & Doanh thu -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-warning">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Hợp đồng hiệu lực</div>
+                        <div class="stat-value-text">@hopDongHieuLuc</div>
+                        <div class="stat-subtext">
+                            <span class="text-muted small">Cọc: <strong class="text-dark">@tongDoanhThu.ToString("N0") đ</strong></span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--warning-bg); color: var(--warning-text);">
+                        <i class="bi bi-file-earmark-text-fill"></i>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <div class="col-md-4 col-sm-6">
-            <a asp-controller="CoSoVatChat" asp-action="Index" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 bg-info text-white dashboard-card">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-pc-display display-4"></i>
-                        <h5 class="card-title mt-3 fw-bold">CƠ SỞ VẬT CHẤT</h5>
-                        <p class="card-text opacity-75 small">Quản lý trang thiết bị, tài sản trong phòng.</p>
+        <!-- Thẻ 4: Vi phạm & Kỷ luật -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="stat-widget-card stat-danger">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label-text">Vi phạm / Kỷ luật</div>
+                        <div class="stat-value-text text-danger">@viPhamCount</div>
+                        <div class="stat-subtext">
+                            <span class="text-danger small fw-semibold"><i class="bi bi-shield-exclamation me-1"></i>Hồ sơ ghi nhận</span>
+                        </div>
+                    </div>
+                    <div class="stat-icon-box" style="background-color: var(--danger-bg); color: var(--danger-text);">
+                        <i class="bi bi-shield-fill-exclamation"></i>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <div class="col-md-4 col-sm-6">
-            <a asp-controller="ViPham" asp-action="Index" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 bg-danger text-white dashboard-card">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-shield-exclamation display-4"></i>
-                        <h5 class="card-title mt-3 fw-bold">QUẢN LÝ KỶ LUẬT</h5>
-                        <p class="card-text opacity-75 small">Ghi nhận vi phạm, xử lý kỷ luật sinh viên.</p>
-                    </div>
-                </div>
-            </a>
+    </div>
+
+    <!-- 2. LỐI TẮT CHỨC NĂNG (QUICK ACCESS CARDS - THAY THẾ CÁC CARD MÀU ĐẶC CŨ) -->
+    <div class="mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="fw-bold text-dark mb-0">Danh Mục Chức Năng Chính</h5>
+            <span class="text-muted small">Lối tắt tác vụ nhanh</span>
         </div>
 
-        <div class="col-md-4 col-sm-6">
-            <a asp-controller="BaoCao" asp-action="Index" class="text-decoration-none">
-                <div class="card h-100 shadow-sm border-0 bg-dark text-white dashboard-card">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-bar-chart-fill display-4"></i>
-                        <h5 class="card-title mt-3 fw-bold">BÁO CÁO THỐNG KÊ</h5>
-                        <p class="card-text opacity-75 small">Xem doanh thu, công nợ, tỉ lệ lấp đầy phòng.</p>
+        <div class="row g-3">
+            
+            <!-- Card 1: Quản lý Sinh viên -->
+            <div class="col-12 col-md-6 col-xl-4">
+                <a asp-controller="SinhVien" asp-action="Index" class="text-decoration-none d-block h-100">
+                    <div class="card h-100 p-3 hover-lift border">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon-box me-3" style="background-color: var(--primary-light); color: var(--primary);">
+                                <i class="bi bi-person-badge-fill"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="stat-label-text d-block mb-1">Hồ sơ lưu trú</span>
+                                <h5 class="fw-bold text-dark mb-0">Quản Lý Sinh Viên</h5>
+                                <span class="text-muted small">Danh sách, tiếp nhận, hồ sơ phòng</span>
+                            </div>
+                            <i class="bi bi-arrow-right text-muted opacity-50 ms-2"></i>
+                        </div>
                     </div>
-                </div>
-            </a>
+                </a>
+            </div>
+
+            <!-- Card 2: Quản lý Phòng -->
+            <div class="col-12 col-md-6 col-xl-4">
+                <a asp-controller="Phong" asp-action="Index" class="text-decoration-none d-block h-100">
+                    <div class="card h-100 p-3 hover-lift border">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon-box me-3" style="background-color: var(--success-bg); color: var(--success-text);">
+                                <i class="bi bi-door-open-fill"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="stat-label-text d-block mb-1">Sức chứa & Tòa nhà</span>
+                                <h5 class="fw-bold text-dark mb-0">Quản Lý Phòng Ở</h5>
+                                <span class="text-muted small">Sơ đồ tòa, giường trống, phân phòng</span>
+                            </div>
+                            <i class="bi bi-arrow-right text-muted opacity-50 ms-2"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Card 3: Hợp đồng lưu trú -->
+            <div class="col-12 col-md-6 col-xl-4">
+                <a asp-controller="HopDong" asp-action="Index" class="text-decoration-none d-block h-100">
+                    <div class="card h-100 p-3 hover-lift border">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon-box me-3" style="background-color: var(--warning-bg); color: var(--warning-text);">
+                                <i class="bi bi-file-earmark-text-fill"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="stat-label-text d-block mb-1">Thủ tục lưu trú</span>
+                                <h5 class="fw-bold text-dark mb-0">Hợp Đồng Lưu Trú</h5>
+                                <span class="text-muted small">Lập mới, gia hạn, tiền cọc phòng</span>
+                            </div>
+                            <i class="bi bi-arrow-right text-muted opacity-50 ms-2"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Card 4: Cơ sở vật chất -->
+            <div class="col-12 col-md-6 col-xl-4">
+                <a asp-controller="CoSoVatChat" asp-action="Index" class="text-decoration-none d-block h-100">
+                    <div class="card h-100 p-3 hover-lift border">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon-box me-3" style="background-color: var(--info-bg); color: var(--info-text);">
+                                <i class="bi bi-box-seam-fill"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="stat-label-text d-block mb-1">Tài sản phòng KTX</span>
+                                <h5 class="fw-bold text-dark mb-0">Cơ Sở Vật Chất</h5>
+                                <span class="text-muted small">Trang thiết bị, tài sản, kiểm kê</span>
+                            </div>
+                            <i class="bi bi-arrow-right text-muted opacity-50 ms-2"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Card 5: Kỷ luật & Vi phạm -->
+            <div class="col-12 col-md-6 col-xl-4">
+                <a asp-controller="ViPham" asp-action="Index" class="text-decoration-none d-block h-100">
+                    <div class="card h-100 p-3 hover-lift border">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon-box me-3" style="background-color: var(--danger-bg); color: var(--danger-text);">
+                                <i class="bi bi-shield-fill-exclamation"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="stat-label-text d-block mb-1">Nội quy ký túc xá</span>
+                                <h5 class="fw-bold text-dark mb-0">Kỷ Luật & Vi Phạm</h5>
+                                <span class="text-muted small">Ghi nhận vi phạm, xử lý kỷ luật</span>
+                            </div>
+                            <i class="bi bi-arrow-right text-muted opacity-50 ms-2"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Card 6: Báo cáo thống kê -->
+            <div class="col-12 col-md-6 col-xl-4">
+                <a asp-controller="BaoCao" asp-action="Index" class="text-decoration-none d-block h-100">
+                    <div class="card h-100 p-3 hover-lift border">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon-box me-3" style="background-color: #f3e8ff; color: #7e22ce;">
+                                <i class="bi bi-pie-chart-fill"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="stat-label-text d-block mb-1">Số liệu tổng hợp</span>
+                                <h5 class="fw-bold text-dark mb-0">Báo Cáo Thống Kê</h5>
+                                <span class="text-muted small">Biểu đồ tỷ lệ, doanh thu, công suất</span>
+                            </div>
+                            <i class="bi bi-arrow-right text-muted opacity-50 ms-2"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
         </div>
     </div>
+
+    <!-- 3. KHU VỰC TỔNG QUAN NHANH (BẢNG SINH VIÊN MỚI & HOẠT ĐỘNG GẦN ĐÂY) -->
+    <div class="row g-4">
+        
+        <!-- Cột trái: Sinh viên mới tiếp nhận -->
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-xs h-100">
+                <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-check-fill text-primary"></i>
+                        <h5 class="fw-bold text-dark mb-0 fs-6">Sinh Viên Gần Đây</h5>
+                    </div>
+                    <a asp-controller="SinhVien" asp-action="Index" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size: 0.76rem;">
+                        Xem tất cả <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive border-0">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-3">Mã SV</th>
+                                    <th>Họ và Tên</th>
+                                    <th>Lớp</th>
+                                    <th>Phòng</th>
+                                    <th class="pe-3 text-end">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (sinhVienMoi != null && sinhVienMoi.Any())
+                                {
+                                    @foreach (var sv in sinhVienMoi)
+                                    {
+                                        <tr>
+                                            <td class="ps-3 fw-bold text-primary font-monospace">@sv.MaSV</td>
+                                            <td>
+                                                <span class="fw-semibold text-dark">@sv.HoTen</span>
+                                            </td>
+                                            <td><span class="text-muted small">@sv.Lop</span></td>
+                                            <td>
+                                                @if (sv.Phong != null)
+                                                {
+                                                    <span class="badge bg-primary">P.@sv.Phong.MaPhong</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted small">Chưa xếp</span>
+                                                }
+                                            </td>
+                                            <td class="pe-3 text-end">
+                                                <span class="badge @(sv.TinhTrangLuuTru == "Đang ở" ? "bg-success" : "bg-secondary")">
+                                                    @sv.TinhTrangLuuTru
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4 small">
+                                            Chưa có dữ liệu sinh viên. <a asp-controller="SinhVien" asp-action="Create">Tiếp nhận ngay</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột phải: Tỷ lệ lấp đầy & Vi phạm gần đây -->
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-xs h-100">
+                <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-speedometer text-warning"></i>
+                        <h5 class="fw-bold text-dark mb-0 fs-6">Tình Trạng & Kỷ Luật</h5>
+                    </div>
+                    <a asp-controller="ViPham" asp-action="Index" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size: 0.76rem;">
+                        Chi tiết <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Progress bar Công suất phòng -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-semibold text-dark">Tỷ lệ lấp đầy KTX</span>
+                            <span class="small fw-bold text-primary">@tyLeLapDay%</span>
+                        </div>
+                        <div class="progress" style="height: 8px; border-radius: 9999px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: @tyLeLapDay%; border-radius: 9999px;" aria-valuenow="@tyLeLapDay" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mt-1" style="font-size: 0.72rem;">
+                            <span>Đã ở: @(tongPhong - phongConCho) phòng</span>
+                            <span>Trống: @phongConCho phòng</span>
+                        </div>
+                    </div>
+
+                    <!-- Danh sách vi phạm mới -->
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="stat-label-text">Vi phạm gần đây</span>
+                    </div>
+
+                    @if (viPhamMoi != null && viPhamMoi.Any())
+                    {
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var vp in viPhamMoi)
+                            {
+                                <div class="p-2 rounded-3 border bg-surface-subtle d-flex align-items-center justify-content-between">
+                                    <div class="small">
+                                        <div class="fw-semibold text-dark">@vp.NoiDungViPham</div>
+                                        <span class="text-muted" style="font-size: 0.72rem;">Mã SV: @vp.MaSV • @vp.NgayViPham.ToString("dd/MM/yyyy")</span>
+                                    </div>
+                                    <span class="badge bg-danger rounded-pill" style="font-size: 0.68rem;">
+                                        @(string.IsNullOrEmpty(vp.HinhThucXuLy) ? "Ghi nhận" : vp.HinhThucXuLy)
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted small rounded-3 bg-light">
+                            <i class="bi bi-shield-check text-success fs-4 d-block mb-1"></i>
+                            Không có vi phạm nào gần đây.
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
 </div>
 
 <style>
-    .dashboard-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    .hover-lift {
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
     }
-
-        .dashboard-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
-            filter: brightness(1.05);
-        }
+    .hover-lift:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-hover);
+        border-color: #cbd5e1 !important;
+    }
 </style>
