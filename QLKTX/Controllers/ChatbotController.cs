@@ -199,17 +199,8 @@ Câu hỏi: ""{request.Message}""";
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Kỷ luật"); }
             }
 
-            // 8. Tra cứu Wikipedia (Định nghĩa)
-            if (intent == "DINH_NGHIA" && !string.IsNullOrWhiteSpace(keyword))
-            {
-                string wikiSummary = await GetWikipediaSummaryAsync(keyword);
-                if (!string.IsNullOrEmpty(wikiSummary))
-                {
-                    string wikiPrompt = $@"Giải thích ngắn gọn khái niệm bằng tiếng Việt dựa trên thông tin: Tóm tắt: ""{wikiSummary}"" - Câu hỏi: ""{request.Message}""";
-                    string wikiResponse = await CallOllamaAsync(wikiPrompt);
-                    return Json(new { response = wikiResponse, source = "Wikipedia" });
-                }
-            }
+            // 8. Đã gỡ bỏ tính năng tra cứu Wikipedia để khóa chặt AI chỉ dùng dữ liệu nội bộ.
+            // Nếu là câu hỏi định nghĩa ngoài lề, sẽ tự động chạy xuống fallback báo không biết.
 
             // 9. Tra cứu Quy định chung từ file JSON Knowledge Base
             string matchedFacts = GetFactsByIntent(intent);
@@ -277,7 +268,7 @@ Câu hỏi: ""{request.Message}""";
                 model = "llama3",
                 messages = new[]
                 {
-                    new { role = "system", content = "Bạn là Trợ lý AI Quản lý Ký túc xá. BẮT BUỘC luôn luôn trả lời 100% bằng TIẾNG VIỆT. Tuyệt đối KHÔNG trả lời bằng tiếng Anh." },
+                    new { role = "system", content = "Bạn là Trợ lý AI Quản lý Ký túc xá. BẮT BUỘC trả lời 100% bằng TIẾNG VIỆT. Tuyệt đối CHỈ sử dụng dữ liệu được cung cấp trong câu hỏi để trả lời. Nếu dữ liệu không chứa câu trả lời, hãy nói 'Xin lỗi, tôi không có thông tin về vấn đề này trong hệ thống Ký túc xá'. KHÔNG ĐƯỢC tự bịa ra câu trả lời hoặc dùng kiến thức bên ngoài." },
                     new { role = "user", content = prompt }
                 },
                 stream = false
