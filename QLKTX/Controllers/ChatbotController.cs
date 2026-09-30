@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -54,7 +54,7 @@ namespace QLKTX.Controllers
             // 1. Phân tích Intent bằng AI
             string classifyPrompt = $@"Phân tích câu hỏi và trả về duy nhất định dạng JSON thuần túy không kèm giải thích:
 {{
-  ""intent"": ""SINH_VIEN"" | ""PHONG"" | ""HOP_DONG"" | ""CO_SO_VAT_CHAT"" | ""KY_LUAT"" | ""THONG_KE"" | ""DINH_NGHIA"" | ""KHAC"",
+  ""intent"": ""SINH_VIEN"" | ""PHONG"" | ""HOP_DONG"" | ""CO_SO_VAT_CHAT"" | ""KY_LUAT"" | ""SU_CO"" | ""THONG_KE"" | ""DINH_NGHIA"" | ""KHAC"",
   ""keyword"": ""từ khóa nếu hỏi khái niệm, ngược lại để rỗng""
 }}
 
@@ -184,7 +184,7 @@ Câu hỏi: ""{request.Message}""";
             }
 
             // 7. Tra cứu KỶ LUẬT / VI PHẠM
-            if (intent == "KY_LUAT")
+                        if (intent == "KY_LUAT")
             {
                 try
                 {
@@ -197,6 +197,26 @@ Câu hỏi: ""{request.Message}""";
                     }
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Kỷ luật"); }
+            }
+
+            // 7.5. Tra cứu SỰ CỐ / PHẢN ÁNH
+            if (intent == "SU_CO")
+            {
+                try
+                {
+                    var data = await _context.BaoCaoSuCos.Where(b => b.TrangThai == "Chờ xử lý").ToListAsync();
+                    if (data != null && data.Any())
+                    {
+                        string prompt = $@"Bạn là trợ lý AI quản lý KTX. Dưới đây là dữ liệu các sự cố KTX đang chờ xử lý:\n{JsonSerializer.Serialize(data)}\n\nHãy trả lời câu hỏi sau bằng tiếng Việt. Nếu người dùng yêu cầu tóm tắt, hãy phân loại và tóm tắt chúng rõ ràng:\n""{request.Message}""";
+                        string response = await CallOllamaAsync(prompt);
+                        return Json(new { response = response, source = "Quản lý Sự cố" });
+                    }
+                    else
+                    {
+                        return Json(new { response = "Hiện không có báo cáo sự cố nào đang chờ xử lý.", source = "Quản lý Sự cố" });
+                    }
+                }
+                catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Sự cố"); }
             }
 
             // 8. Đã gỡ bỏ tính năng tra cứu Wikipedia để khóa chặt AI chỉ dùng dữ liệu nội bộ.
@@ -300,3 +320,4 @@ Câu hỏi: ""{request.Message}""";
         public string Message { get; set; }
     }
 }
+

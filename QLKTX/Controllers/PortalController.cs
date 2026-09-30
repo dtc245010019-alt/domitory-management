@@ -461,5 +461,72 @@ namespace QLKTX.Controllers
 
             return RedirectToAction(nameof(QuanLySuCoAdmin));
         }
+
+        // ==========================================
+        // 6. AI TÓM TẮT SỰ CỐ (TÍNH NĂNG MỚI ĐỘC LẬP)
+        // ==========================================
+        [HttpPost]
+        public async Task<IActionResult> TomTatSuCoAI()
+        {
+            if (HttpContext.Session.GetString("Admin_DangNhap") != "true")
+            {
+                return Json(new { success = false, summary = "Lỗi: Không có quyền truy cập." });
+            }
+
+            try
+            {
+                var suCos = await _context.BaoCaoSuCos
+                    .Include(b => b.Phong)
+                    .Where(b => b.TrangThai == "Chờ xử lý")
+                    .Select(b => new { b.MaSuCo, b.Phong.MaPhong, b.TenSuCo, b.MoTa, b.NgayBaoCao })
+                    .ToListAsync();
+
+                if (suCos == null || !suCos.Any())
+                {
+                    return Json(new { success = true, summary = "Hiện không có sự cố nào đang chờ xử lý." });
+                }
+
+                string jsonData = System.Text.Json.JsonSerializer.Serialize(suCos);
+                string prompt = $@"Bạn là người quản lý ký túc xá. Dưới đây là danh sách sự cố đang chờ xử lý:
+{jsonData}
+
+Hãy:
+(1) Phân loại thành nhóm Điện, Nước, Khác.
+(2) Nêu sự cố nào khẩn cấp cần xử lý trước và lý do.
+(3) Tóm tắt ngắn gọn bằng tiếng Việt, trình bày theo gạch đầu dòng rõ ràng.
+Tuyệt đối không tự bịa thêm sự cố ngoài danh sách.";
+
+                var payload = new
+                {
+                    model = "llama3",
+                    messages = new[]
+                    {
+                        new { role = "system", content = "Bạn là trợ lý AI quản lý KTX. Phải trả lời 100% bằng tiếng Việt và tuân thủ định dạng yêu cầu." },
+                        new { role = "user", content = prompt }
+                    },
+                    stream = false
+                };
+
+                using (var httpClient = new System.Net.Http.HttpClient())
+                {
+                    var content = new System.Net.Http.StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+                    var res = await httpClient.PostAsync("http://localhost:11434/api/chat", content);
+                    
+                    if (res.IsSuccessStatusCode)
+                    {
+                        var json = await res.Content.ReadAsStringAsync();
+                        using var doc = System.Text.Json.JsonDocument.Parse(json);
+                        string aiResponse = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
+                        return Json(new { success = true, summary = aiResponse });
+                    }
+                }
+                return Json(new { success = false, summary = "Lỗi: Không thể kết nối với dịch vụ AI Ollama (Vui lòng kiểm tra Ollama đã chạy chưa)." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi gọi AI tóm tắt sự cố.");
+                return Json(new { success = false, summary = "Lỗi hệ thống: " + ex.Message });
+            }
+        }
     }
 }
