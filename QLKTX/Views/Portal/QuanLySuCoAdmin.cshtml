@@ -4,6 +4,22 @@
     ViewData["Title"] = "Quản Lý Báo Cáo Sự Cố";
 }
 
+<style>
+    .ai-btn-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        transition: transform 0.2s;
+    }
+    .ai-btn-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+    }
+    #aiSummaryContent {
+        white-space: pre-wrap;
+        line-height: 1.6;
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="h4 mb-1 fw-bold text-dark">Quản Lý Báo Cáo Sự Cố</h2>
@@ -13,6 +29,11 @@
                 <li class="breadcrumb-item active" aria-current="page">Báo cáo sự cố</li>
             </ol>
         </nav>
+    </div>
+    <div>
+        <button type="button" class="btn btn-sm text-white ai-btn-gradient shadow-sm px-3 py-2" onclick="callAiSummary()">
+            <i class="bi bi-stars"></i> ✨ AI Phân Tích & Tóm Tắt
+        </button>
     </div>
 </div>
 
@@ -126,3 +147,72 @@
         </div>
     </div>
 </div>
+
+<!-- KHỐI AI MODAL & SCRIPT CHẠY ĐỘC LẬP -->
+<div class="modal fade" id="aiSuCoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" style="color: #764ba2;">
+                    <i class="bi bi-robot me-2"></i>AI Phân Tích Báo Cáo Sự Cố
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aiLoadingContainer" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted fw-semibold">AI đang suy nghĩ và tổng hợp dữ liệu...</p>
+                </div>
+                <div id="aiSummaryResult" style="display: none;">
+                    <div class="bg-light p-3 rounded-3 border">
+                        <div id="aiSummaryContent" class="text-dark"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn text-white rounded-pill ai-btn-gradient" onclick="copyAiSummary()">
+                    <i class="bi bi-clipboard me-1"></i> Sao chép
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Bọc trong arrow function tránh biến toàn cục
+    const callAiSummary = async () => {
+        const modal = new bootstrap.Modal(document.getElementById('aiSuCoModal'));
+        modal.show();
+        
+        document.getElementById('aiLoadingContainer').style.display = 'block';
+        document.getElementById('aiSummaryResult').style.display = 'none';
+        
+        try {
+            const response = await fetch('@Url.Action("TomTatSuCoAI", "Portal")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            // XSS Protection: Dùng textContent thay vì innerHTML
+            document.getElementById('aiSummaryContent').textContent = data.summary;
+            
+        } catch (error) {
+            document.getElementById('aiSummaryContent').textContent = "Lỗi kết nối tới máy chủ. Vui lòng thử lại sau.";
+        } finally {
+            document.getElementById('aiLoadingContainer').style.display = 'none';
+            document.getElementById('aiSummaryResult').style.display = 'block';
+        }
+    };
+
+    const copyAiSummary = () => {
+        const text = document.getElementById('aiSummaryContent').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Đã sao chép nội dung AI phân tích vào clipboard!");
+        });
+    };
+</script>
