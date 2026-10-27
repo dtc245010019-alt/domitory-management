@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -49,47 +49,63 @@ namespace QLKTX.Controllers
             if (request == null || string.IsNullOrWhiteSpace(request.Message))
                 return Json(new { response = "Bạn cần mình hỗ trợ thông tin gì về KTX?" });
 
-            string msgLower = request.Message.ToLower();
+            string msgLower = request.Message.Trim().ToLower();
 
-            // 1. Phân tích Intent bằng AI
+            // 1. Phân tích Intent bằng AI (nếu Ollama đang chạy)
             string classifyPrompt = $@"Phân tích câu hỏi và trả về duy nhất định dạng JSON thuần túy không kèm giải thích:
 {{
-  ""intent"": ""SINH_VIEN"" | ""PHONG"" | ""HOP_DONG"" | ""CO_SO_VAT_CHAT"" | ""KY_LUAT"" | ""SU_CO"" | ""THONG_KE"" | ""DINH_NGHIA"" | ""KHAC"",
+  ""intent"": ""SINH_VIEN"" | ""PHONG"" | ""HOP_DONG"" | ""CO_SO_VAT_CHAT"" | ""KY_LUAT"" | ""SU_CO"" | ""THONG_KE"" | ""XIN_CHAO"" | ""HOADON_DIEN_NUOC"" | ""BAO_HONG_THIET_BI"" | ""GIOGIAC_NOIQUY"" | ""GUI_XE_RA_VAO"" | ""DANG_KY_TRA_PHONG"" | ""TIEP_KHACH_BAN_BE"" | ""KHAC"",
   ""keyword"": ""từ khóa nếu hỏi khái niệm, ngược lại để rỗng""
 }}
 
 Câu hỏi: ""{request.Message}""";
 
-            string jsonIntentResponse = await CallOllamaAsync(classifyPrompt);
+            string? jsonIntentResponse = await CallOllamaOrNullAsync(classifyPrompt);
             string intent = "KHAC";
-            string keyword = "";
 
-            try
+            if (!string.IsNullOrWhiteSpace(jsonIntentResponse))
             {
-                string cleanJson = ExtractJsonString(jsonIntentResponse);
-                using var doc = JsonDocument.Parse(cleanJson);
-                if (doc.RootElement.TryGetProperty("intent", out var intentElem))
-                    intent = intentElem.GetString() ?? "KHAC";
-                if (doc.RootElement.TryGetProperty("keyword", out var keyElem))
-                    keyword = keyElem.GetString() ?? "";
+                try
+                {
+                    string cleanJson = ExtractJsonString(jsonIntentResponse);
+                    using var doc = JsonDocument.Parse(cleanJson);
+                    if (doc.RootElement.TryGetProperty("intent", out var intentElem))
+                        intent = intentElem.GetString() ?? "KHAC";
+                }
+                catch { }
             }
-            catch { }
 
-            // 1.1. Cơ chế fallback từ khóa nhận diện các menu hệ thống
-            if (intent == "KHAC")
+            // 1.1. Cơ chế nhận diện từ khóa ưu tiên (hỗ trợ cả khi Ollama chưa chạy)
+            if (msgLower.Contains("xin chào") || msgLower == "chào" || msgLower == "hi" || msgLower == "hello")
+                intent = "XIN_CHAO";
+            else if (msgLower.Contains("giờ") || msgLower.Contains("giới nghiêm") || msgLower.Contains("đóng cửa") || msgLower.Contains("mở cửa") || msgLower.Contains("nội quy"))
+                intent = "GIOGIAC_NOIQUY";
+            else if (msgLower.Contains("báo hỏng") || msgLower.Contains("hướng dẫn báo") || msgLower.Contains("báo sự cố"))
+                intent = "BAO_HONG_THIET_BI";
+            else if (msgLower.Contains("điện nước") || msgLower.Contains("hóa đơn") || msgLower.Contains("giá điện") || msgLower.Contains("giá nước") || msgLower.Contains("thanh toán"))
+                intent = "HOADON_DIEN_NUOC";
+            else if (msgLower.Contains("gửi xe") || msgLower.Contains("bãi xe") || msgLower.Contains("xe máy") || msgLower.Contains("xe điện"))
+                intent = "GUI_XE_RA_VAO";
+            else if (msgLower.Contains("trả phòng") || msgLower.Contains("rời khỏi"))
+                intent = "DANG_KY_TRA_PHONG";
+            else if (msgLower.Contains("tiếp khách") || msgLower.Contains("bạn bè") || msgLower.Contains("người thân") || msgLower.Contains("qua đêm"))
+                intent = "TIEP_KHACH_BAN_BE";
+            else if (intent == "KHAC")
             {
                 if (msgLower.Contains("thống kê") || msgLower.Contains("báo cáo") || msgLower.Contains("tổng số") || msgLower.Contains("bao nhiêu sinh viên") || msgLower.Contains("bao nhiêu phòng"))
                     intent = "THONG_KE";
-                else if (msgLower.Contains("sinh viên") || msgLower.Contains("người") || msgLower.Contains("tên") || msgLower.Contains("thành viên") || msgLower.Contains("mã sv") || msgLower.Contains("ở phòng"))
-                    intent = "SINH_VIEN";
-                else if (msgLower.Contains("phòng") || msgLower.Contains("chỗ trống") || msgLower.Contains("loại phòng") || msgLower.Contains("giá phòng"))
+                else if (msgLower.Contains("phòng") || msgLower.Contains("chỗ trống") || msgLower.Contains("loại phòng") || msgLower.Contains("giá phòng") || msgLower.Contains("xếp phòng") || msgLower.Contains("gợi ý"))
                     intent = "PHONG";
-                else if (msgLower.Contains("hợp đồng") || msgLower.Contains("đăng ký") || msgLower.Contains("ngày hết hạn") || msgLower.Contains("gia hạn") || msgLower.Contains("thời hạn"))
+                else if (msgLower.Contains("sinh viên") || msgLower.Contains("người") || msgLower.Contains("tên") || msgLower.Contains("thành viên") || msgLower.Contains("mã sv") || msgLower.Contains("dtc"))
+                    intent = "SINH_VIEN";
+                else if (msgLower.Contains("hợp đồng") || msgLower.Contains("đăng ký") || msgLower.Contains("ngày hết hạn") || msgLower.Contains("gia hạn") || msgLower.Contains("thời hạn") || msgLower.Contains("tiền cọc"))
                     intent = "HOP_DONG";
                 else if (msgLower.Contains("thiết bị") || msgLower.Contains("cơ sở vật chất") || msgLower.Contains("điều hòa") || msgLower.Contains("quạt") || msgLower.Contains("đèn") || msgLower.Contains("sửa") || msgLower.Contains("hỏng"))
                     intent = "CO_SO_VAT_CHAT";
-                else if (msgLower.Contains("vi phạm") || msgLower.Contains("kỷ luật") || msgLower.Contains("phạt") || msgLower.Contains("lỗi") || msgLower.Contains("ghi chú"))
+                else if (msgLower.Contains("vi phạm") || msgLower.Contains("kỷ luật") || msgLower.Contains("phạt") || msgLower.Contains("lỗi"))
                     intent = "KY_LUAT";
+                else if (msgLower.Contains("sự cố") || msgLower.Contains("phản ánh"))
+                    intent = "SU_CO";
             }
 
             // 2. Tra cứu THỐNG KÊ TỔNG QUAN
@@ -97,58 +113,103 @@ Câu hỏi: ""{request.Message}""";
             {
                 try
                 {
-                    var tongSV = await _context.SinhViens.CountAsync();
+                    var tongSV = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đang ở");
+                    var svDaRoi = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đã rời đi");
                     var tongPhong = await _context.Phongs.CountAsync();
-                    var tongHopDong = await _context.HopDongs.CountAsync();
+                    var phongConCho = await _context.Phongs.CountAsync(p => p.TinhTrang == "Còn chỗ");
+                    var tongHopDong = await _context.HopDongs.CountAsync(h => h.TrangThai == "Còn hiệu lực");
                     var tongThietBi = await _context.CoSoVatChats.CountAsync();
                     var tongViPham = await _context.ViPhams.CountAsync();
 
                     var thongKeData = new
                     {
-                        TongSoSinhVien = tongSV,
+                        SinhVienDangO = tongSV,
+                        SinhVienDaRoiDi = svDaRoi,
                         TongSoPhong = tongPhong,
-                        TongSoHopDong = tongHopDong,
+                        PhongConCho = phongConCho,
+                        HopDongHieuLuc = tongHopDong,
                         TongSoThietBi = tongThietBi,
                         TongSoTruongHopViPham = tongViPham
                     };
 
                     string prompt = $@"Dưới đây là số liệu thống kê tổng quan của KTX từ CSDL:\n{JsonSerializer.Serialize(thongKeData)}\n\nDựa vào dữ liệu trên, hãy trả lời câu hỏi bằng tiếng Việt rõ ràng, chính xác:\n""{request.Message}""";
-                    string response = await CallOllamaAsync(prompt);
-                    return Json(new { response = response, source = "Thống kê Hệ thống KTX" });
+                    string? aiRes = await CallOllamaOrNullAsync(prompt);
+                    string fallback = $"📊 Thống kê hệ thống KTX hiện tại:\n• Sinh viên đang ở: {tongSV} SV (Đã rời đi: {svDaRoi} SV)\n• Tổng số phòng: {tongPhong} phòng (Còn chỗ: {phongConCho} phòng, Đã đầy: {tongPhong - phongConCho} phòng)\n• Hợp đồng còn hiệu lực: {tongHopDong}\n• Thiết bị cơ sở vật chất: {tongThietBi} mục\n• Bản ghi vi phạm kỷ luật: {tongViPham} trường hợp";
+                    return Json(new { response = aiRes ?? fallback, source = "Thống kê Hệ thống KTX" });
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi Thống kê"); }
             }
 
-            // 3. Tra cứu SINH VIÊN
-            if (intent == "SINH_VIEN")
-            {
-                try
-                {
-                    var data = await _context.SinhViens.ToListAsync();
-                    if (data != null && data.Any())
-                    {
-                        string prompt = $@"Dữ liệu Danh sách Sinh viên trong KTX:\n{JsonSerializer.Serialize(data)}\n\nTrả lời câu hỏi sau bằng tiếng Việt ngắn gọn, liệt kê cụ thể nếu có:\n""{request.Message}""";
-                        string response = await CallOllamaAsync(prompt);
-                        return Json(new { response = response, source = "Quản lý Sinh viên" });
-                    }
-                }
-                catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Sinh viên"); }
-            }
-
-            // 4. Tra cứu PHÒNG
+            // 3. Tra cứu PHÒNG & GỢI Ý XẾP PHÒNG
             if (intent == "PHONG")
             {
                 try
                 {
-                    var data = await _context.Phongs.ToListAsync();
-                    if (data != null && data.Any())
+                    var phongs = await _context.Phongs.Include(p => p.SinhViens).AsNoTracking().ToListAsync();
+                    if (phongs != null && phongs.Any())
                     {
-                        string prompt = $@"Dữ liệu Danh sách Phòng trong KTX:\n{JsonSerializer.Serialize(data)}\n\nTrả lời câu hỏi sau bằng tiếng Việt chính xác, rõ ràng:\n""{request.Message}""";
-                        string response = await CallOllamaAsync(prompt);
-                        return Json(new { response = response, source = "Quản lý Phòng" });
+                        var phongConCho = phongs
+                            .Select(p => new
+                            {
+                                p.MaPhong,
+                                p.LoaiPhong,
+                                p.SoLuongGiuong,
+                                SoDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru == "Đang ở") ?? 0,
+                                GiuongTrong = p.SoLuongGiuong - (p.SinhViens?.Count(s => s.TinhTrangLuuTru == "Đang ở") ?? 0),
+                                p.GiaPhong,
+                                p.TinhTrang
+                            })
+                            .Where(p => p.TinhTrang == "Còn chỗ" && p.GiuongTrong > 0)
+                            .OrderByDescending(p => p.GiuongTrong)
+                            .Take(10)
+                            .ToList();
+
+                        string prompt = $@"Dữ liệu các phòng còn chỗ trống trong KTX:\n{JsonSerializer.Serialize(phongConCho)}\n\nTrả lời câu hỏi sau bằng tiếng Việt chính xác, rõ ràng:\n""{request.Message}""";
+                        string? aiRes = await CallOllamaOrNullAsync(prompt);
+                        if (!string.IsNullOrWhiteSpace(aiRes))
+                            return Json(new { response = aiRes, source = "Quản lý Phòng" });
+
+                        if (msgLower.Contains("giá"))
+                        {
+                            string giaMsg = "💰 Bảng giá phòng Ký túc xá niêm yết:\n• Phòng thường: 9.000.000 VNĐ / kỳ\n• Phòng có điều hoà: 11.000.000 VNĐ / kỳ\n• Phòng điều hoà + nóng lạnh: 13.000.000 VNĐ / kỳ\n• Hiện có " + phongs.Count(p => p.TinhTrang == "Còn chỗ") + "/" + phongs.Count + " phòng đang còn chỗ trống.";
+                            return Json(new { response = giaMsg, source = "Quản lý Phòng" });
+                        }
+
+                        var goiY = string.Join("\n", phongConCho.Take(6).Select(p => $"• Phòng P.{p.MaPhong} ({p.LoaiPhong}): Còn trống {p.GiuongTrong}/{p.SoLuongGiuong} giường — Giá: {p.GiaPhong:N0}đ"));
+                        string fallback = $"🏢 Hệ thống hiện có {phongs.Count(p => p.TinhTrang == "Còn chỗ")}/{phongs.Count} phòng còn chỗ trống.\nGợi ý các phòng còn nhiều giường trống nhất:\n{goiY}";
+                        return Json(new { response = fallback, source = "Quản lý Phòng" });
                     }
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Phòng"); }
+            }
+
+            // 4. Tra cứu SINH VIÊN
+            if (intent == "SINH_VIEN")
+            {
+                try
+                {
+                    var matchMaSV = Regex.Match(request.Message.ToUpper(), @"DTC\d{3}");
+                    if (matchMaSV.Success)
+                    {
+                        string ma = matchMaSV.Value;
+                        var sv = await _context.SinhViens.AsNoTracking().FirstOrDefaultAsync(s => s.MaSV == ma);
+                        if (sv != null)
+                        {
+                            return Json(new { response = $"👨‍🎓 Thông tin sinh viên {sv.MaSV}:\n• Họ tên: {sv.HoTen}\n• Lớp: {sv.Lop}\n• Phòng: P.{sv.MaPhong ?? "Chưa xếp"}\n• Tình trạng: {sv.TinhTrangLuuTru}", source = "Quản lý Sinh viên" });
+                        }
+                    }
+
+                    var data = await _context.SinhViens.Where(s => s.TinhTrangLuuTru == "Đang ở").Take(20).AsNoTracking().ToListAsync();
+                    var tongDangO = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đang ở");
+                    if (data != null && data.Any())
+                    {
+                        string prompt = $@"Dữ liệu mẫu Sinh viên đang ở trong KTX (Tổng: {tongDangO} SV):\n{JsonSerializer.Serialize(data)}\n\nTrả lời câu hỏi sau bằng tiếng Việt ngắn gọn:\n""{request.Message}""";
+                        string? aiRes = await CallOllamaOrNullAsync(prompt);
+                        string fallback = $"👨‍🎓 Hiện KTX có {tongDangO} sinh viên đang lưu trú.\nMột số sinh viên tiêu biểu:\n" + string.Join("\n", data.Take(5).Select(s => $"• {s.MaSV} - {s.HoTen} (Lớp {s.Lop}, Phòng P.{s.MaPhong})"));
+                        return Json(new { response = aiRes ?? fallback, source = "Quản lý Sinh viên" });
+                    }
+                }
+                catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Sinh viên"); }
             }
 
             // 5. Tra cứu HỢP ĐỒNG
@@ -156,12 +217,14 @@ Câu hỏi: ""{request.Message}""";
             {
                 try
                 {
-                    var data = await _context.HopDongs.ToListAsync();
+                    var data = await _context.HopDongs.AsNoTracking().Take(15).ToListAsync();
+                    int conHieuLuc = await _context.HopDongs.CountAsync(h => h.TrangThai == "Còn hiệu lực");
                     if (data != null && data.Any())
                     {
                         string prompt = $@"Dữ liệu Hợp đồng KTX:\n{JsonSerializer.Serialize(data)}\n\nTrả lời câu hỏi của người dùng bằng tiếng Việt ngắn gọn:\n""{request.Message}""";
-                        string response = await CallOllamaAsync(prompt);
-                        return Json(new { response = response, source = "Quản lý Hợp đồng" });
+                        string? aiRes = await CallOllamaOrNullAsync(prompt);
+                        string fallback = $"📄 Hệ thống hiện có {conHieuLuc} hợp đồng đang còn hiệu lực (Tiền đặt cọc tiêu chuẩn: 1.500.000 VNĐ/hợp đồng). Sinh viên cần tuân thủ nội quy KTX và đóng phí đúng hạn.";
+                        return Json(new { response = aiRes ?? fallback, source = "Quản lý Hợp đồng" });
                     }
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Hợp đồng"); }
@@ -172,28 +235,31 @@ Câu hỏi: ""{request.Message}""";
             {
                 try
                 {
-                    var data = await _context.CoSoVatChats.ToListAsync();
+                    var data = await _context.CoSoVatChats.AsNoTracking().ToListAsync();
                     if (data != null && data.Any())
                     {
-                        string prompt = $@"Dữ liệu Cơ sở vật chất / Thiết bị KTX:\n{JsonSerializer.Serialize(data)}\n\nTrả lời câu hỏi bằng tiếng Việt chính xác theo tình trạng thiết bị:\n""{request.Message}""";
-                        string response = await CallOllamaAsync(prompt);
-                        return Json(new { response = response, source = "Quản lý Cơ sở vật chất" });
+                        string prompt = $@"Dữ liệu Cơ sở vật chất / Thiết bị KTX:\n{JsonSerializer.Serialize(data.Take(20))}\n\nTrả lời câu hỏi bằng tiếng Việt chính xác theo tình trạng thiết bị:\n""{request.Message}""";
+                        string? aiRes = await CallOllamaOrNullAsync(prompt);
+                        var canBaoTri = data.Where(c => c.TinhTrang != "Tốt" && c.TinhTrang != "Đang sử dụng").ToList();
+                        string fallback = $"🛠 KTX hiện quản lý {data.Count} danh mục thiết bị tại các phòng.\n• Thiết bị hoạt động tốt: {data.Count - canBaoTri.Count}\n• Thiết bị cần bảo trì/sửa chữa: {canBaoTri.Count}" + (canBaoTri.Any() ? " (" + string.Join(", ", canBaoTri.Take(5).Select(c => $"{c.TenThietBi} P.{c.MaPhong}")) + ")" : "");
+                        return Json(new { response = aiRes ?? fallback, source = "Quản lý Cơ sở vật chất" });
                     }
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Cơ sở vật chất"); }
             }
 
             // 7. Tra cứu KỶ LUẬT / VI PHẠM
-                        if (intent == "KY_LUAT")
+            if (intent == "KY_LUAT")
             {
                 try
                 {
-                    var data = await _context.ViPhams.ToListAsync();
+                    var data = await _context.ViPhams.AsNoTracking().OrderByDescending(v => v.NgayViPham).Take(10).ToListAsync();
                     if (data != null && data.Any())
                     {
                         string prompt = $@"Dữ liệu Sinh viên Vi phạm Kỷ luật KTX:\n{JsonSerializer.Serialize(data)}\n\nTrả lời câu hỏi bằng tiếng Việt rõ ràng, ngắn gọn:\n""{request.Message}""";
-                        string response = await CallOllamaAsync(prompt);
-                        return Json(new { response = response, source = "Quản lý Kỷ luật" });
+                        string? aiRes = await CallOllamaOrNullAsync(prompt);
+                        string fallback = $"⚠️ Hệ thống ghi nhận {await _context.ViPhams.CountAsync()} trường hợp vi phạm nội quy.\nCác lỗi phổ biến: " + string.Join("; ", data.Take(4).Select(v => $"SV {v.MaSV} ({v.NoiDungViPham} - {v.HinhThucXuLy})"));
+                        return Json(new { response = aiRes ?? fallback, source = "Quản lý Kỷ luật" });
                     }
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Kỷ luật"); }
@@ -204,12 +270,13 @@ Câu hỏi: ""{request.Message}""";
             {
                 try
                 {
-                    var data = await _context.BaoCaoSuCos.Where(b => b.TrangThai == "Chờ xử lý").ToListAsync();
+                    var data = await _context.BaoCaoSuCos.Where(b => b.TrangThai == "Chờ xử lý").AsNoTracking().ToListAsync();
                     if (data != null && data.Any())
                     {
                         string prompt = $@"Bạn là trợ lý AI quản lý KTX. Dưới đây là dữ liệu các sự cố KTX đang chờ xử lý:\n{JsonSerializer.Serialize(data)}\n\nHãy trả lời câu hỏi sau bằng tiếng Việt. Nếu người dùng yêu cầu tóm tắt, hãy phân loại và tóm tắt chúng rõ ràng:\n""{request.Message}""";
-                        string response = await CallOllamaAsync(prompt);
-                        return Json(new { response = response, source = "Quản lý Sự cố" });
+                        string? aiRes = await CallOllamaOrNullAsync(prompt);
+                        string fallback = $"🔧 Hiện có {data.Count} báo cáo sự cố đang chờ xử lý:\n" + string.Join("\n", data.Take(5).Select(b => $"• P.{b.MaPhong}: {b.TenSuCo} (Mức độ: {b.MucDoKhanCap})"));
+                        return Json(new { response = aiRes ?? fallback, source = "Quản lý Sự cố" });
                     }
                     else
                     {
@@ -219,15 +286,12 @@ Câu hỏi: ""{request.Message}""";
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi CSDL Sự cố"); }
             }
 
-            // 8. Đã gỡ bỏ tính năng tra cứu Wikipedia để khóa chặt AI chỉ dùng dữ liệu nội bộ.
-            // Nếu là câu hỏi định nghĩa ngoài lề, sẽ tự động chạy xuống fallback báo không biết.
-
-            // 9. Tra cứu Quy định chung từ file JSON Knowledge Base
+            // 8. Tra cứu Quy định chung từ file JSON Knowledge Base (wwwroot/data/knowledge_base.json)
             string matchedFacts = GetFactsByIntent(intent);
             string finalPrompt = $@"Dữ liệu quy định KTX:\n{matchedFacts}\n\nTrả lời câu hỏi sinh viên bằng tiếng Việt lịch sự, dễ hiểu:\n""{request.Message}""";
 
-            string aiResponse = await CallOllamaAsync(finalPrompt);
-            return Json(new { response = aiResponse, source = "Hệ thống KTX" });
+            string? aiResponse = await CallOllamaOrNullAsync(finalPrompt);
+            return Json(new { response = aiResponse ?? matchedFacts, source = "Cơ sở tri thức KTX" });
         }
 
         private string ExtractJsonString(string input)
@@ -252,36 +316,16 @@ Câu hỏi: ""{request.Message}""";
                     if (element.GetProperty("intent").GetString() == intent)
                     {
                         var factsList = element.GetProperty("facts").EnumerateArray();
-                        return string.Join("\n- ", factsList.Select(f => f.GetString()));
+                        return "• " + string.Join("\n• ", factsList.Select(f => f.GetString()));
                     }
                 }
             }
             catch { }
 
-            return "Xin lỗi, mình chưa tìm thấy thông tin phù hợp. Bạn có thể hỏi về: 'sinh viên', 'phòng', 'hợp đồng', 'cơ sở vật chất', 'kỷ luật' hoặc 'thống kê' nhé!";
+            return "Xin lỗi, mình chưa tìm thấy thông tin phù hợp. Bạn có thể hỏi về: 'giá phòng', 'phòng trống', 'giờ giới nghiêm', 'báo sự cố', 'điện nước', 'gửi xe', 'trả phòng', 'hợp đồng', 'kỷ luật' hoặc 'thống kê' nhé!";
         }
 
-        private async Task<string> GetWikipediaSummaryAsync(string keyword)
-        {
-            try
-            {
-                var httpClient = _httpClientFactory.CreateClient("Ollama");
-                var req = new HttpRequestMessage(HttpMethod.Get, $"https://vi.wikipedia.org/api/rest_v1/page/summary/{Uri.EscapeDataString(keyword)}");
-                req.Headers.Add("User-Agent", "QLKTX-Chatbot/1.0");
-                var res = await httpClient.SendAsync(req);
-                if (res.IsSuccessStatusCode)
-                {
-                    var json = await res.Content.ReadAsStringAsync();
-                    using var doc = JsonDocument.Parse(json);
-                    if (doc.RootElement.TryGetProperty("extract", out var ext))
-                        return ext.GetString();
-                }
-            }
-            catch { }
-            return null;
-        }
-
-        private async Task<string> CallOllamaAsync(string prompt)
+        private async Task<string?> CallOllamaOrNullAsync(string prompt)
         {
             var payload = new
             {
@@ -308,16 +352,15 @@ Câu hỏi: ""{request.Message}""";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Không gọi được Ollama tại localhost:11434");
+                _logger.LogWarning("Ollama chưa khởi chạy tại localhost:11434 ({Msg}) -> Sử dụng Fallback nội bộ.", ex.Message);
             }
 
-            return "Không thể kết nối dịch vụ AI. (Kiểm tra Ollama đã chạy chưa?)";
+            return null;
         }
     }
 
     public class ChatRequest
     {
-        public string Message { get; set; }
+        public string? Message { get; set; }
     }
 }
-

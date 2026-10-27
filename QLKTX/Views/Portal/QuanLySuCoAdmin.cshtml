@@ -80,7 +80,15 @@
                                     <div class="small text-muted text-truncate" style="max-width: 200px;" title="@item.MoTa">@item.MoTa</div>
                                 </td>
                                 <td>
-                                    @if (item.MucDoKhanCap == "Cao")
+                                    @if (item.MucDoKhanCap == "Cao" || item.MucDoKhanCap == "Khẩn cấp")
+                                    {
+                                        <span class="badge bg-danger">@item.MucDoKhanCap</span>
+                                    }
+                                    else if (item.MucDoKhanCap == "Nghiêm trọng" || item.MucDoKhanCap == "Bình thường")
+                                    {
+                                        <span class="badge bg-warning text-dark">@item.MucDoKhanCap</span>
+                                    }
+                                    else if (item.MucDoKhanCap == "Cao_Legacy")
                                     {
                                         <span class="badge bg-danger">Cao</span>
                                     }

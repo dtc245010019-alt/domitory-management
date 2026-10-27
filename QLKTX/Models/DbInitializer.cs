@@ -110,6 +110,10 @@ if (!context.TaiKhoans.Any())
         // Tài khoản Sinh viên DTC001
         new TaiKhoan { TenDangNhap = "DTC001", MatKhau = "123", Quyen = "sinhvien", MaSV = "DTC001" }
     };
+    foreach (var sv in sinhViens.Skip(1))
+    {
+        listTK.Add(new TaiKhoan { TenDangNhap = sv.MaSV, MatKhau = "123", Quyen = "sinhvien", MaSV = sv.MaSV });
+    }
     context.TaiKhoans.AddRange(listTK);
     context.SaveChanges();
 }
@@ -272,7 +276,7 @@ if (!context.TaiKhoans.Any())
                         TenSuCo = tenSuCo[i % tenSuCo.Length],
                         MoTa = "Thiết bị hỏng đột ngột, mong ban quản lý cử người xuống sửa chữa sớm.",
                         MucDoKhanCap = mucDo[i % mucDo.Length],
-                        HinhAnh = null,
+                        HinhAnh = "",
                         TrangThai = trangThai[i % trangThai.Length],
                         NgayBaoCao = DateTime.Now.AddDays(-random.Next(1, 15)),
                         MaSV = sv.MaSV,

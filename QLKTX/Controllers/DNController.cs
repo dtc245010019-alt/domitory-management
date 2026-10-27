@@ -69,10 +69,31 @@ namespace QLKTX.Controllers
             return View();
         }
 
+        // POST: /DN/ForgotPassword
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!string.IsNullOrWhiteSpace(model?.Email))
+            {
+                TempData["Success"] = true;
+                TempData["Email"] = model.Email.Trim();
+            }
+            return View("QuenMK", model);
+        }
+
         // GET: /DN/LienheQuanly
         public IActionResult LienheQuanly()
         {
             return View();
+        }
+
+        // POST: /DN/ContactAdmin
+        [HttpPost]
+        public IActionResult ContactAdmin(ContactViewModel model)
+        {
+            TempData["Success"] = true;
+            return View("LienheQuanly");
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -19,7 +19,7 @@ namespace QLKTX.Models
         public DateTime NgayViPham { get; set; } = DateTime.Now;
 
         [StringLength(255)]
-        public string GhiChu { get; set; }
+        public string? GhiChu { get; set; } = "";
 
         // Liên kết khóa ngoại sang bảng SinhVien
         [Required]

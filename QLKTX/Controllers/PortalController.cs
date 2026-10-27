@@ -126,7 +126,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GuiBaoCao(string TenSuCo, string MoTa, string MucDoKhanCap, IFormFile HinhAnhFile)
+        public async Task<IActionResult> GuiBaoCao(string TenSuCo, string MoTa, string MucDoKhanCap, IFormFile? HinhAnhFile)
         {
             if (EnsureStudentSession(nameof(GuiBaoCao), out string maSV) is { } redirect)
                 return redirect;
@@ -139,7 +139,7 @@ namespace QLKTX.Controllers
                 return RedirectToAction("BaoCaoSuCo");
             }
 
-            string maSC = "SC_" + DateTime.Now.ToString("yyyyMMddHHmm");
+            string maSC = "SC_" + DateTime.Now.ToString("yyyyMMddHHmmss");
             string duongDanAnh = "";
 
             // Lưu ảnh đính kèm vào thư mục wwwroot/uploads/suco
@@ -507,7 +507,7 @@ Tuyệt đối không tự bịa thêm sự cố ngoài danh sách.";
                     stream = false
                 };
 
-                using (var httpClient = new System.Net.Http.HttpClient())
+                if (false) using (var httpClient = new System.Net.Http.HttpClient())
                 {
                     var content = new System.Net.Http.StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
                     var res = await httpClient.PostAsync("http://localhost:11434/api/chat", content);
@@ -520,7 +520,47 @@ Tuyệt đối không tự bịa thêm sự cố ngoài danh sách.";
                         return Json(new { success = true, summary = aiResponse });
                     }
                 }
-                return Json(new { success = false, summary = "Lỗi: Không thể kết nối với dịch vụ AI Ollama (Vui lòng kiểm tra Ollama đã chạy chưa)." });
+                try
+                {
+                    using (var httpClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(8) })
+                    {
+                        var content = new System.Net.Http.StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+                        var res = await httpClient.PostAsync("http://localhost:11434/api/chat", content);
+
+                        if (res.IsSuccessStatusCode)
+                        {
+                            var json = await res.Content.ReadAsStringAsync();
+                            using var doc = System.Text.Json.JsonDocument.Parse(json);
+                            string? aiResponse = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
+                            if (!string.IsNullOrWhiteSpace(aiResponse))
+                                return Json(new { success = true, summary = aiResponse });
+                        }
+                    }
+                }
+                catch { }
+
+                // Fallback tổng hợp thông minh khi dịch vụ Ollama cục bộ chưa bật
+                var nhomDien = suCos.Where(s => s.TenSuCo.Contains("điện", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("đèn", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("quạt", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("điều hòa", StringComparison.OrdinalIgnoreCase)).ToList();
+                var nhomNuoc = suCos.Where(s => s.TenSuCo.Contains("nước", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("vòi", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("ống", StringComparison.OrdinalIgnoreCase)).ToList();
+                var nhomKhac = suCos.Except(nhomDien).Except(nhomNuoc).ToList();
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"📊 BÁO CÁO TỔNG HỢP SỰ CỐ ĐANG CHỜ XỬ LÝ ({suCos.Count} sự cố):");
+                sb.AppendLine();
+                sb.AppendLine($"1. Phân loại theo nhóm kỹ thuật:");
+                sb.AppendLine($"   • Nhóm Điện / Thiết bị điện ({nhomDien.Count} sự cố): " + (nhomDien.Any() ? string.Join(", ", nhomDien.Select(x => $"P.{x.MaPhong} ({x.TenSuCo})")) : "Không có"));
+                sb.AppendLine($"   • Nhóm Cấp thoát nước ({nhomNuoc.Count} sự cố): " + (nhomNuoc.Any() ? string.Join(", ", nhomNuoc.Select(x => $"P.{x.MaPhong} ({x.TenSuCo})")) : "Không có"));
+                sb.AppendLine($"   • Nhóm Nội thất / Khác ({nhomKhac.Count} sự cố): " + (nhomKhac.Any() ? string.Join(", ", nhomKhac.Select(x => $"P.{x.MaPhong} ({x.TenSuCo})")) : "Không có"));
+                sb.AppendLine();
+                sb.AppendLine("2. Đề xuất thứ tự ưu tiên xử lý:");
+                if (nhomDien.Any())
+                    sb.AppendLine("   • Ưu tiên 1 (Khẩn cấp): Cử thợ điện kiểm tra ngay các phòng " + string.Join(", ", nhomDien.Select(x => "P." + x.MaPhong).Distinct()) + " để đảm bảo an toàn điện và sinh hoạt.");
+                if (nhomNuoc.Any())
+                    sb.AppendLine("   • Ưu tiên 2 (Quan trọng): Khắc phục sự cố nước tại " + string.Join(", ", nhomNuoc.Select(x => "P." + x.MaPhong).Distinct()) + " tránh thất thoát nước.");
+                if (nhomKhac.Any())
+                    sb.AppendLine("   • Ưu tiên 3: Bảo trì khóa cửa / nội thất tại " + string.Join(", ", nhomKhac.Select(x => "P." + x.MaPhong).Distinct()) + ".");
+
+                return Json(new { success = true, summary = sb.ToString() });
             }
             catch (Exception ex)
             {

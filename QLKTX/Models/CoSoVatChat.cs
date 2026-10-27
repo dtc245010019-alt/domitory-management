@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace QLKTX.Models
@@ -14,7 +14,7 @@ namespace QLKTX.Models
         public string TenThietBi { get; set; }
 
         [StringLength(50)]
-        public string LoaiThietBi { get; set; }
+        public string? LoaiThietBi { get; set; } = "";
 
         [Required]
         public int SoLuong { get; set; }

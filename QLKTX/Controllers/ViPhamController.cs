@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using QLKTX.Models;
@@ -18,7 +18,10 @@ namespace QLKTX.Controllers
         public async Task<IActionResult> Index()
         {
             // Lấy danh sách vi phạm kèm theo thông tin Sinh viên
-            var danhSachViPham = await _context.ViPhams.Include(v => v.SinhVien).ToListAsync();
+            var danhSachViPham = await _context.ViPhams
+                .Include(v => v.SinhVien)
+                .OrderByDescending(v => v.NgayViPham)
+                .ToListAsync();
             return View(danhSachViPham);
         }
 
@@ -40,13 +43,17 @@ namespace QLKTX.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ViPham viPham)
         {
+            ModelState.Remove("SinhVien");
+            ModelState.Remove("GhiChu");
+            viPham.GhiChu ??= "";
+
             if (ModelState.IsValid)
             {
                 _context.Add(viPham);
                 await _context.SaveChangesAsync();
 
                 // Nếu hình thức là "Đình chỉ", tự động cập nhật tình trạng sinh viên
-                if (viPham.HinhThucXuLy == "Đình chỉ")
+                if (viPham.HinhThucXuLy != null && viPham.HinhThucXuLy.Contains("Đình chỉ"))
                 {
                     var sv = await _context.SinhViens.FindAsync(viPham.MaSV);
                     if (sv != null)
@@ -54,12 +61,33 @@ namespace QLKTX.Controllers
                         sv.TinhTrangLuuTru = "Đình chỉ";
                         _context.Update(sv);
                         await _context.SaveChangesAsync();
+
+                        if (!string.IsNullOrEmpty(sv.MaPhong))
+                        {
+                            var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
+                            if (phong != null && phong.TinhTrang == "Đã đầy")
+                            {
+                                int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở");
+                                if (soDangO < phong.SoLuongGiuong)
+                                {
+                                    phong.TinhTrang = "Còn chỗ";
+                                    _context.Update(phong);
+                                    await _context.SaveChangesAsync();
+                                }
+                            }
+                        }
                     }
                 }
 
+                TempData["SuccessMessage"] = "Đã lập biên bản vi phạm thành công!";
                 return RedirectToAction(nameof(Index));
             }
-            ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", viPham.MaSV);
+
+            var sinhViens = _context.SinhViens.Select(s => new {
+                MaSV = s.MaSV,
+                ThongTin = s.MaSV + " - " + s.HoTen
+            }).ToList();
+            ViewBag.MaSV = new SelectList(sinhViens, "MaSV", "ThongTin", viPham.MaSV);
             return View(viPham);
         }
 
@@ -87,6 +115,10 @@ namespace QLKTX.Controllers
         {
             if (id != viPham.MaViPham) return NotFound();
 
+            ModelState.Remove("SinhVien");
+            ModelState.Remove("GhiChu");
+            viPham.GhiChu ??= "";
+
             if (ModelState.IsValid)
             {
                 try
@@ -99,9 +131,15 @@ namespace QLKTX.Controllers
                     if (!_context.ViPhams.Any(e => e.MaViPham == viPham.MaViPham)) return NotFound();
                     else throw;
                 }
+                TempData["SuccessMessage"] = "Cập nhật biên bản vi phạm thành công!";
                 return RedirectToAction(nameof(Index));
             }
-            ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", viPham.MaSV);
+
+            var sinhViens = _context.SinhViens.Select(s => new {
+                MaSV = s.MaSV,
+                ThongTin = s.MaSV + " - " + s.HoTen
+            }).ToList();
+            ViewBag.MaSV = new SelectList(sinhViens, "MaSV", "ThongTin", viPham.MaSV);
             return View(viPham);
         }
 
@@ -129,6 +167,7 @@ namespace QLKTX.Controllers
             {
                 _context.ViPhams.Remove(viPham);
                 await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Đã xóa bản ghi vi phạm!";
             }
             return RedirectToAction(nameof(Index));
         }

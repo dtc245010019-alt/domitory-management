@@ -107,6 +107,7 @@ namespace QLKTX.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(SinhVien sv)
         {
+            ModelState.Remove("Phong");
             if (ModelState.IsValid)
             {
                 if (_context.SinhViens.Any(e => e.MaSV == sv.MaSV))
@@ -145,6 +146,7 @@ namespace QLKTX.Controllers
 
             ModelState.Remove("Phong");
 
+            ModelState.Remove("Phong");
             if (ModelState.IsValid)
             {
                 try
@@ -202,7 +204,22 @@ namespace QLKTX.Controllers
             var sinhVien = await _context.SinhViens.FindAsync(id);
             if (sinhVien != null)
             {
-                _context.SinhViens.Remove(sinhVien);
+                sinhVien.TinhTrangLuuTru = "Đã rời đi";
+                _context.SinhViens.Update(sinhVien);
+                if (!string.IsNullOrEmpty(sinhVien.MaPhong))
+                {
+                    var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sinhVien.MaPhong);
+                    if (phong != null && phong.TinhTrang == "Đã đầy")
+                    {
+                        int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sinhVien.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sinhVien.MaSV);
+                        if (soDangO < phong.SoLuongGiuong)
+                        {
+                            phong.TinhTrang = "Còn chỗ";
+                            _context.Phongs.Update(phong);
+                        }
+                    }
+                }
+                TempData["SuccessMessage"] = $"Đã chuyển sinh viên {sinhVien.HoTen} ({sinhVien.MaSV}) sang danh sách Lịch sử rời KTX!";
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction(nameof(Index));

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using QLKTX.Models;
@@ -63,6 +63,8 @@ namespace QLKTX.Controllers
         public async Task<IActionResult> Create(CoSoVatChat coSoVatChat)
         {
             ModelState.Remove("Phong");
+            ModelState.Remove("LoaiThietBi");
+            coSoVatChat.LoaiThietBi ??= "";
             if (ModelState.IsValid)
             {
                 if (_context.CoSoVatChats.Any(e => e.MaThietBi == coSoVatChat.MaThietBi))
@@ -100,6 +102,8 @@ namespace QLKTX.Controllers
             if (id != coSoVatChat.MaThietBi) return NotFound();
 
             ModelState.Remove("Phong");
+            ModelState.Remove("LoaiThietBi");
+            coSoVatChat.LoaiThietBi ??= "";
 
             if (ModelState.IsValid)
             {

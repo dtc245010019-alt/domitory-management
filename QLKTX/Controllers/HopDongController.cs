@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using QLKTX.Models;
@@ -72,6 +72,8 @@ namespace QLKTX.Controllers
         {
             ModelState.Remove("SinhVien");
             ModelState.Remove("Phong");
+            ModelState.Remove("DieuKhoan");
+            hopDong.DieuKhoan ??= "";
 
             if (ModelState.IsValid)
             {
@@ -112,6 +114,8 @@ namespace QLKTX.Controllers
             if (id != hopDong.MaHopDong) return NotFound();
             ModelState.Remove("SinhVien");
             ModelState.Remove("Phong");
+            ModelState.Remove("DieuKhoan");
+            hopDong.DieuKhoan ??= "";
 
             if (ModelState.IsValid)
             {

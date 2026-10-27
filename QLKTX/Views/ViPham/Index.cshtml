@@ -1,9 +1,9 @@
-﻿@model IEnumerable<QLKTX.Models.ViPham>
+@model IEnumerable<QLKTX.Models.ViPham>
 @{
     ViewData["Title"] = "Quản lý Kỷ luật";
 }
 
-<div class="container-fluid mt-4">
+<div class="container-fluid px-0 mt-2">
     <div class="card shadow border-danger">
         <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0"><i class="bi bi-shield-exclamation"></i> DANH SÁCH SINH VIÊN VI PHẠM</h4>
@@ -39,18 +39,19 @@
                                 <td class="text-danger fw-bold">@item.NoiDungViPham</td>
                                 <td>
                                     @{
-                                        var badgeColor = item.HinhThucXuLy switch
+                                        var hinhThuc = item.HinhThucXuLy ?? "Ghi nhận";
+                                        var badgeColor = hinhThuc switch
                                         {
                                             "Nhắc nhở" => "bg-warning text-dark",
-                                            "Cảnh cáo" => "bg-orange", // Tự custom css hoặc dùng warning
-                                            "Phạt tiền" => "bg-secondary",
-                                            "Đình chỉ" => "bg-dark text-white",
-                                            _ => "bg-danger"
+                                            "Cảnh cáo" => "bg-warning text-dark border border-warning",
+                                            _ when hinhThuc.Contains("Phạt") => "bg-danger-subtle text-danger border border-danger-subtle",
+                                            _ when hinhThuc.Contains("Đình chỉ") => "bg-dark text-white",
+                                            _ => "bg-danger text-white"
                                         };
                                     }
-                                    <span class="badge @badgeColor">@item.HinhThucXuLy</span>
+                                    <span class="badge @badgeColor">@hinhThuc</span>
                                 </td>
-                                <td><small>@item.GhiChu</small></td>
+                                <td><small>@(string.IsNullOrWhiteSpace(item.GhiChu) ? "Đã ghi nhận" : item.GhiChu)</small></td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <a asp-action="Edit" asp-route-id="@item.MaViPham" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil"></i></a>

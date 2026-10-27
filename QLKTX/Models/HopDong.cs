@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -20,7 +20,7 @@ namespace QLKTX.Models
         public string TrangThai { get; set; } = "Còn hiệu lực"; // Còn hiệu lực, Hết hiệu lực 
 
         [StringLength(255)]
-        public string DieuKhoan { get; set; }
+        public string? DieuKhoan { get; set; } = "";
 
         // Liên kết Khóa ngoại
         [Required]
