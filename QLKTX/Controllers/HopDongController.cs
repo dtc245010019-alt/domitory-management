@@ -68,8 +68,9 @@ namespace QLKTX.Controllers
             // Giữ lại từ khóa trên ô tìm kiếm
             ViewData["CurrentFilter"] = searchString;
 
-            // Kết nối các bảng để lấy tên sinh viên và mã phòng
+            // Kết nối các bảng để lấy tên sinh viên và mã phòng (AsNoTracking để tối ưu hóa truy vấn)
             var query = _context.HopDongs
+                .AsNoTracking()
                 .Include(h => h.SinhVien)
                 .Include(h => h.Phong)
                 .AsQueryable();
@@ -121,6 +122,11 @@ namespace QLKTX.Controllers
             ModelState.Remove("DieuKhoan");
             hopDong.DieuKhoan ??= "";
 
+            if (hopDong.NgayKetThuc <= hopDong.NgayBatDau)
+            {
+                ModelState.AddModelError("NgayKetThuc", "Ngày kết thúc hợp đồng phải sau ngày bắt đầu!");
+            }
+
             if (ModelState.IsValid)
             {
                 if (_context.HopDongs.Any(e => e.MaHopDong == hopDong.MaHopDong))
@@ -129,37 +135,49 @@ namespace QLKTX.Controllers
                 }
                 else
                 {
-                    if (!string.IsNullOrEmpty(hopDong.MaPhong) && hopDong.TrangThai == "Còn hiệu lực")
+                    using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                    try
                     {
-                        var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == hopDong.MaPhong);
-                        if (phong != null)
+                        if (!string.IsNullOrEmpty(hopDong.MaPhong) && hopDong.TrangThai == "Còn hiệu lực")
                         {
-                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == hopDong.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != hopDong.MaSV);
-                            if (soDangO >= phong.SoLuongGiuong)
+                            var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == hopDong.MaPhong);
+                            if (phong != null)
                             {
-                                ModelState.AddModelError("MaPhong", $"Phòng P.{phong.MaPhong} đã đạt tối đa {phong.SoLuongGiuong}/{phong.SoLuongGiuong} giường, không thể lập hợp đồng mới vào phòng này!");
-                                ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", hopDong.MaSV);
-                                ViewBag.MaPhong = BuildPhongSelectList(hopDong.MaPhong);
-                                return View(hopDong);
+                                int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == hopDong.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != hopDong.MaSV);
+                                if (soDangO >= phong.SoLuongGiuong)
+                                {
+                                    await transaction.RollbackAsync();
+                                    ModelState.AddModelError("MaPhong", $"Phòng P.{phong.MaPhong} đã đạt tối đa {phong.SoLuongGiuong}/{phong.SoLuongGiuong} giường, không thể lập hợp đồng mới vào phòng này!");
+                                    ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", hopDong.MaSV);
+                                    ViewBag.MaPhong = BuildPhongSelectList(hopDong.MaPhong);
+                                    return View(hopDong);
+                                }
                             }
                         }
+
+                        _context.Add(hopDong);
+
+                        var sv = await _context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == hopDong.MaSV);
+                        string? maPhongCu = sv?.MaPhong;
+                        if (sv != null && hopDong.TrangThai == "Còn hiệu lực" && !string.IsNullOrEmpty(hopDong.MaPhong))
+                        {
+                            sv.MaPhong = hopDong.MaPhong;
+                            _context.SinhViens.Update(sv);
+                        }
+
+                        await _context.SaveChangesAsync();
+                        await DongBoTrangThaiPhongAsync(maPhongCu);
+                        await DongBoTrangThaiPhongAsync(hopDong.MaPhong);
+                        await transaction.CommitAsync();
+
+                        TempData["SuccessMessage"] = $"Đã lập hợp đồng {hopDong.MaHopDong} thành công!";
+                        return RedirectToAction(nameof(Index));
                     }
-
-                    _context.Add(hopDong);
-
-                    var sv = await _context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == hopDong.MaSV);
-                    string? maPhongCu = sv?.MaPhong;
-                    if (sv != null && hopDong.TrangThai == "Còn hiệu lực" && !string.IsNullOrEmpty(hopDong.MaPhong))
+                    catch
                     {
-                        sv.MaPhong = hopDong.MaPhong;
-                        _context.SinhViens.Update(sv);
+                        await transaction.RollbackAsync();
+                        throw;
                     }
-
-                    await _context.SaveChangesAsync();
-                    await DongBoTrangThaiPhongAsync(maPhongCu);
-                    await DongBoTrangThaiPhongAsync(hopDong.MaPhong);
-                    TempData["SuccessMessage"] = $"Đã lập hợp đồng {hopDong.MaHopDong} thành công!";
-                    return RedirectToAction(nameof(Index));
                 }
             }
             ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", hopDong.MaSV);

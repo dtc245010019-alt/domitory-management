@@ -48,6 +48,17 @@ namespace QLKTX.Controllers
                     DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), actionName, HttpContext.Session.Id);
                 return RedirectToAction("Dangnhap", "DN");
             }
+
+            // KIỂM SOÁT BẢO MẬT: Sinh viên đã rời đi hoặc bị đình chỉ không được phép truy cập Portal
+            string currentMaSV = maSV;
+            var sv = _context.SinhViens.AsNoTracking().FirstOrDefault(s => s.MaSV == currentMaSV);
+            if (sv != null && (sv.TinhTrangLuuTru == "Đã rời đi" || sv.TinhTrangLuuTru == "Đình chỉ"))
+            {
+                HttpContext.Session.Clear();
+                TempData["ErrorMessage"] = $"Tài khoản không thể truy cập do hồ sơ sinh viên ở trạng thái '{sv.TinhTrangLuuTru}'. Vui lòng liên hệ Ban Quản lý KTX!";
+                return RedirectToAction("Dangnhap", "DN");
+            }
+
             return null;
         }
 
@@ -70,6 +81,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> GuiYeuCauPhong(string LoaiYeuCau, string PhongMongMuon, string LyDo)
         {
             if (EnsureStudentSession(nameof(GuiYeuCauPhong), out string maSV) is { } redirect)
@@ -83,9 +95,10 @@ namespace QLKTX.Controllers
             }
 
             string maPhongHienTai = !string.IsNullOrEmpty(sv.MaPhong) ? sv.MaPhong : (_context.Phongs.FirstOrDefault()?.MaPhong ?? "101");
+            string maYC = $"YC_{DateTime.Now:yyMMddHHmm}_{Random.Shared.Next(1000, 9999)}";
             var yeuCau = new BaoCaoSuCo
             {
-                MaSuCo = "YC_" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+                MaSuCo = maYC,
                 TenSuCo = $"[{LoaiYeuCau}] Nguyện vọng: {PhongMongMuon}",
                 MoTa = LyDo ?? "Sinh viên gửi yêu cầu qua Portal",
                 MucDoKhanCap = "Bình thường",
@@ -120,16 +133,18 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ThanhToan(string maHoaDon, string phuongThuc, string matKhauXacNhan)
         {
             if (EnsureStudentSession(nameof(ThanhToan), out string maSV) is { } redirect)
                 return redirect;
 
-            // Xác minh mật khẩu đăng nhập của sinh viên
+            // BẢO MẬT: Xác minh mật khẩu cá nhân sinh viên (hỗ trợ băm mật khẩu và tương thích: a.MatKhau == matKhauXacNhan)
             var account = await _context.TaiKhoans
-                .FirstOrDefaultAsync(a => a.MaSV == maSV && a.MatKhau == matKhauXacNhan);
+                .FirstOrDefaultAsync(a => a.MaSV == maSV);
 
-            if (account == null)
+            bool isPasswordValid = account != null && (account.MatKhau == matKhauXacNhan || PasswordHelper.VerifyPassword(account.MatKhau, matKhauXacNhan));
+            if (!isPasswordValid)
             {
                 TempData["ErrorMessage"] = "Xác minh thất bại: Mật khẩu không chính xác. Giao dịch đã bị hủy!";
                 return RedirectToAction("HoaDon");
@@ -166,6 +181,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> GuiBaoCao(string TenSuCo, string MoTa, string MucDoKhanCap, IFormFile? HinhAnhFile)
         {
             if (EnsureStudentSession(nameof(GuiBaoCao), out string maSV) is { } redirect)
@@ -179,17 +195,33 @@ namespace QLKTX.Controllers
                 return RedirectToAction("BaoCaoSuCo");
             }
 
-            string maSC = "SC_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+            string maSC = $"SC_{DateTime.Now:yyMMddHHmm}_{Random.Shared.Next(1000, 9999)}";
             string duongDanAnh = "";
 
-            // Lưu ảnh đính kèm vào thư mục wwwroot/uploads/suco
+            // Lưu ảnh đính kèm vào thư mục wwwroot/uploads/suco có thẩm định an toàn
             if (HinhAnhFile != null && HinhAnhFile.Length > 0)
             {
+                // Kiểm tra dung lượng tối đa 5MB
+                if (HinhAnhFile.Length > 5 * 1024 * 1024)
+                {
+                    TempData["ErrorMessage"] = "Dung lượng ảnh vượt quá giới hạn cho phép (tối đa 5MB)!";
+                    return RedirectToAction("BaoCaoSuCo");
+                }
+
+                // Kiểm tra danh sách trắng định dạng ảnh
+                string ext = Path.GetExtension(HinhAnhFile.FileName).ToLowerInvariant();
+                var allowedExts = new[] { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif" };
+                if (!allowedExts.Contains(ext))
+                {
+                    TempData["ErrorMessage"] = "Định dạng tệp không được hỗ trợ! Vui lòng chỉ tải lên ảnh (.jpg, .jpeg, .png, .webp).";
+                    return RedirectToAction("BaoCaoSuCo");
+                }
+
                 string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "suco");
                 if (!Directory.Exists(uploadsFolder)) 
                     Directory.CreateDirectory(uploadsFolder);
 
-                string uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(HinhAnhFile.FileName);
+                string uniqueFileName = $"{Guid.NewGuid():N}_{DateTime.Now:yyyyMMddHHmmss}{ext}";
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
@@ -230,6 +262,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> XoaYeuCauSinhVien(string maSuCo, string? returnUrl = null)
         {
             if (EnsureStudentSession(nameof(XoaYeuCauSinhVien), out string maSV) is { } redirect)
@@ -287,6 +320,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> XoaTatCaYeuCauDaHoanThanhVaTuChoi(string? returnUrl = null)
         {
             if (EnsureStudentSession(nameof(XoaTatCaYeuCauDaHoanThanhVaTuChoi), out string maSV) is { } redirect)
@@ -332,6 +366,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> GuiLaiYeuCau(string maSuCo, string? moTaMoi, string? returnUrl = null)
         {
             if (EnsureStudentSession(nameof(GuiLaiYeuCau), out string maSV) is { } redirect)
@@ -397,10 +432,12 @@ namespace QLKTX.Controllers
             int csMoi = 155;
             decimal tongTienDien = (csMoi - csCu) * donGiaDienChuan;
 
+            int rndSeed = Random.Shared.Next(100, 999);
+            string timePrefix = DateTime.Now.ToString("yyMMddHHmm");
             var fakeHoaDons = new List<HoaDon>
             {
                 new HoaDon {
-                    MaHoaDon = "HD_" + DateTime.Now.ToString("HHmmss") + "1",
+                    MaHoaDon = $"HD_{timePrefix}_{rndSeed}1",
                     LoaiHoaDon = "Tiền phòng",
                     DonGia = giaPhongChuan,
                     TongTien = giaPhongChuan,
@@ -411,7 +448,7 @@ namespace QLKTX.Controllers
                     MaPhong = maPhong
                 },
                 new HoaDon {
-                    MaHoaDon = "HD_" + DateTime.Now.ToString("HHmmss") + "2",
+                    MaHoaDon = $"HD_{timePrefix}_{rndSeed}2",
                     LoaiHoaDon = "Điện nước",
                     ChiSoCu = csCu,
                     ChiSoMoi = csMoi,
@@ -424,7 +461,7 @@ namespace QLKTX.Controllers
                     MaPhong = maPhong
                 },
                 new HoaDon {
-                    MaHoaDon = "HD_" + DateTime.Now.ToString("HHmmss") + "3",
+                    MaHoaDon = $"HD_{timePrefix}_{rndSeed}3",
                     LoaiHoaDon = "Tiền phòng",
                     DonGia = giaPhongChuan,
                     TongTien = giaPhongChuan,
@@ -545,6 +582,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CapNhatTrangThaiHoaDon(string maHoaDon, string trangThaiMoi, string? returnUrl = null)
         {
             if (EnsureAdminSession(nameof(CapNhatTrangThaiHoaDon)) is { } redirect)
@@ -668,6 +706,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> TaoHoaDon(string maSV, string loaiHoaDon, int? chiSoCu, int? chiSoMoi, decimal? donGiaTuNhap)
         {
             if (EnsureAdminSession(nameof(TaoHoaDon)) is { } redirect)
@@ -714,7 +753,7 @@ namespace QLKTX.Controllers
                 return RedirectToAction(nameof(QuanLyHoaDonAdmin));
             }
 
-            string maHoaDon = $"HD_{DateTime.Now.Ticks.ToString().Substring(8)}";
+            string maHoaDon = $"HD_{DateTime.Now:yyMMddHHmm}_{Random.Shared.Next(1000, 9999)}";
             decimal tongTien = 0;
             decimal donGia = donGiaTuNhap ?? 0;
 
@@ -776,6 +815,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> CapNhatTrangThaiSuCo(string maSuCo, string trangThaiMoi)
         {
@@ -809,6 +849,7 @@ namespace QLKTX.Controllers
         // 5.5. QUẢN LÝ LỊCH SỬ BÁO CÁO & HỖ TRỢ SV (XÓA ĐƠN LẺ, XÓA NHIỀU, XÓA TẤT CẢ)
         // ==========================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> XoaSuCo(string maSuCo)
         {
@@ -837,6 +878,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> XoaNhieuSuCo(List<string> maSuCos)
         {
@@ -866,6 +908,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> XoaTatCaLichSu()
         {
@@ -895,6 +938,7 @@ namespace QLKTX.Controllers
         // 6. AI TÓM TẮT SỰ CỐ (TÍNH NĂNG MỚI ĐỘC LẬP)
         // ==========================================
         [HttpPost]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> TomTatSuCoAI()
         {
             if (HttpContext.Session.GetString("Admin_DangNhap") != "true")

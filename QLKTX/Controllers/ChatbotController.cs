@@ -133,7 +133,7 @@ namespace QLKTX.Controllers
                         ? $"Báo cáo sự cố '{tenSuCo}' tại phòng P.{maPhong} (Thực hiện qua Trợ lý AI)"
                         : req.MoTa.Trim();
 
-                    string maSC = "SC_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+                    string maSC = $"SC_{DateTime.Now:yyMMddHHmm}_{Random.Shared.Next(1000, 9999)}";
                     var bc = new BaoCaoSuCo
                     {
                         MaSuCo = maSC,
@@ -263,7 +263,7 @@ namespace QLKTX.Controllers
                         phongMongMuon = $"Phòng hiện tại: {maPhong}";
                     }
 
-                    string maYC = "YC_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+                    string maYC = $"YC_{DateTime.Now:yyMMddHHmm}_{Random.Shared.Next(1000, 9999)}";
                     var yeuCau = new BaoCaoSuCo
                     {
                         MaSuCo = maYC,
@@ -1078,15 +1078,25 @@ Câu hỏi: ""{rawMsg}""";
                         });
                     }
 
+                    // BẢO MẬT (Chống BOLA/IDOR): Sinh viên chỉ được tra cứu hóa đơn của chính mình/phòng mình
+                    if (currentSv != null && mentionedRooms.Any() && !string.Equals(mentionedRooms.First(), currentSv.MaPhong, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return Json(new
+                        {
+                            response = $"🔒 **Thông báo quyền riêng tư:** Bạn đang đăng nhập với tư cách sinh viên phòng **P.{currentSv.MaPhong}**. Bạn chỉ có quyền tra cứu hóa đơn và dịch vụ của chính phòng mình. Vui lòng liên hệ Ban Quản lý nếu cần hỗ trợ thông tin phòng khác.",
+                            source = "Cổng thông tin Sinh viên KTX"
+                        });
+                    }
+
                     var query = _context.HoaDons.Include(h => h.SinhVien).AsNoTracking().AsQueryable();
-                    if (mentionedRooms.Any())
+                    if (currentSv != null)
+                    {
+                        query = query.Where(h => h.MaSV == currentSv.MaSV || h.MaPhong == currentSv.MaPhong);
+                    }
+                    else if (mentionedRooms.Any())
                     {
                         string r = mentionedRooms.First();
                         query = query.Where(h => h.MaPhong == r);
-                    }
-                    else if (currentSv != null)
-                    {
-                        query = query.Where(h => h.MaSV == currentSv.MaSV || h.MaPhong == currentSv.MaPhong);
                     }
 
                     var hoaDons = await query.OrderByDescending(h => h.NgayLap).ToListAsync();
@@ -1178,6 +1188,15 @@ Câu hỏi: ""{rawMsg}""";
                                 quickAction = new { label = "⚡ Nhờ AI gia hạn phòng cho tôi ngay (+6 tháng)", prompt = "Gia hạn phòng cho tôi", mode = "ACTION" }
                             });
                         }
+                    }
+
+                    if (currentSv != null)
+                    {
+                        return Json(new
+                        {
+                            response = "Bạn hiện không có hợp đồng lưu trú nào khác trên hệ thống. Vui lòng liên hệ Ban Quản lý KTX nếu cần lập mới hoặc đối soát hợp đồng.",
+                            source = "Cổng thông tin Sinh viên KTX"
+                        });
                     }
 
                     int conHieuLuc = await _context.HopDongs.CountAsync(h => h.TrangThai == "Còn hiệu lực");
@@ -1865,7 +1884,7 @@ Câu hỏi: ""{rawMsg}""";
                     else
                     {
                         string title = hasSpecificIssue ? extractedTitle : $"Báo cáo sự cố kỹ thuật tại phòng P.{activeMaPhong}";
-                        string maSC = "SC_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+                        string maSC = $"SC_{DateTime.Now:yyMMddHHmm}_{Random.Shared.Next(1000, 9999)}";
                         var bc = new BaoCaoSuCo
                         {
                             MaSuCo = maSC,
@@ -1989,7 +2008,7 @@ Câu hỏi: ""{rawMsg}""";
                         phongMongMuon = $"Đăng ký trả phòng P.{sourceRoom}";
                     }
 
-                    string maYC = "YC_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+                    string maYC = $"YC_{DateTime.Now:yyMMddHHmm}_{Random.Shared.Next(1000, 9999)}";
                     var yc = new BaoCaoSuCo
                     {
                         MaSuCo = maYC,

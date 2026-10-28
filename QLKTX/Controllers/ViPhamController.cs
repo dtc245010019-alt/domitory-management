@@ -15,6 +15,19 @@ namespace QLKTX.Controllers
             _context = context;
         }
 
+        private async Task DongBoTrangThaiPhongAsync(string? maPhong)
+        {
+            if (string.IsNullOrEmpty(maPhong)) return;
+            var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == maPhong);
+            if (phong != null && phong.TinhTrang != "Bảo trì" && phong.TinhTrang != "Đang sửa chữa")
+            {
+                int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == maPhong && s.TinhTrangLuuTru == "Đang ở");
+                phong.TinhTrang = (soDangO >= phong.SoLuongGiuong) ? "Đã đầy" : "Còn chỗ";
+                _context.Phongs.Update(phong);
+                await _context.SaveChangesAsync();
+            }
+        }
+
         // GET: ViPham
         public async Task<IActionResult> Index()
         {
@@ -124,8 +137,36 @@ namespace QLKTX.Controllers
             {
                 try
                 {
+                    var oldViPham = await _context.ViPhams.AsNoTracking().FirstOrDefaultAsync(v => v.MaViPham == id);
+                    string oldHinhThuc = oldViPham?.HinhThucXuLy ?? "";
+                    string newHinhThuc = viPham.HinhThucXuLy ?? "";
+
                     _context.Update(viPham);
                     await _context.SaveChangesAsync();
+
+                    // Hoàn trả hoặc cập nhật lại trạng thái sinh viên khi sửa mức kỷ luật
+                    var sv = await _context.SinhViens.FindAsync(viPham.MaSV);
+                    if (sv != null)
+                    {
+                        if (oldHinhThuc.Contains("Đình chỉ") && !newHinhThuc.Contains("Đình chỉ"))
+                        {
+                            bool hasOtherSuspension = await _context.ViPhams.AnyAsync(v => v.MaSV == sv.MaSV && v.MaViPham != id && v.HinhThucXuLy != null && v.HinhThucXuLy.Contains("Đình chỉ"));
+                            if (!hasOtherSuspension && sv.TinhTrangLuuTru == "Đình chỉ")
+                            {
+                                sv.TinhTrangLuuTru = "Đang ở";
+                                _context.Update(sv);
+                                await _context.SaveChangesAsync();
+                                await DongBoTrangThaiPhongAsync(sv.MaPhong);
+                            }
+                        }
+                        else if (!oldHinhThuc.Contains("Đình chỉ") && newHinhThuc.Contains("Đình chỉ"))
+                        {
+                            sv.TinhTrangLuuTru = "Đình chỉ";
+                            _context.Update(sv);
+                            await _context.SaveChangesAsync();
+                            await DongBoTrangThaiPhongAsync(sv.MaPhong);
+                        }
+                    }
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -166,8 +207,29 @@ namespace QLKTX.Controllers
             var viPham = await _context.ViPhams.FindAsync(id);
             if (viPham != null)
             {
+                string hinhThuc = viPham.HinhThucXuLy ?? "";
+                string maSV = viPham.MaSV;
+
                 _context.ViPhams.Remove(viPham);
                 await _context.SaveChangesAsync();
+
+                // Nếu xóa biên bản đình chỉ và sinh viên không còn vi phạm đình chỉ nào khác -> phục hồi Đang ở
+                if (hinhThuc.Contains("Đình chỉ"))
+                {
+                    bool hasOtherSuspension = await _context.ViPhams.AnyAsync(v => v.MaSV == maSV && v.HinhThucXuLy != null && v.HinhThucXuLy.Contains("Đình chỉ"));
+                    if (!hasOtherSuspension)
+                    {
+                        var sv = await _context.SinhViens.FindAsync(maSV);
+                        if (sv != null && sv.TinhTrangLuuTru == "Đình chỉ")
+                        {
+                            sv.TinhTrangLuuTru = "Đang ở";
+                            _context.Update(sv);
+                            await _context.SaveChangesAsync();
+                            await DongBoTrangThaiPhongAsync(sv.MaPhong);
+                        }
+                    }
+                }
+
                 TempData["SuccessMessage"] = "Đã xóa bản ghi vi phạm!";
             }
             return RedirectToAction(nameof(Index));
