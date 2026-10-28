@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -20,7 +20,7 @@ namespace QLKTX.Models
         [StringLength(50)]
         public string MucDoKhanCap { get; set; }
 
-        public string HinhAnh { get; set; } // Lưu đường dẫn file ảnh 
+        public string? HinhAnh { get; set; } = ""; // Lưu đường dẫn file ảnh 
 
         [StringLength(50)]
         public string TrangThai { get; set; } = "Chờ xử lý"; // Chờ xử lý, Đã xử lý 
@@ -31,11 +31,11 @@ namespace QLKTX.Models
         [Required]
         public string MaSV { get; set; }
         [ForeignKey("MaSV")]
-        public SinhVien SinhVien { get; set; }
+        public SinhVien? SinhVien { get; set; }
 
         [Required]
         public string MaPhong { get; set; }
         [ForeignKey("MaPhong")]
-        public Phong Phong { get; set; }
+        public Phong? Phong { get; set; }
     }
 }

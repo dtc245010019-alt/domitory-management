@@ -5,6 +5,8 @@
     var currentController = ViewContext.RouteData.Values["Controller"]?.ToString() ?? "";
     var currentAction = ViewContext.RouteData.Values["Action"]?.ToString() ?? "";
     var isAdmin = HttpContextAccessor.HttpContext?.Session?.GetString("Admin_DangNhap");
+    var vaiTro = HttpContextAccessor.HttpContext?.Session?.GetString("VaiTro") ?? "Admin";
+    bool isKeToan = string.Equals(vaiTro, "KeToan", StringComparison.OrdinalIgnoreCase);
 }
 
 <!DOCTYPE html>
@@ -44,11 +46,13 @@
             <div class="sidebar-brand">
                 <a asp-controller="Home" asp-action="Index" class="d-flex align-items-center gap-2 text-decoration-none">
                     <div class="brand-icon-box">
-                        <i class="bi bi-buildings-fill"></i>
+                        <i class="bi @(isKeToan ? "bi-cash-coin" : "bi-buildings-fill")"></i>
                     </div>
                     <div class="lh-sm">
                         <span class="fw-bold text-white fs-6 d-block tracking-tight">QLKTX</span>
-                        <span class="small fw-medium" style="font-size: 0.68rem; color: #818cf8;">Quản trị Ký túc xá</span>
+                        <span class="small fw-medium" style="font-size: 0.68rem; color: #818cf8;">
+                            @(isKeToan ? "Phân hệ Kế toán KTX" : "Quản trị Ký túc xá")
+                        </span>
                     </div>
                 </a>
                 <button class="btn-close btn-close-white d-lg-none" id="sidebarCloseBtn" aria-label="Đóng menu"></button>
@@ -56,110 +60,185 @@
 
             <!-- Scrollable Navigation Menu -->
             <div class="sidebar-menu-scroll">
-                
-                <!-- 1. TỔNG QUAN -->
-                <div class="menu-header-label">Tổng quan</div>
-                <ul class="sidebar-nav-list">
-                    <li>
-                        <a asp-controller="Home" asp-action="Index" class="sidebar-nav-item @((currentController == "Home" || currentController == "") && currentAction == "Index" ? "active" : "")">
-                            <i class="bi bi-grid-1x2-fill nav-icon"></i>
-                            <span>Bảng điều khiển</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="BaoCao" asp-action="Index" class="sidebar-nav-item @(currentController == "BaoCao" ? "active" : "")">
-                            <i class="bi bi-graph-up-arrow nav-icon"></i>
-                            <span>Báo cáo & Thống kê</span>
-                        </a>
-                    </li>
-                </ul>
+                @if (isKeToan)
+                {
+                    <!-- MENU DÀNH RIÊNG CHO VAI TRÒ KẾ TOÁN -->
+                    <div class="menu-header-label">Tổng quan Tài chính</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="Home" asp-action="Index" class="sidebar-nav-item @((currentController == "Home" || currentController == "") && currentAction == "Index" ? "active" : "")">
+                                <i class="bi bi-grid-1x2-fill nav-icon"></i>
+                                <span>Bảng điều khiển Kế toán</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="BaoCao" asp-action="Index" class="sidebar-nav-item @(currentController == "BaoCao" ? "active" : "")">
+                                <i class="bi bi-graph-up-arrow nav-icon"></i>
+                                <span>Báo cáo Doanh thu & Nợ</span>
+                            </a>
+                        </li>
+                    </ul>
 
-                <!-- 2. QUẢN LÝ LƯU TRÚ -->
-                <div class="menu-header-label">Quản lý Lưu trú</div>
-                <ul class="sidebar-nav-list">
-                    <li>
-                        <a asp-controller="SinhVien" asp-action="Index" class="sidebar-nav-item @(currentController == "SinhVien" && currentAction != "LichSu" ? "active" : "")">
-                            <i class="bi bi-people-fill nav-icon"></i>
-                            <span>Sinh viên KTX</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="SinhVien" asp-action="LichSu" class="sidebar-nav-item @(currentController == "SinhVien" && currentAction == "LichSu" ? "active" : "")">
-                            <i class="bi bi-clock-history nav-icon"></i>
-                            <span>Lịch sử sinh viên</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="Phong" asp-action="Index" class="sidebar-nav-item @(currentController == "Phong" ? "active" : "")">
-                            <i class="bi bi-door-open-fill nav-icon"></i>
-                            <span>Quản lý Phòng ở</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="HopDong" asp-action="Index" class="sidebar-nav-item @(currentController == "HopDong" ? "active" : "")">
-                            <i class="bi bi-file-earmark-text-fill nav-icon"></i>
-                            <span>Hợp đồng lưu trú</span>
-                        </a>
-                    </li>
-                </ul>
+                    <div class="menu-header-label">Nghiệp vụ Thu phí & Công nợ</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="Portal" asp-action="QuanLyHoaDonAdmin" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "QuanLyHoaDonAdmin" ? "active" : "")">
+                                <i class="bi bi-receipt-cutoff nav-icon"></i>
+                                <span>Điện nước & Hóa đơn</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Portal" asp-action="TaoHoaDon" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "TaoHoaDon" ? "active" : "")">
+                                <i class="bi bi-plus-square-fill nav-icon"></i>
+                                <span>Lập Hóa đơn thu phí</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="HopDong" asp-action="Index" class="sidebar-nav-item @(currentController == "HopDong" ? "active" : "")">
+                                <i class="bi bi-file-earmark-text-fill nav-icon"></i>
+                                <span>Hợp đồng & Tiền cọc</span>
+                            </a>
+                        </li>
+                    </ul>
 
-                <!-- 3. TÀI SẢN & DỊCH VỤ -->
-                <div class="menu-header-label">Tài sản & Dịch vụ</div>
-                <ul class="sidebar-nav-list">
-                    <li>
-                        <a asp-controller="CoSoVatChat" asp-action="Index" class="sidebar-nav-item @(currentController == "CoSoVatChat" ? "active" : "")">
-                            <i class="bi bi-box-seam-fill nav-icon"></i>
-                            <span>Cơ sở vật chất</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="Portal" asp-action="QuanLyHoaDonAdmin" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "QuanLyHoaDonAdmin" ? "active" : "")">
-                            <i class="bi bi-lightning-charge-fill nav-icon"></i>
-                            <span>Điện nước & Hóa đơn</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="Portal" asp-action="QuanLySuCoAdmin" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "QuanLySuCoAdmin" ? "active" : "")">
-                            <i class="bi bi-tools nav-icon"></i>
-                            <span>Báo cáo sự cố</span>
-                        </a>
-                    </li>
-                </ul>
+                    <div class="menu-header-label">Tra cứu Đối chiếu</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="SinhVien" asp-action="Index" class="sidebar-nav-item @(currentController == "SinhVien" && currentAction != "LichSu" ? "active" : "")">
+                                <i class="bi bi-people-fill nav-icon"></i>
+                                <span>Tra cứu Sinh viên</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Phong" asp-action="Index" class="sidebar-nav-item @(currentController == "Phong" ? "active" : "")">
+                                <i class="bi bi-door-open-fill nav-icon"></i>
+                                <span>Tra cứu Phòng & Bảng giá</span>
+                            </a>
+                        </li>
+                    </ul>
 
-                <!-- 4. KỶ LUẬT & NỘI QUY -->
-                <div class="menu-header-label">Kỷ luật & Nội quy</div>
-                <ul class="sidebar-nav-list">
-                    <li>
-                        <a asp-controller="ViPham" asp-action="Index" class="sidebar-nav-item @(currentController == "ViPham" ? "active" : "")">
-                            <i class="bi bi-shield-fill-exclamation nav-icon"></i>
-                            <span>Vi phạm & Xử lý</span>
-                        </a>
-                    </li>
-                </ul>
+                    <div class="menu-header-label">Hệ thống</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="DN" asp-action="LienheQuanly" class="sidebar-nav-item @(currentController == "DN" && currentAction == "LienheQuanly" ? "active" : "")">
+                                <i class="bi bi-headset nav-icon"></i>
+                                <span>Hỗ trợ kỹ thuật</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="DN" asp-action="Dangxuat" class="sidebar-nav-item text-danger" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?');">
+                                <i class="bi bi-box-arrow-right nav-icon text-danger"></i>
+                                <span class="text-danger fw-semibold">Đăng xuất</span>
+                            </a>
+                        </li>
+                    </ul>
+                }
+                else
+                {
+                    <!-- MENU ĐẦY ĐỦ DÀNH CHO BAN QUẢN LÝ (ADMIN) -->
+                    <!-- 1. TỔNG QUAN -->
+                    <div class="menu-header-label">Tổng quan</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="Home" asp-action="Index" class="sidebar-nav-item @((currentController == "Home" || currentController == "") && currentAction == "Index" ? "active" : "")">
+                                <i class="bi bi-grid-1x2-fill nav-icon"></i>
+                                <span>Bảng điều khiển</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="BaoCao" asp-action="Index" class="sidebar-nav-item @(currentController == "BaoCao" ? "active" : "")">
+                                <i class="bi bi-graph-up-arrow nav-icon"></i>
+                                <span>Báo cáo & Thống kê</span>
+                            </a>
+                        </li>
+                    </ul>
 
-                <!-- 5. HỆ THỐNG & CỔNG THÔNG TIN -->
-                <div class="menu-header-label">Cổng thông tin & Hỗ trợ</div>
-                <ul class="sidebar-nav-list">
-                    <li>
-                        <a asp-controller="Portal" asp-action="Index" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "Index" ? "active" : "")">
-                            <i class="bi bi-person-badge-fill nav-icon"></i>
-                            <span>Cổng Sinh viên (Portal)</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="DN" asp-action="LienheQuanly" class="sidebar-nav-item @(currentController == "DN" && currentAction == "LienheQuanly" ? "active" : "")">
-                            <i class="bi bi-headset nav-icon"></i>
-                            <span>Hỗ trợ kỹ thuật</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a asp-controller="DN" asp-action="Dangxuat" class="sidebar-nav-item text-danger" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?');">
-                            <i class="bi bi-box-arrow-right nav-icon text-danger"></i>
-                            <span class="text-danger fw-semibold">Đăng xuất</span>
-                        </a>
-                    </li>
-                </ul>
+                    <!-- 2. QUẢN LÝ LƯU TRÚ -->
+                    <div class="menu-header-label">Quản lý Lưu trú</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="SinhVien" asp-action="Index" class="sidebar-nav-item @(currentController == "SinhVien" && currentAction != "LichSu" ? "active" : "")">
+                                <i class="bi bi-people-fill nav-icon"></i>
+                                <span>Sinh viên KTX</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="SinhVien" asp-action="LichSu" class="sidebar-nav-item @(currentController == "SinhVien" && currentAction == "LichSu" ? "active" : "")">
+                                <i class="bi bi-clock-history nav-icon"></i>
+                                <span>Lịch sử sinh viên</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Phong" asp-action="Index" class="sidebar-nav-item @(currentController == "Phong" ? "active" : "")">
+                                <i class="bi bi-door-open-fill nav-icon"></i>
+                                <span>Quản lý Phòng ở</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="HopDong" asp-action="Index" class="sidebar-nav-item @(currentController == "HopDong" ? "active" : "")">
+                                <i class="bi bi-file-earmark-text-fill nav-icon"></i>
+                                <span>Hợp đồng lưu trú</span>
+                            </a>
+                        </li>
+                    </ul>
 
+                    <!-- 3. TÀI SẢN & DỊCH VỤ -->
+                    <div class="menu-header-label">Tài sản & Dịch vụ</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="CoSoVatChat" asp-action="Index" class="sidebar-nav-item @(currentController == "CoSoVatChat" ? "active" : "")">
+                                <i class="bi bi-box-seam-fill nav-icon"></i>
+                                <span>Cơ sở vật chất</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Portal" asp-action="QuanLyHoaDonAdmin" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "QuanLyHoaDonAdmin" ? "active" : "")">
+                                <i class="bi bi-lightning-charge-fill nav-icon"></i>
+                                <span>Điện nước & Hóa đơn</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="Portal" asp-action="QuanLySuCoAdmin" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "QuanLySuCoAdmin" ? "active" : "")">
+                                <i class="bi bi-tools nav-icon"></i>
+                                <span>Báo cáo và hỗ trợ SV</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- 4. KỶ LUẬT & NỘI QUY -->
+                    <div class="menu-header-label">Kỷ luật & Nội quy</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="ViPham" asp-action="Index" class="sidebar-nav-item @(currentController == "ViPham" ? "active" : "")">
+                                <i class="bi bi-shield-fill-exclamation nav-icon"></i>
+                                <span>Vi phạm & Xử lý</span>
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- 5. HỆ THỐNG & CỔNG THÔNG TIN -->
+                    <div class="menu-header-label">Cổng thông tin & Hỗ trợ</div>
+                    <ul class="sidebar-nav-list">
+                        <li>
+                            <a asp-controller="Portal" asp-action="QuanLyHoaDonAdmin" class="sidebar-nav-item @(currentController == "Portal" && currentAction == "Index" ? "active" : "")">
+                                <i class="bi bi-person-badge-fill nav-icon"></i>
+                                <span>Cổng Sinh viên (Portal)</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="DN" asp-action="LienheQuanly" class="sidebar-nav-item @(currentController == "DN" && currentAction == "LienheQuanly" ? "active" : "")">
+                                <i class="bi bi-headset nav-icon"></i>
+                                <span>Hỗ trợ kỹ thuật</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a asp-controller="DN" asp-action="Dangxuat" class="sidebar-nav-item text-danger" onclick="return confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?');">
+                                <i class="bi bi-box-arrow-right nav-icon text-danger"></i>
+                                <span class="text-danger fw-semibold">Đăng xuất</span>
+                            </a>
+                        </li>
+                    </ul>
+                }
             </div>
 
             <!-- Footer Sidebar Status -->
@@ -167,7 +246,7 @@
                 <div class="d-flex align-items-center justify-content-between p-2 rounded-3" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);">
                     <div class="d-flex align-items-center gap-2 small text-light">
                         <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--success); display: inline-block; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);"></span>
-                        <span style="font-size: 0.75rem;">Hệ thống Online</span>
+                        <span style="font-size: 0.75rem;">@(isKeToan ? "Phân hệ Kế toán" : "Hệ thống Online")</span>
                     </div>
                     <span class="badge bg-secondary opacity-75 font-monospace" style="font-size: 0.65rem;">v3.2</span>
                 </div>
@@ -189,9 +268,9 @@
                     </button>
 
                     <!-- Quick Global Search Input -->
-                    <form method="get" asp-controller="SinhVien" asp-action="Index" class="position-relative d-none d-sm-block w-100" style="max-width: 380px;">
+                    <form method="get" asp-controller="@(isKeToan ? "Portal" : "SinhVien")" asp-action="@(isKeToan ? "QuanLyHoaDonAdmin" : "Index")" class="position-relative d-none d-sm-block w-100" style="max-width: 380px;">
                         <i class="bi bi-search text-muted position-absolute" style="left: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem;"></i>
-                        <input type="text" name="searchString" id="topbarSearchInput" class="topbar-search-input" placeholder="Tìm sinh viên, phòng ở, hợp đồng..." autocomplete="off" />
+                        <input type="text" name="searchString" id="topbarSearchInput" class="topbar-search-input" placeholder="@(isKeToan ? "Tìm mã hóa đơn, mã SV, phòng..." : "Tìm sinh viên, phòng ở, hợp đồng...")" autocomplete="off" />
                         <span class="position-absolute text-muted small fw-bold px-2 py-0 bg-white rounded shadow-xs" style="right: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 0.68rem; border: 1px solid var(--border-color);">Ctrl+K</span>
                     </form>
                 </div>
@@ -211,13 +290,13 @@
                                 <span class="badge bg-primary rounded-pill small">3 chưa đọc</span>
                             </div>
                             <div class="p-2" style="max-height: 260px; overflow-y: auto;">
-                                <a href="@Url.Action("QuanLySuCoAdmin", "Portal")" class="d-flex gap-2 p-2 rounded-3 text-decoration-none text-dark hover-bg-light">
+                                <a href="@Url.Action("QuanLyHoaDonAdmin", "Portal")" class="d-flex gap-2 p-2 rounded-3 text-decoration-none text-dark hover-bg-light">
                                     <div class="p-2 rounded-3" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background-color: var(--danger-bg); color: var(--danger-text);">
-                                        <i class="bi bi-tools"></i>
+                                        <i class="bi bi-receipt"></i>
                                     </div>
                                     <div class="small">
-                                        <div class="fw-semibold">Báo cáo sự cố P.302</div>
-                                        <div class="text-muted" style="font-size: 0.72rem;">Hỏng vòi nước • 15 phút trước</div>
+                                        <div class="fw-semibold">Hóa đơn điện nước tháng mới</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">Kiểm tra công nợ • 15 phút trước</div>
                                     </div>
                                 </a>
                                 <a href="@Url.Action("Index", "HopDong")" class="d-flex gap-2 p-2 rounded-3 text-decoration-none text-dark hover-bg-light">
@@ -240,28 +319,28 @@
                             <div class="dropdown">
                                 <div class="d-flex align-items-center gap-2 p-1 pe-2 rounded-pill border bg-white shadow-xs" data-bs-toggle="dropdown" aria-expanded="false" role="button" style="cursor: pointer;">
                                     <div class="avatar-ring">
-                                        <div class="avatar-inner-box">AD</div>
+                                        <div class="avatar-inner-box">@(isKeToan ? "KT" : "AD")</div>
                                         <span class="avatar-online-dot"></span>
                                     </div>
                                     <div class="d-none d-md-block text-start lh-1 ps-1">
-                                        <div class="fw-bold text-dark" style="font-size: 0.85rem;">Ban Quản Lý</div>
-                                        <span class="text-muted" style="font-size: 0.7rem;">Admin KTX</span>
+                                        <div class="fw-bold text-dark" style="font-size: 0.85rem;">@(isKeToan ? "Phòng Kế Toán" : "Ban Quản Lý")</div>
+                                        <span class="text-muted" style="font-size: 0.7rem;">@(isKeToan ? "Kế toán KTX" : "Admin KTX")</span>
                                     </div>
                                     <i class="bi bi-chevron-down text-muted small ms-1 d-none d-md-inline-block" style="font-size: 0.75rem;"></i>
                                 </div>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-dropdown border-0 rounded-3 mt-1" style="border: 1px solid var(--border-color) !important; min-width: 210px;">
                                     <li class="px-3 py-2 border-bottom">
-                                        <div class="fw-bold text-dark small">Admin Quản Trị</div>
-                                        <div class="text-muted" style="font-size: 0.72rem;">admin@dormitory.edu.vn</div>
+                                        <div class="fw-bold text-dark small">@(isKeToan ? "Cán bộ Kế Toán" : "Admin Quản Trị")</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">@(isKeToan ? "ketoan@dormitory.edu.vn" : "admin@dormitory.edu.vn")</div>
                                     </li>
                                     <li>
                                         <a class="dropdown-item py-2 small" asp-controller="Home" asp-action="Index">
-                                            <i class="bi bi-speedometer2 text-muted me-2"></i>Bảng điều khiển
+                                            <i class="bi bi-speedometer2 text-muted me-2"></i>@(isKeToan ? "Bảng điều khiển Kế toán" : "Bảng điều khiển")
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item py-2 small" asp-controller="Portal" asp-action="Index">
-                                            <i class="bi bi-mortarboard text-muted me-2"></i>Xem Cổng Sinh viên
+                                        <a class="dropdown-item py-2 small" asp-controller="Portal" asp-action="QuanLyHoaDonAdmin">
+                                            <i class="bi bi-receipt text-muted me-2"></i>Quản lý Hóa đơn & Công nợ
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider my-1"></li>
@@ -371,6 +450,7 @@
             </div>
 
             <div class="p-2 border-top bg-white d-flex gap-1 overflow-auto" style="scrollbar-width: none;">
+                <button type="button" class="btn btn-sm btn-primary py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Nhờ AI làm hộ')">⚡ Nhờ AI làm hộ</button>
                 <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Giá phòng KTX bao nhiêu?')">💰 Giá phòng?</button>
                 <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Hướng dẫn báo hỏng cơ sở vật chất?')">🛠 Báo sự cố?</button>
                 <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Quy định giờ giấc ký túc xá?')">⏰ Giờ giới nghiêm?</button>
@@ -391,6 +471,7 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/chatbot-agent.js" asp-append-version="true"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -507,10 +588,13 @@
                 if (loader) loader.remove();
 
                 const aiText = data.response || "Tôi đã nhận được câu hỏi nhưng chưa có phản hồi phù hợp.";
+                const formattedText = typeof formatAiMessageText === 'function' ? formatAiMessageText(aiText) : escapeHtml(aiText).replace(/\n/g, '<br />');
+                const cardHtml = (typeof renderActionCard === 'function' && data.actionCard) ? renderActionCard(data.actionCard) : '';
+                const quickBtnHtml = (typeof renderQuickActionButton === 'function' && data.quickAction) ? renderQuickActionButton(data.quickAction) : '';
                 const src = data.source ? `<div class="mt-1 pt-1 border-top text-muted" style="font-size:0.7rem;"><i class="bi bi-database me-1"></i>Nguồn: ${escapeHtml(data.source)}</div>` : '';
                 chatMessages.innerHTML += `
                     <div class="msg-row-ai">
-                        <div class="msg-bubble-ai">${escapeHtml(aiText).replace(/\n/g, '<br />')}${src}</div>
+                        <div class="msg-bubble-ai">${formattedText}${cardHtml}${quickBtnHtml}${src}</div>
                     </div>
                 `;
             } catch (err) {

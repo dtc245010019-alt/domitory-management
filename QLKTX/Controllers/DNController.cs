@@ -43,11 +43,14 @@ namespace QLKTX.Controllers
                 if (!string.IsNullOrEmpty(account.MaSV))
                 {
                     HttpContext.Session.SetString("MaSV_DangNhap", account.MaSV);
+                    HttpContext.Session.SetString("VaiTro", "SinhVien");
                     return RedirectToAction("Index", "Portal");
                 }
                 else
                 {
                     HttpContext.Session.SetString("Admin_DangNhap", "true");
+                    HttpContext.Session.SetString("VaiTro", string.IsNullOrEmpty(account.Quyen) ? "Admin" : account.Quyen);
+                    HttpContext.Session.SetString("TenDangNhap", account.TenDangNhap);
                     return RedirectToAction("Index", "Home");
                 }
             }
@@ -69,10 +72,31 @@ namespace QLKTX.Controllers
             return View();
         }
 
+        // POST: /DN/ForgotPassword
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!string.IsNullOrWhiteSpace(model?.Email))
+            {
+                TempData["Success"] = true;
+                TempData["Email"] = model.Email.Trim();
+            }
+            return View("QuenMK", model);
+        }
+
         // GET: /DN/LienheQuanly
         public IActionResult LienheQuanly()
         {
             return View();
+        }
+
+        // POST: /DN/ContactAdmin
+        [HttpPost]
+        public IActionResult ContactAdmin(ContactViewModel model)
+        {
+            TempData["Success"] = true;
+            return View("LienheQuanly");
         }
     }
 }

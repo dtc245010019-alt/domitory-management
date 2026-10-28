@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Báo cáo thống kê";
 }
 
@@ -8,7 +8,7 @@
         <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> In Báo Cáo</button>
     </div>
 
-    <div class="row row-cols-1 row-cols-md-5 g-3 mb-4">
+    <div class="row row-cols-1 row-cols-md-5 g-3 mb-3">
         <div class="col">
             <div class="card shadow-sm border-0 border-start border-success border-5 h-100">
                 <div class="card-body px-3">
@@ -46,6 +46,49 @@
                 <div class="card-body px-3">
                     <h6 class="text-warning fw-bold" style="font-size: 0.8rem;">PHÒNG CÒN CHỖ</h6>
                     <h4 class="fw-bold mb-0">@(ViewBag.PhongConCho ?? 0) <small class="text-muted" style="font-size: 0.7rem;">phòng</small></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hàng 2: Thống kê Công nợ, Hóa đơn đã thu & Phản ánh sự cố -->
+    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-danger border-5 h-100">
+                <div class="card-body px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-danger fw-bold mb-1" style="font-size: 0.8rem;">TỔNG CÔNG NỢ (CHƯA THU)</h6>
+                        <h4 class="fw-bold text-danger mb-0">@(ViewBag.TongCongNo != null ? ViewBag.TongCongNo.ToString("N0") : "0") <small class="text-muted" style="font-size: 0.7rem;">VNĐ</small></h4>
+                        <small class="text-muted">Đang nợ: <strong>@(ViewBag.SoHoaDonNo ?? 0)</strong> hóa đơn</small>
+                    </div>
+                    <i class="bi bi-exclamation-octagon-fill text-danger fs-2 opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-success border-5 h-100">
+                <div class="card-body px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-success fw-bold mb-1" style="font-size: 0.8rem;">TỔNG PHÍ HÓA ĐƠN ĐÃ THU</h6>
+                        <h4 class="fw-bold text-success mb-0">@(ViewBag.TongHoaDonDaThu != null ? ViewBag.TongHoaDonDaThu.ToString("N0") : "0") <small class="text-muted" style="font-size: 0.7rem;">VNĐ</small></h4>
+                        <small class="text-muted">Phí phòng & Điện nước</small>
+                    </div>
+                    <i class="bi bi-cash-coin text-success fs-2 opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card shadow-sm border-0 border-start border-primary border-5 h-100">
+                <div class="card-body px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-primary fw-bold mb-1" style="font-size: 0.8rem;">PHẢN ÁNH & SỰ CỐ KỸ THUẬT</h6>
+                        <h4 class="fw-bold mb-0">
+                            <span class="text-warning">@(ViewBag.SuCoChoXuLy ?? 0) chờ</span> /
+                            <span class="text-success">@(ViewBag.SuCoDaXuLy ?? 0) đã xong</span>
+                        </h4>
+                        <small class="text-muted">Đang xử lý: <strong>@(ViewBag.SuCoDangXuLy ?? 0)</strong> sự cố</small>
+                    </div>
+                    <i class="bi bi-tools text-primary fs-2 opacity-75"></i>
                 </div>
             </div>
         </div>

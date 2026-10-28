@@ -8,6 +8,7 @@ using System.IO;
 
 namespace QLKTX.Controllers
 {
+    [AdminAuthorize]
     public class SinhVienController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -17,10 +18,58 @@ namespace QLKTX.Controllers
             _context = context;
         }
 
+        private SelectList BuildPhongSelectList(string? selectedMaPhong = null)
+        {
+            var phongs = _context.Phongs
+                .Include(p => p.SinhViens)
+                .AsNoTracking()
+                .ToList()
+                .Select(p =>
+                {
+                    int soDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru == "Đang ở") ?? 0;
+                    int conTrong = Math.Max(0, p.SoLuongGiuong - soDangO);
+                    return new
+                    {
+                        p.MaPhong,
+                        ConTrong = conTrong,
+                        IsSelected = p.MaPhong == selectedMaPhong,
+                        DisplayText = conTrong > 0
+                            ? $"P.{p.MaPhong} - {p.LoaiPhong} (Trống {conTrong}/{p.SoLuongGiuong} giường)"
+                            : $"P.{p.MaPhong} - {p.LoaiPhong} (ĐÃ ĐẦY {soDangO}/{p.SoLuongGiuong})"
+                    };
+                })
+                .Where(p => p.ConTrong > 0 || p.IsSelected)
+                .ToList();
+
+            return new SelectList(phongs, "MaPhong", "DisplayText", selectedMaPhong);
+        }
+
+        private async Task DongBoTrangThaiPhongAsync(string? maPhong)
+        {
+            if (string.IsNullOrEmpty(maPhong)) return;
+            var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == maPhong);
+            if (phong == null) return;
+
+            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == maPhong && s.TinhTrangLuuTru == "Đang ở");
+            if (soDangO >= phong.SoLuongGiuong && phong.TinhTrang == "Còn chỗ")
+            {
+                phong.TinhTrang = "Đã đầy";
+                _context.Phongs.Update(phong);
+                await _context.SaveChangesAsync();
+            }
+            else if (soDangO < phong.SoLuongGiuong && phong.TinhTrang == "Đã đầy")
+            {
+                phong.TinhTrang = "Còn chỗ";
+                _context.Phongs.Update(phong);
+                await _context.SaveChangesAsync();
+            }
+        }
 
         // GET: SinhVien/Index
         public async Task<IActionResult> Index(string searchString)
         {
+            DbInitializer.DongBoYeuCauPhongDaDuyet(_context);
+
             // Truyền lại từ khóa ra View để giữ lại chữ người dùng vừa gõ trong ô tìm kiếm
             ViewData["CurrentFilter"] = searchString;
 
@@ -55,6 +104,8 @@ namespace QLKTX.Controllers
         // GET: SinhVien/LichSu
         public async Task<IActionResult> LichSu(string searchString)
         {
+            DbInitializer.DongBoYeuCauPhongDaDuyet(_context);
+
             ViewData["CurrentFilter"] = searchString;
 
             // Lọc sinh viên "Đã rời đi"
@@ -96,17 +147,20 @@ namespace QLKTX.Controllers
         }
 
         // GET: SinhVien/Create
+        [AdminAuthorize(OnlyAdmin = true)]
         public IActionResult Create()
         {
-            ViewBag.Phongs = new SelectList(_context.Phongs, "MaPhong", "MaPhong");
+            ViewBag.Phongs = BuildPhongSelectList();
             return View();
         }
 
         // POST: SinhVien/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Create(SinhVien sv)
         {
+            ModelState.Remove("Phong");
             if (ModelState.IsValid)
             {
                 if (_context.SinhViens.Any(e => e.MaSV == sv.MaSV))
@@ -115,16 +169,44 @@ namespace QLKTX.Controllers
                 }
                 else
                 {
+                    if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru == "Đang ở")
+                    {
+                        var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
+                        if (phong != null)
+                        {
+                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở");
+                            if (soDangO >= phong.SoLuongGiuong)
+                            {
+                                ModelState.AddModelError("MaPhong", $"Phòng P.{phong.MaPhong} đã đầy ({soDangO}/{phong.SoLuongGiuong} giường), vui lòng chọn phòng khác!");
+                                ViewBag.Phongs = BuildPhongSelectList(sv.MaPhong);
+                                return View(sv);
+                            }
+                        }
+                    }
+
                     _context.Add(sv);
+                    if (!_context.TaiKhoans.Any(t => t.TenDangNhap == sv.MaSV))
+                    {
+                        _context.TaiKhoans.Add(new TaiKhoan
+                        {
+                            TenDangNhap = sv.MaSV,
+                            MatKhau = "123",
+                            Quyen = "SinhVien",
+                            MaSV = sv.MaSV
+                        });
+                    }
                     await _context.SaveChangesAsync();
+                    await DongBoTrangThaiPhongAsync(sv.MaPhong);
+                    TempData["SuccessMessage"] = $"Đã tiếp nhận sinh viên {sv.HoTen} ({sv.MaSV}) thành công!";
                     return RedirectToAction(nameof(Index));
                 }
             }
-            ViewBag.Phongs = new SelectList(_context.Phongs, "MaPhong", "MaPhong", sv.MaPhong);
+            ViewBag.Phongs = BuildPhongSelectList(sv.MaPhong);
             return View(sv);
         }
 
         // GET: SinhVien/Edit/5
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Edit(string id)
         {
             if (id == null) return NotFound();
@@ -132,41 +214,63 @@ namespace QLKTX.Controllers
             var sinhVien = await _context.SinhViens.FindAsync(id);
             if (sinhVien == null) return NotFound();
 
-            ViewBag.MaPhong = new SelectList(_context.Phongs, "MaPhong", "MaPhong", sinhVien.MaPhong);
+            ViewBag.MaPhong = BuildPhongSelectList(sinhVien.MaPhong);
             return View(sinhVien);
         }
 
         // POST: SinhVien/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Edit(string id, SinhVien sv)
         {
             if (id != sv.MaSV) return NotFound();
 
             ModelState.Remove("Phong");
-
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(sv);
-                    await _context.SaveChangesAsync();
+                    string? maPhongCu = await _context.SinhViens
+                        .AsNoTracking()
+                        .Where(s => s.MaSV == sv.MaSV)
+                        .Select(s => s.MaPhong)
+                        .FirstOrDefaultAsync();
 
-                    // Yêu cầu: Cập nhật tình trạng phòng nếu sinh viên "Đã rời đi"
-                    if (sv.TinhTrangLuuTru == "Đã rời đi" && !string.IsNullOrEmpty(sv.MaPhong))
+                    if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru == "Đang ở")
                     {
-                        var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
-                        if (phong != null && phong.TinhTrang == "Đã đầy")
+                        var phongMoi = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
+                        if (phongMoi != null)
                         {
-                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở");
-                            if (soDangO < phong.SoLuongGiuong)
+                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sv.MaSV);
+                            if (soDangO >= phongMoi.SoLuongGiuong)
                             {
-                                phong.TinhTrang = "Còn chỗ";
-                                _context.Update(phong);
-                                await _context.SaveChangesAsync();
+                                ModelState.AddModelError("MaPhong", $"Phòng P.{phongMoi.MaPhong} đã đạt tối đa {phongMoi.SoLuongGiuong}/{phongMoi.SoLuongGiuong} giường, không thể chuyển vào!");
+                                ViewBag.MaPhong = BuildPhongSelectList(sv.MaPhong);
+                                return View(sv);
                             }
                         }
                     }
+
+                    // Đánh dấu mọi yêu cầu trả/chuyển phòng cũ của SV này đã đồng bộ để không ghi đè thao tác sửa tay của Admin
+                    var oldYeuCaus = await _context.BaoCaoSuCos
+                        .Where(b => b.MaSV == sv.MaSV && (b.MaSuCo.StartsWith("YC_") || b.TenSuCo.StartsWith("[")) && !b.MoTa.Contains("[Đã đồng bộ]"))
+                        .ToListAsync();
+                    foreach (var yc in oldYeuCaus)
+                    {
+                        yc.MoTa = (yc.MoTa ?? "") + " [Đã đồng bộ]";
+                    }
+
+                    _context.Update(sv);
+                    await _context.SaveChangesAsync();
+
+                    // Tự động đồng bộ trạng thái phòng cũ và phòng mới ("Còn chỗ" / "Đã đầy")
+                    await DongBoTrangThaiPhongAsync(maPhongCu);
+                    if (maPhongCu != sv.MaPhong)
+                    {
+                        await DongBoTrangThaiPhongAsync(sv.MaPhong);
+                    }
+                    TempData["SuccessMessage"] = $"Đã cập nhật hồ sơ sinh viên {sv.HoTen} ({sv.MaSV})!";
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -176,11 +280,12 @@ namespace QLKTX.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.MaPhong = new SelectList(_context.Phongs, "MaPhong", "MaPhong", sv.MaPhong);
+            ViewBag.MaPhong = BuildPhongSelectList(sv.MaPhong);
             return View(sv);
         }
 
         // GET: SinhVien/Delete/5
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Delete(string id)
         {
             if (id == null) return NotFound();
@@ -197,18 +302,24 @@ namespace QLKTX.Controllers
         // POST: SinhVien/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
             var sinhVien = await _context.SinhViens.FindAsync(id);
             if (sinhVien != null)
             {
-                _context.SinhViens.Remove(sinhVien);
+                sinhVien.TinhTrangLuuTru = "Đã rời đi";
+                _context.SinhViens.Update(sinhVien);
                 await _context.SaveChangesAsync();
+
+                await DongBoTrangThaiPhongAsync(sinhVien.MaPhong);
+                TempData["SuccessMessage"] = $"Đã chuyển sinh viên {sinhVien.HoTen} ({sinhVien.MaSV}) sang danh sách Lịch sử rời KTX!";
             }
             return RedirectToAction(nameof(Index));
         }
 
         // GET: SinhVien/TaoDuLieuMau
+        [AdminAuthorize(OnlyAdmin = true)]
         public IActionResult TaoDuLieuMau()
         {
             try
@@ -378,6 +489,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> ImportExcel(IFormFile fileExcel)
         {
             if (fileExcel == null || fileExcel.Length == 0)
@@ -462,6 +574,71 @@ namespace QLKTX.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        // GET: SinhVien/ExportToExcel
+        [HttpGet]
+        public async Task<IActionResult> ExportToExcel()
+        {
+            var danhSach = await _context.SinhViens
+                .Include(s => s.Phong)
+                .Where(s => s.TinhTrangLuuTru == "Đang ở")
+                .OrderBy(s => s.MaPhong)
+                .ThenBy(s => s.MaSV)
+                .AsNoTracking()
+                .ToListAsync();
+
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("DanhSachSinhVienKTX");
+
+                worksheet.Cell(1, 1).Value = "STT";
+                worksheet.Cell(1, 2).Value = "Mã SV";
+                worksheet.Cell(1, 3).Value = "Họ và Tên";
+                worksheet.Cell(1, 4).Value = "Ngày Sinh";
+                worksheet.Cell(1, 5).Value = "Lớp";
+                worksheet.Cell(1, 6).Value = "Mã Phòng";
+                worksheet.Cell(1, 7).Value = "Loại Phòng";
+                worksheet.Cell(1, 8).Value = "Số Điện Thoại";
+                worksheet.Cell(1, 9).Value = "CCCD";
+                worksheet.Cell(1, 10).Value = "Tình Trạng Lưu Trú";
+
+                var headerRow = worksheet.Row(1);
+                headerRow.Style.Font.Bold = true;
+                headerRow.Style.Fill.BackgroundColor = XLColor.FromHtml("#4F46E5");
+                headerRow.Style.Font.FontColor = XLColor.White;
+                headerRow.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                worksheet.Column(8).Style.NumberFormat.Format = "@";
+                worksheet.Column(9).Style.NumberFormat.Format = "@";
+
+                int rowIdx = 2;
+                int stt = 1;
+                foreach (var sv in danhSach)
+                {
+                    worksheet.Cell(rowIdx, 1).Value = stt++;
+                    worksheet.Cell(rowIdx, 2).Value = sv.MaSV;
+                    worksheet.Cell(rowIdx, 3).Value = sv.HoTen;
+                    worksheet.Cell(rowIdx, 4).Value = sv.NgaySinh.ToString("yyyy-MM-dd");
+                    worksheet.Cell(rowIdx, 5).Value = sv.Lop;
+                    worksheet.Cell(rowIdx, 6).Value = sv.MaPhong ?? "Chưa xếp";
+                    worksheet.Cell(rowIdx, 7).Value = sv.Phong?.LoaiPhong ?? "-";
+                    worksheet.Cell(rowIdx, 8).Value = sv.SoDienThoai;
+                    worksheet.Cell(rowIdx, 9).Value = sv.CCCD;
+                    worksheet.Cell(rowIdx, 10).Value = sv.TinhTrangLuuTru;
+                    rowIdx++;
+                }
+
+                worksheet.Columns().AdjustToContents();
+
+                using (var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    var content = stream.ToArray();
+                    string fileName = $"DanhSach_SinhVien_KTX_{DateTime.Now:yyyyMMdd}.xlsx";
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+                }
+            }
         }
 
         // GET: SinhVien/DownloadTemplate

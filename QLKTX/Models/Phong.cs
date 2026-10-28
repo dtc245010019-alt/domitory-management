@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace QLKTX.Models
@@ -31,7 +31,7 @@ namespace QLKTX.Models
         public string TinhTrang { get; set; } = "Còn chỗ";
 
         // Navigation property: Mối quan hệ 1-N (1 Phòng có nhiều Sinh viên)
-        public ICollection<SinhVien> SinhViens { get; set; }
+        public ICollection<SinhVien>? SinhViens { get; set; }
 
     }
 }

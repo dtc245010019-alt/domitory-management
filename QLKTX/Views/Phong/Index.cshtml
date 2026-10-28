@@ -1,7 +1,9 @@
 @model IEnumerable<QLKTX.Models.Phong>
+@using Microsoft.AspNetCore.Http
 
 @{
     ViewData["Title"] = "Quản lý Phòng";
+    bool isKeToan = Context.Session.GetString("VaiTro") == "KeToan";
 
     var tongSoPhong = Model?.Count() ?? 0;
     var phongConTrong = Model?.Count(p => p.TinhTrang == "Còn chỗ" || p.TinhTrang == "Còn trống") ?? 0;
@@ -22,11 +24,18 @@
             <p class="text-muted small mb-0 mt-1">Theo dõi sức chứa, số giường trống, loại phòng và tình trạng phòng ở theo thời gian thực.</p>
         </div>
 
-        <div>
-            <a asp-action="Create" class="btn btn-primary btn-sm px-3 py-2">
-                <i class="bi bi-plus-circle-fill me-1"></i>
-                <span>Thêm phòng mới</span>
-            </a>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm px-3 py-2 shadow-xs" data-bs-toggle="modal" data-bs-target="#aiRoomModal">
+                <i class="bi bi-stars me-1"></i>
+                <span>AI Gợi ý xếp phòng</span>
+            </button>
+            @if (!isKeToan)
+            {
+                <a asp-action="Create" class="btn btn-primary btn-sm px-3 py-2">
+                    <i class="bi bi-plus-circle-fill me-1"></i>
+                    <span>Thêm phòng mới</span>
+                </a>
+            }
         </div>
     </div>
 
@@ -133,19 +142,23 @@
                         </div>
                     </div>
 
-                    <!-- Bộ lọc theo Tòa nhà & Trạng thái -->
+                    <!-- Bộ lọc theo Tòa nhà / Tầng & Trạng thái -->
                     <div class="col-12 col-md-7 col-lg-8">
                         <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
                             
-                            <!-- Lọc nhanh Tòa nhà -->
+                            <!-- Lọc nhanh Tòa nhà / Tầng -->
                             <div class="d-flex align-items-center gap-1">
-                                <label class="form-label mb-0 small text-muted d-none d-sm-inline">Tòa:</label>
-                                <select id="buildingFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
-                                    <option value="">Tất cả tòa</option>
-                                    <option value="A">Tòa A</option>
-                                    <option value="B">Tòa B</option>
-                                    <option value="C">Tòa C</option>
-                                    <option value="D">Tòa D</option>
+                                <label class="form-label mb-0 small text-muted d-none d-sm-inline">Tòa / Tầng:</label>
+                                <select id="buildingFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
+                                    <option value="">Tất cả Tòa / Tầng</option>
+                                    <option value="1">Tầng 1</option>
+                                    <option value="2">Tầng 2</option>
+                                    <option value="3">Tầng 3</option>
+                                    <option value="4">Tầng 4</option>
+                                    <option value="5">Tầng 5</option>
+                                    <option value="A">Khu Tòa A</option>
+                                    <option value="B">Khu Tòa B</option>
+                                    <option value="C">Khu Tòa C</option>
                                 </select>
                             </div>
 
@@ -199,6 +212,7 @@
                             @foreach (var item in Model)
                             {
                                 var buildingCode = !string.IsNullOrEmpty(item.MaPhong) ? item.MaPhong.Substring(0, 1) : "";
+                                var areaLabel = (!string.IsNullOrEmpty(buildingCode) && char.IsDigit(buildingCode[0])) ? $"Tòa A - Tầng {buildingCode}" : $"Khu Tòa {buildingCode}";
                                 <tr data-room="@item.MaPhong" data-status="@item.TinhTrang">
                                     <!-- Mã Phòng -->
                                     <td class="ps-4 py-3">
@@ -208,7 +222,7 @@
                                             </div>
                                             <div>
                                                 <strong class="text-dark d-block">P.@item.MaPhong</strong>
-                                                <span class="text-muted small" style="font-size: 0.72rem;">Khu Tòa @buildingCode</span>
+                                                <span class="text-muted small" style="font-size: 0.72rem;">@areaLabel</span>
                                             </div>
                                         </div>
                                     </td>
@@ -230,7 +244,7 @@
                                         <span class="fw-bold text-primary">
                                             @item.GiaPhong.ToString("N0")
                                         </span>
-                                        <span class="text-muted small"> đ/tháng</span>
+                                        <span class="text-muted small"> đ/kỳ</span>
                                     </td>
 
                                     <!-- Tình trạng -->
@@ -274,20 +288,23 @@
                                                title="Chi tiết phòng @item.MaPhong">
                                                 <i class="bi bi-eye"></i>
                                             </a>
-                                            <a asp-action="Edit" 
-                                               asp-route-id="@item.MaPhong" 
-                                               class="btn btn-outline-warning btn-action-icon" 
-                                               data-bs-toggle="tooltip" 
-                                               title="Chỉnh sửa phòng @item.MaPhong">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <a asp-action="Delete" 
-                                               asp-route-id="@item.MaPhong" 
-                                               class="btn btn-outline-danger btn-action-icon" 
-                                               data-bs-toggle="tooltip" 
-                                               title="Xóa phòng @item.MaPhong">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
+                                            @if (!isKeToan)
+                                            {
+                                                <a asp-action="Edit" 
+                                                   asp-route-id="@item.MaPhong" 
+                                                   class="btn btn-outline-warning btn-action-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Chỉnh sửa phòng @item.MaPhong">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a asp-action="Delete" 
+                                                   asp-route-id="@item.MaPhong" 
+                                                   class="btn btn-outline-danger btn-action-icon" 
+                                                   data-bs-toggle="tooltip" 
+                                                   title="Xóa phòng @item.MaPhong">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            }
                                         </div>
                                     </td>
                                 </tr>
@@ -328,6 +345,63 @@
 
     </div>
 
+</div>
+
+<!-- Modal AI Gợi ý xếp phòng -->
+<div class="modal fade" id="aiRoomModal" tabindex="-1" aria-labelledby="aiRoomModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white rounded-top-4">
+                <h5 class="modal-title fw-bold" id="aiRoomModalLabel">
+                    <i class="bi bi-stars me-2"></i>Trợ lý AI Gợi ý Xếp phòng Ký túc xá
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-3">
+                    Chọn các tiêu chí bên dưới để AI phân tích dữ liệu phòng còn chỗ trống trong CSDL và gợi ý phương án xếp phòng tối ưu nhất.
+                </p>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small">Loại phòng mong muốn</label>
+                        <select id="aiLoaiPhong" class="form-select">
+                            <option value="">-- Tất cả loại phòng --</option>
+                            <option value="Phòng thường">Phòng thường (9.000.000đ)</option>
+                            <option value="Phòng có điều hoà">Phòng có điều hoà (11.000.000đ)</option>
+                            <option value="Phòng điều hoà + nóng lạnh">Phòng điều hoà + nóng lạnh (13.000.000đ)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">Khu Tòa / Tầng ưu tiên</label>
+                        <select id="aiTangOrToa" class="form-select">
+                            <option value="">-- Tất cả Tòa / Tầng --</option>
+                            <option value="1">Tầng 1</option>
+                            <option value="2">Tầng 2</option>
+                            <option value="3">Tầng 3</option>
+                            <option value="4">Tầng 4</option>
+                            <option value="5">Tầng 5</option>
+                            <option value="A">Khu Tòa A</option>
+                            <option value="B">Khu Tòa B</option>
+                            <option value="C">Khu Tòa C</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small">Số SV cần xếp</label>
+                        <input type="number" id="aiSoGiuongCan" class="form-control" value="1" min="1" max="6" />
+                    </div>
+                </div>
+
+                <div class="d-grid mb-3">
+                    <button type="button" id="btnRunAiRoomSuggest" class="btn btn-primary fw-semibold">
+                        <i class="bi bi-magic me-1"></i> Phân tích & Đề xuất phòng tối ưu
+                    </button>
+                </div>
+
+                <div id="aiRoomResultBox" class="p-3 rounded-3 bg-light border d-none" style="white-space: pre-line; font-size: 0.92rem; line-height: 1.6;">
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -389,6 +463,37 @@
                     if (buildingFilter) buildingFilter.value = '';
                     if (statusFilter) statusFilter.value = '';
                     applyClientFilter();
+                });
+            }
+
+            // AI Gợi ý xếp phòng
+            const btnAiSuggest = document.getElementById('btnRunAiRoomSuggest');
+            const aiResultBox = document.getElementById('aiRoomResultBox');
+            if (btnAiSuggest && aiResultBox) {
+                btnAiSuggest.addEventListener('click', async function () {
+                    const loaiPhong = document.getElementById('aiLoaiPhong').value;
+                    const tangOrToa = document.getElementById('aiTangOrToa').value;
+                    const soGiuongCan = parseInt(document.getElementById('aiSoGiuongCan').value || '1');
+
+                    btnAiSuggest.disabled = true;
+                    btnAiSuggest.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>AI đang phân tích dữ liệu phòng trống...';
+                    aiResultBox.classList.remove('d-none');
+                    aiResultBox.textContent = 'Đang truy vấn CSDL và phân tích tiêu chí xếp phòng...';
+
+                    try {
+                        const res = await fetch('/Phong/GoiYXepPhongAI', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ loaiPhong, tangOrToa, soGiuongCan })
+                        });
+                        const data = await res.json();
+                        aiResultBox.textContent = data.suggestion || 'Không có kết quả gợi ý.';
+                    } catch (err) {
+                        aiResultBox.textContent = 'Lỗi kết nối khi gọi AI gợi ý xếp phòng.';
+                    } finally {
+                        btnAiSuggest.disabled = false;
+                        btnAiSuggest.innerHTML = '<i class="bi bi-magic me-1"></i> Phân tích & Đề xuất phòng tối ưu';
+                    }
                 });
             }
         });

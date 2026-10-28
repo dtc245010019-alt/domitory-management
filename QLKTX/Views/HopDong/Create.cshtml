@@ -1,4 +1,4 @@
-﻿@model QLKTX.Models.HopDong
+@model QLKTX.Models.HopDong
 
 @{
     ViewData["Title"] = "Tạo Hợp Đồng Mới";
@@ -6,10 +6,19 @@
 
 <div class="container-fluid mt-4">
     <div class="card shadow" style="max-width: 800px; margin: auto;">
-        <div class="card-header bg-secondary text-white">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h4 class="mb-0"><i class="bi bi-file-earmark-plus"></i> Lập Hợp Đồng Lưu Trú Mới</h4>
+            <button type="button" id="btnAiSuggestContract" class="btn btn-light btn-sm fw-semibold text-primary">
+                <i class="bi bi-stars me-1"></i> AI Gợi ý phòng trống
+            </button>
         </div>
         <div class="card-body">
+            <!-- Khung kết quả AI Gợi ý phòng cho Hợp đồng -->
+            <div id="aiContractBox" class="p-3 mb-3 rounded border bg-light d-none">
+                <div id="aiContractButtons" class="d-flex flex-wrap gap-2 mb-2"></div>
+                <div id="aiContractText" class="small text-dark" style="white-space: pre-line;"></div>
+            </div>
+
             <form asp-action="Create">
                 <div asp-validation-summary="All" class="text-danger mb-3 alert alert-danger"></div>
 
@@ -27,8 +36,8 @@
                         <span asp-validation-for="MaSV" class="text-danger"></span>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label asp-for="MaPhong" class="form-label fw-bold">Phòng</label>
-                        <select asp-for="MaPhong" class="form-select" asp-items="ViewBag.MaPhong" required>
+                        <label asp-for="MaPhong" class="form-label fw-bold">Phòng (Còn chỗ)</label>
+                        <select asp-for="MaPhong" id="selectMaPhongHd" class="form-select" asp-items="ViewBag.MaPhong" required>
                             <option value="">-- Chọn phòng --</option>
                         </select>
                         <span asp-validation-for="MaPhong" class="text-danger"></span>
@@ -84,4 +93,51 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const btnAi = document.getElementById('btnAiSuggestContract');
+            const box = document.getElementById('aiContractBox');
+            const btnGroup = document.getElementById('aiContractButtons');
+            const txt = document.getElementById('aiContractText');
+            const selectPhong = document.getElementById('selectMaPhongHd');
+
+            if (btnAi) {
+                btnAi.addEventListener('click', async function () {
+                    box.classList.remove('d-none');
+                    btnAi.disabled = true;
+                    txt.textContent = 'AI đang phân tích danh sách phòng còn giường trống...';
+                    btnGroup.innerHTML = '';
+
+                    try {
+                        const res = await fetch('/Phong/GoiYXepPhongAI', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ loaiPhong: '', tangOrToa: '', soGiuongCan: 1 })
+                        });
+                        const data = await res.json();
+                        txt.textContent = data.suggestion || '';
+                        if (data.recommendedMaPhong && selectPhong) {
+                            selectPhong.value = data.recommendedMaPhong;
+                        }
+                        if (Array.isArray(data.recommendedRooms)) {
+                            data.recommendedRooms.forEach(function (r) {
+                                const b = document.createElement('button');
+                                b.type = 'button';
+                                b.className = 'btn btn-sm btn-success';
+                                b.innerHTML = `<i class="bi bi-check2-circle me-1"></i>Chọn P.${r.maPhong} (Trống ${r.giuongTrong}/${r.soLuongGiuong})`;
+                                b.addEventListener('click', function () {
+                                    if (selectPhong) selectPhong.value = r.maPhong;
+                                });
+                                btnGroup.appendChild(b);
+                            });
+                        }
+                    } catch (e) {
+                        txt.textContent = 'Không thể kết nối dịch vụ gợi ý phòng.';
+                    } finally {
+                        btnAi.disabled = false;
+                    }
+                });
+            }
+        });
+    </script>
 }

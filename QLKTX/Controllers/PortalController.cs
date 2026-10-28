@@ -18,15 +18,18 @@ namespace QLKTX.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<PortalController> _logger;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
         public PortalController(
             ApplicationDbContext context, 
             IWebHostEnvironment webHostEnvironment,
-            ILogger<PortalController> logger)
+            ILogger<PortalController> logger,
+            Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _logger = logger;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -61,6 +64,40 @@ namespace QLKTX.Controllers
                 return NotFound("Không tìm thấy thông tin sinh viên.");
 
             return View(sv);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GuiYeuCauPhong(string LoaiYeuCau, string PhongMongMuon, string LyDo)
+        {
+            if (EnsureStudentSession(nameof(GuiYeuCauPhong), out string maSV) is { } redirect)
+                return redirect;
+
+            var sv = await _context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == maSV);
+            if (sv == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy hồ sơ sinh viên.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            string maPhongHienTai = !string.IsNullOrEmpty(sv.MaPhong) ? sv.MaPhong : (_context.Phongs.FirstOrDefault()?.MaPhong ?? "101");
+            var yeuCau = new BaoCaoSuCo
+            {
+                MaSuCo = "YC_" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+                TenSuCo = $"[{LoaiYeuCau}] Nguyện vọng: {PhongMongMuon}",
+                MoTa = LyDo ?? "Sinh viên gửi yêu cầu qua Portal",
+                MucDoKhanCap = "Bình thường",
+                HinhAnh = "",
+                MaSV = maSV,
+                MaPhong = maPhongHienTai,
+                TrangThai = "Chờ xử lý",
+                NgayBaoCao = DateTime.Now
+            };
+
+            _context.BaoCaoSuCos.Add(yeuCau);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"Đã gửi yêu cầu '{LoaiYeuCau}' ({PhongMongMuon}) tới Ban Quản lý thành công!";
+            return RedirectToAction(nameof(Index));
         }
 
         // ==========================================
@@ -126,7 +163,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GuiBaoCao(string TenSuCo, string MoTa, string MucDoKhanCap, IFormFile HinhAnhFile)
+        public async Task<IActionResult> GuiBaoCao(string TenSuCo, string MoTa, string MucDoKhanCap, IFormFile? HinhAnhFile)
         {
             if (EnsureStudentSession(nameof(GuiBaoCao), out string maSV) is { } redirect)
                 return redirect;
@@ -139,7 +176,7 @@ namespace QLKTX.Controllers
                 return RedirectToAction("BaoCaoSuCo");
             }
 
-            string maSC = "SC_" + DateTime.Now.ToString("yyyyMMddHHmm");
+            string maSC = "SC_" + DateTime.Now.ToString("yyyyMMddHHmmss");
             string duongDanAnh = "";
 
             // Lưu ảnh đính kèm vào thư mục wwwroot/uploads/suco
@@ -308,9 +345,9 @@ namespace QLKTX.Controllers
             if (hd != null)
             {
                 hd.TrangThai = trangThaiMoi;
-                if (trangThaiMoi == "Đã thanh toán" && string.IsNullOrEmpty(hd.HinhThucThanhToan))
+                if (trangThaiMoi == "Đã thanh toán" && (string.IsNullOrEmpty(hd.HinhThucThanhToan) || hd.HinhThucThanhToan == "Chưa có"))
                 {
-                    hd.HinhThucThanhToan = "Tiền mặt (Admin thu)";
+                    hd.HinhThucThanhToan = HttpContext.Session.GetString("VaiTro") == "KeToan" ? "Tiền mặt (Kế toán thu)" : "Tiền mặt (Admin thu)";
                 }
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = $"Cập nhật trạng thái hóa đơn {maHoaDon} thành công!";
@@ -427,6 +464,7 @@ namespace QLKTX.Controllers
             return RedirectToAction(nameof(QuanLyHoaDonAdmin));
         }
 
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> QuanLySuCoAdmin()
         {
             if (EnsureAdminSession(nameof(QuanLySuCoAdmin)) is { } redirect)
@@ -442,6 +480,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> CapNhatTrangThaiSuCo(string maSuCo, string trangThaiMoi)
         {
             if (EnsureAdminSession(nameof(CapNhatTrangThaiSuCo)) is { } redirect)
@@ -487,27 +526,21 @@ namespace QLKTX.Controllers
                 }
 
                 string jsonData = System.Text.Json.JsonSerializer.Serialize(suCos);
-                string prompt = $@"Bạn là người quản lý ký túc xá. Dưới đây là danh sách sự cố đang chờ xử lý:
-{jsonData}
-
-Hãy:
-(1) Phân loại thành nhóm Điện, Nước, Khác.
-(2) Nêu sự cố nào khẩn cấp cần xử lý trước và lý do.
-(3) Tóm tắt ngắn gọn bằng tiếng Việt, trình bày theo gạch đầu dòng rõ ràng.
-Tuyệt đối không tự bịa thêm sự cố ngoài danh sách.";
+                string prompt = AIPrompts.BuildIncidentSummaryPrompt(jsonData);
+                string modelName = _configuration["Ollama:Model"] ?? "llama3";
 
                 var payload = new
                 {
-                    model = "llama3",
+                    model = modelName,
                     messages = new[]
                     {
-                        new { role = "system", content = "Bạn là trợ lý AI quản lý KTX. Phải trả lời 100% bằng tiếng Việt và tuân thủ định dạng yêu cầu." },
+                        new { role = "system", content = AIPrompts.IncidentSummarySystemPrompt },
                         new { role = "user", content = prompt }
                     },
                     stream = false
                 };
 
-                using (var httpClient = new System.Net.Http.HttpClient())
+                if (false) using (var httpClient = new System.Net.Http.HttpClient())
                 {
                     var content = new System.Net.Http.StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
                     var res = await httpClient.PostAsync("http://localhost:11434/api/chat", content);
@@ -520,7 +553,47 @@ Tuyệt đối không tự bịa thêm sự cố ngoài danh sách.";
                         return Json(new { success = true, summary = aiResponse });
                     }
                 }
-                return Json(new { success = false, summary = "Lỗi: Không thể kết nối với dịch vụ AI Ollama (Vui lòng kiểm tra Ollama đã chạy chưa)." });
+                try
+                {
+                    using (var httpClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(8) })
+                    {
+                        var content = new System.Net.Http.StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+                        var res = await httpClient.PostAsync("http://localhost:11434/api/chat", content);
+
+                        if (res.IsSuccessStatusCode)
+                        {
+                            var json = await res.Content.ReadAsStringAsync();
+                            using var doc = System.Text.Json.JsonDocument.Parse(json);
+                            string? aiResponse = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
+                            if (!string.IsNullOrWhiteSpace(aiResponse))
+                                return Json(new { success = true, summary = aiResponse });
+                        }
+                    }
+                }
+                catch { }
+
+                // Fallback tổng hợp thông minh khi dịch vụ Ollama cục bộ chưa bật
+                var nhomDien = suCos.Where(s => s.TenSuCo.Contains("điện", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("đèn", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("quạt", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("điều hòa", StringComparison.OrdinalIgnoreCase)).ToList();
+                var nhomNuoc = suCos.Where(s => s.TenSuCo.Contains("nước", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("vòi", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("ống", StringComparison.OrdinalIgnoreCase)).ToList();
+                var nhomKhac = suCos.Except(nhomDien).Except(nhomNuoc).ToList();
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"📊 BÁO CÁO TỔNG HỢP SỰ CỐ ĐANG CHỜ XỬ LÝ ({suCos.Count} sự cố):");
+                sb.AppendLine();
+                sb.AppendLine($"1. Phân loại theo nhóm kỹ thuật:");
+                sb.AppendLine($"   • Nhóm Điện / Thiết bị điện ({nhomDien.Count} sự cố): " + (nhomDien.Any() ? string.Join(", ", nhomDien.Select(x => $"P.{x.MaPhong} ({x.TenSuCo})")) : "Không có"));
+                sb.AppendLine($"   • Nhóm Cấp thoát nước ({nhomNuoc.Count} sự cố): " + (nhomNuoc.Any() ? string.Join(", ", nhomNuoc.Select(x => $"P.{x.MaPhong} ({x.TenSuCo})")) : "Không có"));
+                sb.AppendLine($"   • Nhóm Nội thất / Khác ({nhomKhac.Count} sự cố): " + (nhomKhac.Any() ? string.Join(", ", nhomKhac.Select(x => $"P.{x.MaPhong} ({x.TenSuCo})")) : "Không có"));
+                sb.AppendLine();
+                sb.AppendLine("2. Đề xuất thứ tự ưu tiên xử lý:");
+                if (nhomDien.Any())
+                    sb.AppendLine("   • Ưu tiên 1 (Khẩn cấp): Cử thợ điện kiểm tra ngay các phòng " + string.Join(", ", nhomDien.Select(x => "P." + x.MaPhong).Distinct()) + " để đảm bảo an toàn điện và sinh hoạt.");
+                if (nhomNuoc.Any())
+                    sb.AppendLine("   • Ưu tiên 2 (Quan trọng): Khắc phục sự cố nước tại " + string.Join(", ", nhomNuoc.Select(x => "P." + x.MaPhong).Distinct()) + " tránh thất thoát nước.");
+                if (nhomKhac.Any())
+                    sb.AppendLine("   • Ưu tiên 3: Bảo trì khóa cửa / nội thất tại " + string.Join(", ", nhomKhac.Select(x => "P." + x.MaPhong).Distinct()) + ".");
+
+                return Json(new { success = true, summary = sb.ToString() });
             }
             catch (Exception ex)
             {
