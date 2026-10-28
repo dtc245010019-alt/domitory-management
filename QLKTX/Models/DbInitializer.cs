@@ -2,6 +2,7 @@ using QLKTX.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace QLKTX
 {
@@ -27,8 +28,12 @@ namespace QLKTX
 
                     int loai = (tang + i) % 3;
                     string loaiPhong = loai == 0 ? "Phòng thường" : (loai == 1 ? "Phòng có điều hoà" : "Phòng điều hoà + nóng lạnh");
-                    decimal giaPhong = loai == 0 ? 9000000m : (loai == 1 ? 11000000m : 13000000m);
-                    int soGiuong = (i % 4 == 0) ? 4 : 6;
+                    // Chuẩn hóa biểu phí theo thị trường KTX thực tế (tính theo đầu sinh viên / tháng):
+                    // - Phòng thường: 350.000 VNĐ / SV / tháng (1.750.000 VNĐ / kỳ 5 tháng)
+                    // - Phòng có điều hoà: 650.000 VNĐ / SV / tháng (3.250.000 VNĐ / kỳ 5 tháng)
+                    // - Phòng điều hoà + nóng lạnh: 950.000 VNĐ / SV / tháng (4.750.000 VNĐ / kỳ 5 tháng)
+                    decimal giaPhong = loai == 0 ? 350000m : (loai == 1 ? 650000m : 950000m);
+                    int soGiuong = (loai == 2) ? 4 : ((loai == 1) ? ((i % 2 == 0) ? 4 : 6) : ((i % 4 == 0) ? 8 : 6));
 
                     newPhongs.Add(new Phong
                     {
@@ -54,13 +59,14 @@ namespace QLKTX
 
                     int loai = i % 3;
                     string loaiPhong = loai == 0 ? "Phòng thường" : (loai == 1 ? "Phòng có điều hoà" : "Phòng điều hoà + nóng lạnh");
-                    decimal giaPhong = loai == 0 ? 9000000m : (loai == 1 ? 11000000m : 13000000m);
+                    decimal giaPhong = loai == 0 ? 350000m : (loai == 1 ? 650000m : 950000m);
+                    int soGiuong = (loai == 2) ? 4 : 6;
 
                     newPhongs.Add(new Phong
                     {
                         MaPhong = maPhong,
                         LoaiPhong = loaiPhong,
-                        SoLuongGiuong = 6,
+                        SoLuongGiuong = soGiuong,
                         GiaPhong = giaPhong,
                         TinhTrang = "Còn chỗ",
                         TrangThaiThietBi = "Bình thường"
@@ -76,6 +82,53 @@ namespace QLKTX
             }
 
             var allPhongs = context.Phongs.ToList();
+
+            // =========================================================================
+            // CHUẨN HÓA DỮ LIỆU CŨ NẾU CSDL ĐÃ TỒN TẠI BIỂU PHÍ CŨ
+            // =========================================================================
+            bool hasPhongPriceFix = false;
+            foreach (var p in allPhongs)
+            {
+                decimal standardPrice = 350000m;
+                int standardGiuong = p.SoLuongGiuong;
+                if (p.LoaiPhong.Contains("nóng lạnh", StringComparison.OrdinalIgnoreCase))
+                {
+                    standardPrice = 950000m;
+                    standardGiuong = 4;
+                }
+                else if (p.LoaiPhong.Contains("điều hoà", StringComparison.OrdinalIgnoreCase))
+                {
+                    standardPrice = 650000m;
+                    if (standardGiuong != 4 && standardGiuong != 6) standardGiuong = 6;
+                }
+                else
+                {
+                    standardPrice = 350000m;
+                    if (standardGiuong != 6 && standardGiuong != 8) standardGiuong = 6;
+                }
+
+                if (p.GiaPhong != standardPrice || p.SoLuongGiuong != standardGiuong)
+                {
+                    p.GiaPhong = standardPrice;
+                    p.SoLuongGiuong = standardGiuong;
+                    hasPhongPriceFix = true;
+                }
+            }
+            if (hasPhongPriceFix)
+            {
+                context.SaveChanges();
+            }
+
+            // Chuẩn hóa tiền cọc hợp đồng cũ về mức chuẩn 1.000.000 VNĐ
+            var oldHopDongs = context.HopDongs.Where(h => h.TienDatCoc != 1000000m).ToList();
+            if (oldHopDongs.Any())
+            {
+                foreach (var hd in oldHopDongs)
+                {
+                    hd.TienDatCoc = 1000000m;
+                }
+                context.SaveChanges();
+            }
 
             // =========================================================================
             // 2. BỔ SUNG HỒ SƠ SINH VIÊN (ĐANG Ở + LỊCH SỬ RỜI ĐI + ĐÌNH CHỈ)
@@ -217,7 +270,7 @@ namespace QLKTX
                         MaPhong = sv.MaPhong,
                         NgayBatDau = isConHieuLuc ? new DateTime(2025, 8, random.Next(15, 30)) : new DateTime(2024, 8, 15),
                         NgayKetThuc = isConHieuLuc ? new DateTime(2026, 6, 30) : new DateTime(2025, 6, 30),
-                        TienDatCoc = 1500000m,
+                        TienDatCoc = 1000000m,
                         TrangThai = isConHieuLuc ? "Còn hiệu lực" : "Hết hiệu lực",
                         DieuKhoan = "Sinh viên đã nộp đủ tiền đặt cọc và cam kết thực hiện đúng nội quy KTX."
                     });
@@ -294,7 +347,7 @@ namespace QLKTX
                 {
                     var sv = svListForBilling[i];
                     var phong = allPhongs.FirstOrDefault(p => p.MaPhong == sv.MaPhong);
-                    decimal giaPhong = phong != null && phong.GiaPhong > 500000 ? phong.GiaPhong / 6 : 1500000m;
+                    decimal giaPhong = phong?.GiaPhong ?? (sv.MaPhong.StartsWith("1") ? 350000m : 650000m);
 
                     string maHdPhong = $"HDP_{2026}_{i + 1:D3}";
                     if (!existingHoaDonIds.Contains(maHdPhong))
@@ -306,8 +359,8 @@ namespace QLKTX
                             LoaiHoaDon = "Tiền phòng",
                             ChiSoCu = null,
                             ChiSoMoi = null,
-                            DonGia = giaPhong,
-                            TongTien = giaPhong,
+                            DonGia = giaPhong, // Đơn giá theo tháng của từng sinh viên
+                            TongTien = giaPhong, // Tính đúng theo đầu người của phòng đó
                             HinhThucThanhToan = daThuPhong ? phuongThucTT[i % phuongThucTT.Length] : "Chưa có",
                             TrangThai = daThuPhong ? "Đã thanh toán" : "Chưa thanh toán",
                             NgayLap = DateTime.Now.AddDays(-random.Next(2, 45)),
@@ -322,7 +375,7 @@ namespace QLKTX
                     {
                         int csCu = random.Next(120, 450);
                         int csMoi = csCu + random.Next(35, 110);
-                        decimal donGia = 3500m;
+                        decimal donGia = 2500m; // Đơn giá điện sinh hoạt chuẩn 2.500 VNĐ / kWh
                         bool daThuDien = i % 3 != 0;
 
                         newHoaDons.Add(new HoaDon
@@ -332,7 +385,7 @@ namespace QLKTX
                             ChiSoCu = csCu,
                             ChiSoMoi = csMoi,
                             DonGia = donGia,
-                            TongTien = (csMoi - csCu) * donGia,
+                            TongTien = (csMoi - csCu) * donGia, // Tính tiền chuẩn: (ChiSoMoi - ChiSoCu) * DonGia
                             HinhThucThanhToan = daThuDien ? phuongThucTT[(i + 1) % phuongThucTT.Length] : "Chưa có",
                             TrangThai = daThuDien ? "Đã thanh toán" : "Chưa thanh toán",
                             NgayLap = DateTime.Now.AddDays(-random.Next(1, 25)),
@@ -345,6 +398,35 @@ namespace QLKTX
                 if (newHoaDons.Any())
                 {
                     context.HoaDons.AddRange(newHoaDons);
+                    context.SaveChanges();
+                }
+
+                // Tự động chuẩn hóa hóa đơn cũ nếu CSDL đang lưu đơn giá cũ
+                var oldHoaDonsDien = context.HoaDons
+                    .Where(h => h.LoaiHoaDon == "Điện nước" && h.DonGia == 3500m && h.ChiSoCu.HasValue && h.ChiSoMoi.HasValue)
+                    .ToList();
+                if (oldHoaDonsDien.Any())
+                {
+                    foreach (var h in oldHoaDonsDien)
+                    {
+                        h.DonGia = 2500m;
+                        h.TongTien = (h.ChiSoMoi!.Value - h.ChiSoCu!.Value) * 2500m;
+                    }
+                    context.SaveChanges();
+                }
+
+                var oldHoaDonsPhong = context.HoaDons
+                    .Include(h => h.Phong)
+                    .Where(h => h.LoaiHoaDon == "Tiền phòng" && h.TongTien > 5000000m)
+                    .ToList();
+                if (oldHoaDonsPhong.Any())
+                {
+                    foreach (var h in oldHoaDonsPhong)
+                    {
+                        decimal rate = h.Phong?.GiaPhong ?? 650000m;
+                        h.DonGia = rate;
+                        h.TongTien = rate;
+                    }
                     context.SaveChanges();
                 }
             }

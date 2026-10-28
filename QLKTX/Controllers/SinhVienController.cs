@@ -351,8 +351,8 @@ namespace QLKTX.Controllers
                         {
                             MaPhong = maPhong,
                             LoaiPhong = loai == 1 ? "Phòng thường" : (loai == 2 ? "Phòng có điều hoà" : "Phòng điều hoà + nóng lạnh"),
-                            SoLuongGiuong = 6,
-                            GiaPhong = loai == 1 ? 9000000m : (loai == 2 ? 11000000m : 13000000m),
+                            SoLuongGiuong = loai == 3 ? 4 : 6,
+                            GiaPhong = loai == 1 ? 350000m : (loai == 2 ? 650000m : 950000m),
                             TinhTrang = "Còn chỗ",
                             TrangThaiThietBi = "Bình thường"
                         });
@@ -431,7 +431,7 @@ namespace QLKTX.Controllers
                         MaPhong = sv.MaPhong,
                         NgayBatDau = new DateTime(2025, 8, random.Next(1, 30)),
                         NgayKetThuc = new DateTime(2026, 6, 30),
-                        TienDatCoc = 1500000m,
+                        TienDatCoc = 1000000m,
                         TrangThai = "Còn hiệu lực",
                         DieuKhoan = "Sinh viên đã nộp đủ tiền cọc và ký cam kết nội quy KTX."
                     });

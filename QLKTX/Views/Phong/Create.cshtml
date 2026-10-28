@@ -58,14 +58,26 @@
                         <span asp-validation-for="LoaiPhong" class="text-danger small mt-1 d-block"></span>
                     </div>
 
-                    <!-- Số Giường -->
+                    <!-- Tổng Số Giường -->
                     <div class="col-12 col-md-6">
-                        <label asp-for="SoLuongGiuong" class="form-label">Số Lượng Giường <span class="text-danger">*</span></label>
+                        <label asp-for="SoLuongGiuong" class="form-label">Tổng Số Giường Quy Định <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-layout-text-window text-muted"></i></span>
-                            <input asp-for="SoLuongGiuong" type="number" min="1" max="16" class="form-control" placeholder="Số giường trong phòng" required />
+                            <input asp-for="SoLuongGiuong" id="soLuongGiuongInput" type="number" min="1" max="16" class="form-control" placeholder="Số giường trong phòng" required />
                         </div>
                         <span asp-validation-for="SoLuongGiuong" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <!-- Số Giường Đã Có Người Ở -->
+                    <div class="col-12 col-md-6">
+                        <label for="soGiuongDaOInput" class="form-label">Số Giường Đã Có Người Ở <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-people-fill text-muted"></i></span>
+                            <input name="soGiuongDaO" id="soGiuongDaOInput" type="number" min="0" max="16" value="@(ViewBag.SoDangO ?? 0)" class="form-control" placeholder="Nhập số SV đang ở (0 = trống, bằng tổng = đầy)" required />
+                        </div>
+                        <span id="siSoHelpText" class="text-muted small mt-1 d-block" style="font-size: 0.74rem;">
+                            <i class="bi bi-info-circle me-1"></i>Sĩ số: <strong id="siSoBadge" class="text-primary">0/4</strong> (Trống: 0/4 | Còn chỗ: 1/4... | Đã đầy: 4/4)
+                        </span>
                     </div>
 
                     <!-- Giá Phòng -->
@@ -81,7 +93,7 @@
                     <!-- Tình Trạng -->
                     <div class="col-12 col-md-6">
                         <label asp-for="TinhTrang" class="form-label">Tình Trạng Phòng <span class="text-danger">*</span></label>
-                        <select asp-for="TinhTrang" class="form-select" required>
+                        <select asp-for="TinhTrang" id="tinhTrangSelect" class="form-select" required>
                             <option value="Còn chỗ">Còn chỗ</option>
                             <option value="Đã đầy">Đã đầy</option>
                             <option value="Bảo trì">Bảo trì</option>
@@ -116,4 +128,68 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const totalInput = document.getElementById('soLuongGiuongInput');
+            const occupiedInput = document.getElementById('soGiuongDaOInput');
+            const statusSelect = document.getElementById('tinhTrangSelect');
+            const badge = document.getElementById('siSoBadge');
+
+            function updateOccupancyUI(source) {
+                let total = parseInt(totalInput.value) || 4;
+                if (total < 1) total = 1;
+                occupiedInput.max = total;
+
+                let occupied = parseInt(occupiedInput.value);
+                if (isNaN(occupied) || occupied < 0) occupied = 0;
+                if (occupied > total) occupied = total;
+
+                if (source === 'status') {
+                    if (statusSelect.value === 'Đã đầy') {
+                        occupied = total;
+                        occupiedInput.value = occupied;
+                    } else if (statusSelect.value === 'Còn chỗ') {
+                        if (occupied >= total) {
+                            occupied = 0;
+                            occupiedInput.value = occupied;
+                        }
+                    }
+                } else if (source === 'occupied') {
+                    occupiedInput.value = occupied;
+                    if (occupied >= total) {
+                        statusSelect.value = 'Đã đầy';
+                    } else if (statusSelect.value === 'Đã đầy') {
+                        statusSelect.value = 'Còn chỗ';
+                    }
+                } else if (source === 'total') {
+                    if (statusSelect.value === 'Đã đầy') {
+                        occupied = total;
+                        occupiedInput.value = occupied;
+                    } else if (occupied > total) {
+                        occupied = total;
+                        occupiedInput.value = occupied;
+                    }
+                }
+
+                if (badge) {
+                    let note = (occupied === 0) ? ' (Trống hoàn toàn)' : ((occupied >= total) ? ' (Đã đầy)' : ` (Còn ${total - occupied} chỗ)`);
+                    badge.innerText = `${occupied}/${total}${note}`;
+                    if (occupied >= total) {
+                        badge.className = 'text-danger fw-bold';
+                    } else if (occupied === 0) {
+                        badge.className = 'text-muted fw-bold';
+                    } else {
+                        badge.className = 'text-success fw-bold';
+                    }
+                }
+            }
+
+            if (totalInput && occupiedInput && statusSelect) {
+                totalInput.addEventListener('input', () => updateOccupancyUI('total'));
+                occupiedInput.addEventListener('input', () => updateOccupancyUI('occupied'));
+                statusSelect.addEventListener('change', () => updateOccupancyUI('status'));
+                updateOccupancyUI('init');
+            }
+        });
+    </script>
 }

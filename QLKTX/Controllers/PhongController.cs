@@ -16,11 +16,13 @@ namespace QLKTX.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public PhongController(ApplicationDbContext context, IConfiguration configuration)
+        public PhongController(ApplicationDbContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
         }
 
         // GET: Phong/Index
@@ -277,7 +279,8 @@ namespace QLKTX.Controllers
 
                 try
                 {
-                    using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                    var httpClient = _httpClientFactory.CreateClient("Ollama");
+                    httpClient.Timeout = TimeSpan.FromSeconds(8);
                     var payload = new
                     {
                         model = modelName,
@@ -318,7 +321,7 @@ namespace QLKTX.Controllers
                 {
                     sb.AppendLine($"{idx}. Phòng P.{p.MaPhong} ({p.LoaiPhong}):");
                     sb.AppendLine($"   • Chỗ trống: Còn {p.GiuongTrong}/{p.SoLuongGiuong} giường trống (Đang ở: {p.SoDangO} SV)");
-                    sb.AppendLine($"   • Mức phí: {p.GiaPhong:N0} VNĐ/kỳ");
+                    sb.AppendLine($"   • Mức phí: {p.GiaPhong:N0} VNĐ/tháng/SV (hoặc {(p.GiaPhong * 5):N0} VNĐ/kỳ 5 tháng)");
                     sb.AppendLine($"   • Lý do đề xuất: Phòng thông thoáng, mật độ lưu trú thấp ({p.SoDangO}/{p.SoLuongGiuong}), sẵn sàng nhận ngay {req?.SoGiuongCan ?? 1} sinh viên.");
                     idx++;
                 }

@@ -52,7 +52,7 @@
                         <div class="col-md-12">
                             <label class="form-label fw-semibold text-dark">Loại hóa đơn <span class="text-danger">*</span></label>
                             <select name="loaiHoaDon" id="loaiHoaDon" class="form-select shadow-sm" required onchange="toggleDienNuocFields()">
-                                <option value="Tiền phòng">Tiền phòng (Tự động lấy giá phòng)</option>
+                                <option value="Tiền phòng">Tiền phòng (Tự động lấy đơn giá theo loại phòng của SV)</option>
                                 <option value="Điện nước">Điện nước (Nhập chỉ số)</option>
                             </select>
                         </div>
@@ -73,7 +73,7 @@
                                     <div class="col-md-4">
                                         <label class="form-label fw-medium text-dark">Đơn giá</label>
                                         <div class="input-group shadow-sm">
-                                            <input type="number" name="donGiaTuNhap" id="donGiaTuNhap" class="form-control" value="3500" min="0" step="500" />
+                                            <input type="number" name="donGiaTuNhap" id="donGiaTuNhap" class="form-control" value="2500" min="0" step="100" />
                                             <span class="input-group-text bg-white">VNĐ</span>
                                         </div>
                                     </div>

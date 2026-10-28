@@ -16,21 +16,52 @@ namespace QLKTX.Controllers
         }
 
         // GET: CoSoVatChat/Index
-        public async Task<IActionResult> Index(string searchString)
+        public async Task<IActionResult> Index(string? searchString, string? maPhong)
         {
             ViewData["CurrentFilter"] = searchString;
+            ViewData["CurrentMaPhong"] = maPhong;
+
+            // Lấy danh sách tất cả mã phòng để đưa vào bộ lọc gợi ý / dropdown
+            var danhSachPhong = await _context.Phongs
+                .OrderBy(p => p.MaPhong)
+                .Select(p => p.MaPhong)
+                .Distinct()
+                .ToListAsync();
+            ViewBag.DanhSachPhong = danhSachPhong;
 
             // Lấy danh sách thiết bị và join với bảng Phòng
             var query = _context.CoSoVatChats.Include(c => c.Phong).AsQueryable();
 
-            // Lọc dữ liệu nếu có từ khóa
-            if (!string.IsNullOrEmpty(searchString))
+            // 1. Lọc theo mã phòng cụ thể nếu được chọn từ dropdown hoặc bấm trực tiếp vào phòng
+            if (!string.IsNullOrWhiteSpace(maPhong))
             {
-                query = query.Where(c => c.MaThietBi.Contains(searchString)
-                                      || c.TenThietBi.Contains(searchString)
-                                      || c.LoaiThietBi.Contains(searchString)
-                                      || c.MaPhong.Contains(searchString)
-                                      || c.TinhTrang.Contains(searchString));
+                var roomFilter = maPhong.Trim();
+                query = query.Where(c => c.MaPhong == roomFilter);
+            }
+
+            // 2. Lọc theo từ khóa tìm kiếm (hỗ trợ gõ mã phòng VD: 101, Phòng 101, P.101, tên thiết bị, mã TB...)
+            if (!string.IsNullOrWhiteSpace(searchString))
+            {
+                var raw = searchString.Trim();
+
+                // Chuẩn hóa tiền tố phòng nếu người dùng gõ dạng "Phòng 101", "phong 101", "P.101", "P101"
+                var candidateRoom = raw;
+                if (candidateRoom.StartsWith("Phòng ", StringComparison.OrdinalIgnoreCase))
+                    candidateRoom = candidateRoom.Substring(6).Trim();
+                else if (candidateRoom.StartsWith("Phong ", StringComparison.OrdinalIgnoreCase))
+                    candidateRoom = candidateRoom.Substring(6).Trim();
+                else if (candidateRoom.StartsWith("P.", StringComparison.OrdinalIgnoreCase))
+                    candidateRoom = candidateRoom.Substring(2).Trim();
+                else if (candidateRoom.StartsWith("P", StringComparison.OrdinalIgnoreCase) && candidateRoom.Length > 1 && char.IsDigit(candidateRoom[1]))
+                    candidateRoom = candidateRoom.Substring(1).Trim();
+
+                query = query.Where(c => c.MaPhong == candidateRoom
+                                      || c.MaPhong.Contains(candidateRoom)
+                                      || c.MaPhong.Contains(raw)
+                                      || c.MaThietBi.Contains(raw)
+                                      || c.TenThietBi.Contains(raw)
+                                      || (c.LoaiThietBi != null && c.LoaiThietBi.Contains(raw))
+                                      || (c.TinhTrang != null && c.TinhTrang.Contains(raw)));
             }
 
             var danhSachThietBi = await query.ToListAsync();
