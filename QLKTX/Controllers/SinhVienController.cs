@@ -26,7 +26,7 @@ namespace QLKTX.Controllers
                 .ToList()
                 .Select(p =>
                 {
-                    int soDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru == "Đang ở") ?? 0;
+                    int soDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru != "Đã rời đi") ?? 0;
                     int conTrong = Math.Max(0, p.SoLuongGiuong - soDangO);
                     return new
                     {
@@ -50,7 +50,7 @@ namespace QLKTX.Controllers
             var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == maPhong);
             if (phong == null) return;
 
-            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == maPhong && s.TinhTrangLuuTru == "Đang ở");
+            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == maPhong && s.TinhTrangLuuTru != "Đã rời đi");
             if (soDangO >= phong.SoLuongGiuong && phong.TinhTrang == "Còn chỗ")
             {
                 phong.TinhTrang = "Đã đầy";
@@ -172,7 +172,7 @@ namespace QLKTX.Controllers
                     using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
                     try
                     {
-                        if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru == "Đang ở")
+                        if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru != "Đã rời đi")
                         {
                             var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
                             if (phong != null)
@@ -243,18 +243,20 @@ namespace QLKTX.Controllers
             {
                 try
                 {
-                    string? maPhongCu = await _context.SinhViens
+                    var oldSv = await _context.SinhViens
                         .AsNoTracking()
                         .Where(s => s.MaSV == sv.MaSV)
-                        .Select(s => s.MaPhong)
+                        .Select(s => new { s.MaPhong, s.TinhTrangLuuTru })
                         .FirstOrDefaultAsync();
+                    string? maPhongCu = oldSv?.MaPhong;
+                    string oldStatus = oldSv?.TinhTrangLuuTru ?? "";
 
-                    if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru == "Đang ở")
+                    if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru != "Đã rời đi")
                     {
                         var phongMoi = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
                         if (phongMoi != null)
                         {
-                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sv.MaSV);
+                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru != "Đã rời đi" && s.MaSV != sv.MaSV);
                             if (soDangO >= phongMoi.SoLuongGiuong)
                             {
                                 ModelState.AddModelError("MaPhong", $"Phòng P.{phongMoi.MaPhong} đã đạt tối đa {phongMoi.SoLuongGiuong}/{phongMoi.SoLuongGiuong} giường, không thể chuyển vào!");
@@ -282,6 +284,33 @@ namespace QLKTX.Controllers
                     {
                         await DongBoTrangThaiPhongAsync(sv.MaPhong);
                     }
+                    // Khi đổi trạng thái sang "Đình chỉ" hoặc "Kỷ luật": Tự động chuyển/ghi nhận sang danh sách Vi phạm & Xử lý
+                    // Lưu ý: KHÔNG tự động giải phóng chỗ ở hay giảm sĩ số phòng, sinh viên vẫn giữ chỗ ở phòng KTX
+                    if (sv.TinhTrangLuuTru == "Đình chỉ" || sv.TinhTrangLuuTru == "Kỷ luật")
+                    {
+                        bool isStatusChanged = oldStatus != sv.TinhTrangLuuTru;
+                        bool hasViPham = await _context.ViPhams.AnyAsync(v => v.MaSV == sv.MaSV);
+
+                        if (isStatusChanged || !hasViPham)
+                        {
+                            var viPhamMoi = new ViPham
+                            {
+                                MaSV = sv.MaSV,
+                                NgayViPham = DateTime.Now,
+                                HinhThucXuLy = sv.TinhTrangLuuTru,
+                                NoiDungViPham = sv.TinhTrangLuuTru == "Đình chỉ"
+                                    ? "Đình chỉ lưu trú do vi phạm quy chế KTX"
+                                    : "Kỷ luật cảnh cáo do vi phạm nội quy KTX",
+                                GhiChu = $"Chuyển từ cập nhật hồ sơ sinh viên (Phòng P.{sv.MaPhong ?? "Chưa xếp"})"
+                            };
+                            _context.ViPhams.Add(viPhamMoi);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        TempData["SuccessMessage"] = $"Đã cập nhật hồ sơ và chuyển sinh viên {sv.HoTen} ({sv.MaSV}) sang danh sách Vi phạm & Xử lý thành công!";
+                        return RedirectToAction("Index", "ViPham");
+                    }
+
                     TempData["SuccessMessage"] = $"Đã cập nhật hồ sơ sinh viên {sv.HoTen} ({sv.MaSV})!";
                 }
                 catch (DbUpdateConcurrencyException)
