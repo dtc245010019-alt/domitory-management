@@ -1,7 +1,9 @@
+@inject QLKTX.Models.ApplicationDbContext _context
 @model IEnumerable<QLKTX.Models.BaoCaoSuCo>
 
 @{
-    ViewData["Title"] = "Quản Lý Báo Cáo Sự Cố";
+    ViewData["Title"] = "Báo cáo và hỗ trợ SV";
+    QLKTX.DbInitializer.DongBoYeuCauPhongDaDuyet(_context);
 }
 
 <style>
@@ -22,11 +24,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="h4 mb-1 fw-bold text-dark">Quản Lý Báo Cáo Sự Cố</h2>
+        <h2 class="h4 mb-1 fw-bold text-dark">Báo Cáo Và Hỗ Trợ Sinh Viên</h2>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0 small">
                 <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Dashboard</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Báo cáo sự cố</li>
+                <li class="breadcrumb-item active" aria-current="page">Báo cáo và hỗ trợ SV</li>
             </ol>
         </nav>
     </div>
@@ -40,7 +42,7 @@
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
     <div class="card-header bg-danger text-white p-3 border-0">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-tools me-2"></i>Danh sách Sự cố cần xử lý</h5>
+            <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-tools me-2"></i>Danh sách Báo cáo sự cố & Yêu cầu hỗ trợ SV</h5>
         </div>
     </div>
     <div class="card-body p-0">
@@ -77,7 +79,7 @@
                                 </td>
                                 <td>
                                     <div class="fw-bold text-dark">@item.TenSuCo</div>
-                                    <div class="small text-muted text-truncate" style="max-width: 200px;" title="@item.MoTa">@item.MoTa</div>
+                                    <div class="small text-muted text-truncate" style="max-width: 200px;" title="@(item.MoTa?.Replace(" [Đã đồng bộ]", ""))">@(item.MoTa?.Replace(" [Đã đồng bộ]", ""))</div>
                                 </td>
                                 <td>
                                     @if (item.MucDoKhanCap == "Cao" || item.MucDoKhanCap == "Khẩn cấp")
@@ -128,7 +130,8 @@
                                         <select name="trangThaiMoi" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
                                             <option value="Chờ xử lý" selected="@(item.TrangThai == "Chờ xử lý")">Chờ xử lý</option>
                                             <option value="Đang xử lý" selected="@(item.TrangThai == "Đang xử lý")">Đang xử lý</option>
-                                            <option value="Đã xử lý" selected="@(item.TrangThai == "Đã xử lý")">Đã xử lý</option>
+                                            <option value="Đã xử lý" selected="@(item.TrangThai == "Đã xử lý")">Đã xử lý / Duyệt</option>
+                                            <option value="Từ chối" selected="@(item.TrangThai == "Từ chối")">Từ chối</option>
                                         </select>
                                     </form>
                                     @if (!string.IsNullOrEmpty(item.HinhAnh))

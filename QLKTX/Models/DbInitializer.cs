@@ -3,287 +3,559 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace QLKTX // Hoặc namespace tương ứng với project của em
+namespace QLKTX
 {
     public static class DbInitializer
     {
         public static void Initialize(ApplicationDbContext context)
         {
-            var random = new Random();
-            var phongs = new List<Phong>();
-            var sinhViens = new List<SinhVien>();
+            var random = new Random(2026);
 
-            if (!context.Phongs.Any())
-            {
-                // 1. TẠO DANH SÁCH PHÒNG THEO YÊU CẦU
-            string[] toaNha = { "A1", "A2", "B1", "B2", "C1", "C2" };
+            // =========================================================================
+            // 1. BỔ SUNG ĐẦY ĐỦ DANH SÁCH PHÒNG (TẦNG 1..5 & KHU TÒA A, B, C)
+            // =========================================================================
+            var existingPhongIds = context.Phongs.Select(p => p.MaPhong).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newPhongs = new List<Phong>();
 
-            foreach (var toa in toaNha)
+            // Tạo phòng theo Tầng 1 -> 5 (101..512)
+            for (int tang = 1; tang <= 5; tang++)
             {
-                for (int i = 1; i <= 15; i++) // Mỗi tòa tạo 15 phòng
+                for (int i = 1; i <= 12; i++)
                 {
-                    string maPhong = $"{toa}-{i:D2}"; // VD: A1-01, A1-02
+                    string maPhong = $"{tang}{i:D2}";
+                    if (existingPhongIds.Contains(maPhong)) continue;
 
-                    // Random 3 loại phòng và giá tương ứng
-                    int loai = random.Next(1, 4); // Random 1, 2, hoặc 3
-                    string loaiPhong = loai == 1 ? "Phòng thường" : (loai == 2 ? "Phòng có điều hoà" : "Phòng điều hoà + nóng lạnh");
-                    decimal giaPhong = loai == 1 ? 9000000m : (loai == 2 ? 11000000m : 13000000m);
+                    int loai = (tang + i) % 3;
+                    string loaiPhong = loai == 0 ? "Phòng thường" : (loai == 1 ? "Phòng có điều hoà" : "Phòng điều hoà + nóng lạnh");
+                    decimal giaPhong = loai == 0 ? 9000000m : (loai == 1 ? 11000000m : 13000000m);
+                    int soGiuong = (i % 4 == 0) ? 4 : 6;
 
-                    // Trộn tỷ lệ số giường: Đa số là 4-5, một số ít là 3 và 6
-                    int[] tiLeGiuong = { 3, 4, 4, 4, 5, 5, 5, 6 };
-                    int soGiuong = tiLeGiuong[random.Next(tiLeGiuong.Length)];
-
-                    phongs.Add(new Phong
+                    newPhongs.Add(new Phong
                     {
                         MaPhong = maPhong,
                         LoaiPhong = loaiPhong,
                         SoLuongGiuong = soGiuong,
                         GiaPhong = giaPhong,
-                        TinhTrang = "Còn chỗ"
+                        TinhTrang = (i == 12 && tang >= 4) ? "Bảo trì" : "Còn chỗ",
+                        TrangThaiThietBi = (i == 12 && tang >= 4) ? "Đang bảo trì định kỳ" : "Bình thường"
                     });
+                    existingPhongIds.Add(maPhong);
                 }
             }
-            context.Phongs.AddRange(phongs);
-            context.SaveChanges();
 
-            
-            // 2. TẠO HÀNG TRĂM SINH VIÊN (DTC001 - DTC999)
-            
-            string[] ho = { "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Vũ", "Võ", "Đặng", "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý" };
-            string[] dem = { "Văn", "Thị", "Hữu", "Đức", "Ngọc", "Thanh", "Minh", "Thu", "Hải", "Xuân", "Gia", "Bảo" };
-            string[] ten = { "An", "Anh", "Bảo", "Chi", "Dũng", "Duy", "Đạt", "Giang", "Hà", "Hải", "Hiếu", "Hùng", "Hương", "Khang", "Khánh", "Khoa", "Kiên", "Lâm", "Lan", "Linh", "Long", "Mai", "Minh", "Nam", "Nga", "Ngọc", "Nhi", "Phúc", "Phương", "Quân", "Quang", "Sơn", "Tâm", "Thảo", "Thắng", "Thành", "Trang", "Trung", "Tuấn", "Uyên", "Vân", "Việt", "Vinh", "Yến" };
-
-            int svIdCounter = 1;
-
-            foreach (var p in phongs)
+            // Tạo thêm phòng theo Khu Tòa A1, B1, C1 (A1-01..C1-08)
+            string[] khuToa = { "A1", "B1", "C1" };
+            foreach (var toa in khuToa)
             {
-                // Xếp ngẫu nhiên sinh viên vào phòng (có thể đầy, hoặc trống 1-2 giường)
-                int soSinhVienHienTai = random.Next(p.SoLuongGiuong - 2, p.SoLuongGiuong + 1);
-                if (soSinhVienHienTai < 0) soSinhVienHienTai = 0;
-
-                for (int i = 0; i < soSinhVienHienTai; i++)
+                for (int i = 1; i <= 8; i++)
                 {
-                    if (svIdCounter > 999) break; // Giới hạn đến DTC999
+                    string maPhong = $"{toa}-{i:D2}";
+                    if (existingPhongIds.Contains(maPhong)) continue;
 
-                    // Mã SV: DTC001, DTC002...
-                    string maSV = $"DTC{svIdCounter:D3}";
-                    svIdCounter++;
+                    int loai = i % 3;
+                    string loaiPhong = loai == 0 ? "Phòng thường" : (loai == 1 ? "Phòng có điều hoà" : "Phòng điều hoà + nóng lạnh");
+                    decimal giaPhong = loai == 0 ? 9000000m : (loai == 1 ? 11000000m : 13000000m);
 
-                    // Tuổi 18-23 -> Sinh từ năm 2003 đến 2008 (tính từ mốc 2026)
-                    int namSinh = random.Next(2003, 2009);
-                    DateTime ngaySinh = new DateTime(namSinh, random.Next(1, 13), random.Next(1, 28));
+                    newPhongs.Add(new Phong
+                    {
+                        MaPhong = maPhong,
+                        LoaiPhong = loaiPhong,
+                        SoLuongGiuong = 6,
+                        GiaPhong = giaPhong,
+                        TinhTrang = "Còn chỗ",
+                        TrangThaiThietBi = "Bình thường"
+                    });
+                    existingPhongIds.Add(maPhong);
+                }
+            }
 
-                    // Sinh CCCD định dạng 0272xxxxxxxx
-                    string cccd = $"0272{random.Next(10000000, 99999999)}";
+            if (newPhongs.Any())
+            {
+                context.Phongs.AddRange(newPhongs);
+                context.SaveChanges();
+            }
 
-                    // SĐT ngẫu nhiên
-                    string sdt = $"0{random.Next(3, 9)}{random.Next(10000000, 99999999)}";
+            var allPhongs = context.Phongs.ToList();
 
-                    sinhViens.Add(new SinhVien
+            // =========================================================================
+            // 2. BỔ SUNG HỒ SƠ SINH VIÊN (ĐANG Ở + LỊCH SỬ RỜI ĐI + ĐÌNH CHỈ)
+            // =========================================================================
+            var existingSvIds = context.SinhViens.Select(s => s.MaSV).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newSinhViens = new List<SinhVien>();
+
+            string[] ho = { "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Vũ", "Võ", "Đặng", "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý" };
+            string[] dem = { "Văn", "Thị", "Hữu", "Đức", "Ngọc", "Thanh", "Minh", "Thu", "Hải", "Xuân", "Gia", "Bảo", "Quốc", "Tuấn" };
+            string[] ten = { "An", "Anh", "Bảo", "Chi", "Dũng", "Duy", "Đạt", "Giang", "Hà", "Hải", "Hiếu", "Hùng", "Hương", "Khang", "Khánh", "Khoa", "Kiên", "Lâm", "Lan", "Linh", "Long", "Mai", "Minh", "Nam", "Nga", "Ngọc", "Nhi", "Phúc", "Phương", "Quân", "Quang", "Sơn", "Tâm", "Thảo", "Thắng", "Thành", "Trang", "Trung", "Tuấn", "Uyên", "Vân", "Việt", "Vinh", "Yến" };
+            string[] nganh = { "CNTT", "KTPM", "HTTT", "ATTT", "KTMT", "TMDT", "KHMT" };
+            string[] hauTo = { "A", "B", "C" };
+
+            int svCounter = 1;
+            var activeRooms = allPhongs.Where(p => p.TinhTrang != "Bảo trì").ToList();
+
+            if (existingSvIds.Count < 180)
+            {
+                foreach (var p in activeRooms)
+                {
+                    int currentInRoom = context.SinhViens.Count(s => s.MaPhong == p.MaPhong && s.TinhTrangLuuTru == "Đang ở");
+                    int targetInRoom = random.Next(Math.Max(2, p.SoLuongGiuong - 2), p.SoLuongGiuong + 1);
+
+                    while (currentInRoom < targetInRoom && svCounter <= 260)
+                    {
+                        string maSV = $"DTC{svCounter:D3}";
+                        svCounter++;
+                        if (existingSvIds.Contains(maSV)) continue;
+
+                        newSinhViens.Add(new SinhVien
+                        {
+                            MaSV = maSV,
+                            HoTen = $"{ho[random.Next(ho.Length)]} {dem[random.Next(dem.Length)]} {ten[random.Next(ten.Length)]}",
+                            NgaySinh = new DateTime(random.Next(2003, 2008), random.Next(1, 13), random.Next(1, 28)),
+                            Lop = $"{nganh[random.Next(nganh.Length)]} K{random.Next(20, 25)}{hauTo[random.Next(hauTo.Length)]}",
+                            SoDienThoai = $"0{random.Next(3, 9)}{random.Next(10000000, 99999999)}",
+                            CCCD = $"0272{random.Next(10000000, 99999999)}",
+                            TinhTrangLuuTru = "Đang ở",
+                            MaPhong = p.MaPhong
+                        });
+                        existingSvIds.Add(maSV);
+                        currentInRoom++;
+                    }
+                }
+
+                // Tạo thêm 25 sinh viên cho danh sách "Lịch sử rời KTX" (Đã rời đi)
+                for (int k = 1; k <= 25; k++)
+                {
+                    string maSV = $"DTC{800 + k:D3}";
+                    if (existingSvIds.Contains(maSV)) continue;
+
+                    var randomPhong = activeRooms[random.Next(activeRooms.Count)];
+                    newSinhViens.Add(new SinhVien
                     {
                         MaSV = maSV,
                         HoTen = $"{ho[random.Next(ho.Length)]} {dem[random.Next(dem.Length)]} {ten[random.Next(ten.Length)]}",
-                        NgaySinh = ngaySinh,
-                        Lop = $"K{random.Next(20, 24)}IT{random.Next(1, 6)}",
-                        SoDienThoai = sdt,
-                        CCCD = cccd,
-                        TinhTrangLuuTru = "Đang ở",
-                        MaPhong = p.MaPhong
+                        NgaySinh = new DateTime(random.Next(2002, 2006), random.Next(1, 13), random.Next(1, 28)),
+                        Lop = $"{nganh[random.Next(nganh.Length)]} K{random.Next(19, 23)}{hauTo[random.Next(hauTo.Length)]}",
+                        SoDienThoai = $"0{random.Next(3, 9)}{random.Next(10000000, 99999999)}",
+                        CCCD = $"0272{random.Next(10000000, 99999999)}",
+                        TinhTrangLuuTru = "Đã rời đi",
+                        MaPhong = randomPhong.MaPhong
                     });
+                    existingSvIds.Add(maSV);
                 }
 
-                // Cập nhật lại trạng thái phòng nếu đã kín giường
-                if (soSinhVienHienTai == p.SoLuongGiuong)
+                if (newSinhViens.Any())
                 {
-                    p.TinhTrang = "Đã đầy";
+                    context.SinhViens.AddRange(newSinhViens);
+                    context.SaveChanges();
                 }
             }
-            context.SinhViens.AddRange(sinhViens);
+
+            // Đồng bộ chuẩn xác trạng thái "Đã đầy" / "Còn chỗ" cho toàn bộ phòng
+            var svDangOByPhong = context.SinhViens
+                .Where(s => s.TinhTrangLuuTru == "Đang ở" && s.MaPhong != null)
+                .GroupBy(s => s.MaPhong!)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            foreach (var p in allPhongs)
+            {
+                if (p.TinhTrang == "Bảo trì") continue;
+                int count = svDangOByPhong.TryGetValue(p.MaPhong, out int c) ? c : 0;
+                p.TinhTrang = count >= p.SoLuongGiuong ? "Đã đầy" : "Còn chỗ";
+            }
             context.SaveChanges();
-            // 3. TẠO TÀI KHOẢN ĐĂNG NHẬP MẶC ĐỊNH
-if (!context.TaiKhoans.Any())
-{
-    var listTK = new List<TaiKhoan>
-    {
-        // Tài khoản Admin
-        new TaiKhoan { TenDangNhap = "admin", MatKhau = "123", Quyen ="admin", MaSV = null },
-        // Tài khoản Sinh viên DTC001
-        new TaiKhoan { TenDangNhap = "DTC001", MatKhau = "123", Quyen = "sinhvien", MaSV = "DTC001" }
-    };
-    foreach (var sv in sinhViens.Skip(1))
-    {
-        listTK.Add(new TaiKhoan { TenDangNhap = sv.MaSV, MatKhau = "123", Quyen = "sinhvien", MaSV = sv.MaSV });
-    }
-    context.TaiKhoans.AddRange(listTK);
-    context.SaveChanges();
-}
-            }
-            else
-            {
-                phongs = context.Phongs.ToList();
-                sinhViens = context.SinhViens.ToList();
-            }
 
-            // ==========================================
-            // SEED DATA CHO CÁC BẢNG CÒN LẠI (YÊU CẦU MỚI)
-            // ==========================================
+            var allSinhViens = context.SinhViens.ToList();
 
-            // 4. LỊCH SỬ SINH VIÊN ĐÃ RỜI ĐI
-            if (!context.SinhViens.Any(s => s.TinhTrangLuuTru == "Đã rời đi"))
+            // =========================================================================
+            // 3. TÀI KHOẢN ĐĂNG NHẬP (ADMIN, KẾ TOÁN & TOÀN BỘ SINH VIÊN)
+            // =========================================================================
+            var existingUsernames = context.TaiKhoans.Select(t => t.TenDangNhap).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newTaiKhoans = new List<TaiKhoan>();
+
+            if (!existingUsernames.Contains("admin"))
             {
-                var svDaRoi = sinhViens.OrderBy(s => random.Next()).Take(20).ToList();
-                foreach (var sv in svDaRoi)
+                newTaiKhoans.Add(new TaiKhoan { TenDangNhap = "admin", MatKhau = "123", Quyen = "Admin", MaSV = null });
+                existingUsernames.Add("admin");
+            }
+            if (!existingUsernames.Contains("ketoan"))
+            {
+                newTaiKhoans.Add(new TaiKhoan { TenDangNhap = "ketoan", MatKhau = "123", Quyen = "KeToan", MaSV = null });
+                existingUsernames.Add("ketoan");
+            }
+            foreach (var sv in allSinhViens)
+            {
+                if (!existingUsernames.Contains(sv.MaSV))
                 {
-                    sv.TinhTrangLuuTru = "Đã rời đi";
+                    newTaiKhoans.Add(new TaiKhoan { TenDangNhap = sv.MaSV, MatKhau = "123", Quyen = "SinhVien", MaSV = sv.MaSV });
+                    existingUsernames.Add(sv.MaSV);
                 }
+            }
+            if (newTaiKhoans.Any())
+            {
+                context.TaiKhoans.AddRange(newTaiKhoans);
                 context.SaveChanges();
             }
 
-            // 5. HỢP ĐỒNG (HopDong)
-            if (!context.HopDongs.Any())
+            // =========================================================================
+            // 4. HỢP ĐỒNG LƯU TRÚ (HopDongs - Đảm bảo >= 120 bản ghi)
+            // =========================================================================
+            var existingHdIds = context.HopDongs.Select(h => h.MaHopDong).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (existingHdIds.Count < 100)
             {
-                var hopDongs = new List<HopDong>();
-                var svHopDong = sinhViens.Take(20).ToList();
-                for (int i = 0; i < svHopDong.Count; i++)
+                var newHopDongs = new List<HopDong>();
+                int hdIndex = 1;
+                foreach (var sv in allSinhViens.Take(160))
                 {
-                    var sv = svHopDong[i];
-                    hopDongs.Add(new HopDong
+                    string maHd = $"HD{hdIndex:D3}";
+                    hdIndex++;
+                    if (existingHdIds.Contains(maHd) || string.IsNullOrEmpty(sv.MaPhong)) continue;
+
+                    bool isConHieuLuc = sv.TinhTrangLuuTru == "Đang ở";
+                    newHopDongs.Add(new HopDong
                     {
-                        MaHopDong = $"HD{DateTime.Now.Ticks.ToString().Substring(8)}_{i}",
-                        NgayBatDau = new DateTime(2023, 8, 15),
-                        NgayKetThuc = new DateTime(2024, 6, 30),
-                        TienDatCoc = 1500000m,
-                        TrangThai = i % 4 == 0 ? "Hết hiệu lực" : "Còn hiệu lực",
-                        DieuKhoan = "Tuân thủ nội quy KTX, đóng tiền đúng hạn.",
+                        MaHopDong = maHd,
                         MaSV = sv.MaSV,
-                        MaPhong = sv.MaPhong
+                        MaPhong = sv.MaPhong,
+                        NgayBatDau = isConHieuLuc ? new DateTime(2025, 8, random.Next(15, 30)) : new DateTime(2024, 8, 15),
+                        NgayKetThuc = isConHieuLuc ? new DateTime(2026, 6, 30) : new DateTime(2025, 6, 30),
+                        TienDatCoc = 1500000m,
+                        TrangThai = isConHieuLuc ? "Còn hiệu lực" : "Hết hiệu lực",
+                        DieuKhoan = "Sinh viên đã nộp đủ tiền đặt cọc và cam kết thực hiện đúng nội quy KTX."
                     });
+                    existingHdIds.Add(maHd);
                 }
-                context.HopDongs.AddRange(hopDongs);
-                context.SaveChanges();
+                if (newHopDongs.Any())
+                {
+                    context.HopDongs.AddRange(newHopDongs);
+                    context.SaveChanges();
+                }
             }
 
-            // 6. CƠ SỞ VẬT CHẤT (CoSoVatChat)
-            if (!context.CoSoVatChats.Any())
+            // =========================================================================
+            // 5. CƠ SỞ VẬT CHẤT & THIẾT BỊ (CoSoVatChats - Đảm bảo >= 180 thiết bị)
+            // =========================================================================
+            var existingTbIds = context.CoSoVatChats.Select(c => c.MaThietBi).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (existingTbIds.Count < 120)
             {
-                var csvcs = new List<CoSoVatChat>();
-                int idCounter = 1;
-                // Seed cơ sở vật chất cho 10 phòng đầu tiên
-                foreach (var p in phongs.Take(10))
+                var newCsvcs = new List<CoSoVatChat>();
+                int tbIdx = 1;
+                foreach (var p in allPhongs.Take(45))
                 {
-                    csvcs.Add(new CoSoVatChat { MaThietBi = $"TB{idCounter++:D3}", TenThietBi = "Giường tầng", LoaiThietBi = "Nội thất", SoLuong = p.SoLuongGiuong / 2, TinhTrang = "Tốt", MaPhong = p.MaPhong });
-                    csvcs.Add(new CoSoVatChat { MaThietBi = $"TB{idCounter++:D3}", TenThietBi = "Tủ quần áo", LoaiThietBi = "Nội thất", SoLuong = p.SoLuongGiuong, TinhTrang = "Đang sử dụng", MaPhong = p.MaPhong });
-                    csvcs.Add(new CoSoVatChat { MaThietBi = $"TB{idCounter++:D3}", TenThietBi = "Quạt trần", LoaiThietBi = "Điện tử", SoLuong = 2, TinhTrang = p.MaPhong.Contains("01") ? "Cần bảo trì" : "Tốt", MaPhong = p.MaPhong });
-                    
+                    void AddTb(string ten, string loai, int sl, string tinhTrang)
+                    {
+                        while (existingTbIds.Contains($"TB{tbIdx:D3}")) tbIdx++;
+                        string maTb = $"TB{tbIdx:D3}";
+                        tbIdx++;
+                        existingTbIds.Add(maTb);
+                        newCsvcs.Add(new CoSoVatChat
+                        {
+                            MaThietBi = maTb,
+                            TenThietBi = ten,
+                            LoaiThietBi = loai,
+                            SoLuong = sl,
+                            TinhTrang = tinhTrang,
+                            MaPhong = p.MaPhong
+                        });
+                    }
+
+                    AddTb("Giường tầng sắt sơn tĩnh điện", "Nội thất", p.SoLuongGiuong / 2, "Tốt");
+                    AddTb("Tủ quần áo cá nhân", "Nội thất", p.SoLuongGiuong, "Đang sử dụng");
+                    AddTb("Bàn học kèm giá sách", "Nội thất", p.SoLuongGiuong, "Tốt");
+                    AddTb("Bóng đèn LED Tuýp 1.2m", "Thiết bị điện", 4, "Đang sử dụng");
+                    AddTb("Quạt trần Panasonic", "Thiết bị điện", 2, p.MaPhong.EndsWith("03") ? "Cần bảo trì" : "Tốt");
+                    AddTb("Bộ vòi hoa sen & Bồn rửa", "Thiết bị vệ sinh", 2, p.MaPhong.EndsWith("07") ? "Hỏng" : "Đang sử dụng");
+
                     if (p.LoaiPhong.Contains("điều hoà"))
                     {
-                        csvcs.Add(new CoSoVatChat { MaThietBi = $"TB{idCounter++:D3}", TenThietBi = "Điều hòa Daikin", LoaiThietBi = "Điện tử", SoLuong = 1, TinhTrang = "Tốt", MaPhong = p.MaPhong });
+                        AddTb("Điều hòa Inverter Daikin 12000BTU", "Điện lạnh", 1, p.MaPhong.EndsWith("05") ? "Cần bảo trì" : "Tốt");
+                    }
+                    if (p.LoaiPhong.Contains("nóng lạnh"))
+                    {
+                        AddTb("Bình nóng lạnh Ariston 30L", "Điện lạnh", 1, "Tốt");
                     }
                 }
-                context.CoSoVatChats.AddRange(csvcs);
-                context.SaveChanges();
-            }
-
-            // 7. VI PHẠM (ViPham)
-            if (!context.ViPhams.Any())
-            {
-                var viPhams = new List<ViPham>();
-                var svViPham = sinhViens.Skip(20).Take(10).ToList();
-                string[] lyDo = { "Về khuya quá giờ quy định", "Đun nấu trong phòng", "Gây ồn ào mất trật tự", "Không trực nhật vệ sinh phòng" };
-                string[] hinhThuc = { "Nhắc nhở", "Cảnh cáo", "Phạt tiền 100k", "Đình chỉ nội trú" };
-                
-                for (int i = 0; i < svViPham.Count; i++)
+                if (newCsvcs.Any())
                 {
-                    viPhams.Add(new ViPham
-                    {
-                        // MaViPham là auto-increment nên không cần set
-                        NoiDungViPham = lyDo[i % lyDo.Length],
-                        HinhThucXuLy = hinhThuc[i % hinhThuc.Length],
-                        NgayViPham = DateTime.Now.AddDays(-random.Next(1, 60)),
-                        GhiChu = "Đã thông báo cho ban quản lý",
-                        MaSV = svViPham[i].MaSV
-                    });
+                    context.CoSoVatChats.AddRange(newCsvcs);
+                    context.SaveChanges();
                 }
-                context.ViPhams.AddRange(viPhams);
-                context.SaveChanges();
             }
 
-            // 8. HÓA ĐƠN (HoaDon)
-            if (!context.HoaDons.Any())
+            // =========================================================================
+            // 6. HÓA ĐƠN TIỀN PHÒNG & ĐIỆN NƯỚC (HoaDons - Đảm bảo >= 90 hóa đơn)
+            // =========================================================================
+            var existingHoaDonIds = context.HoaDons.Select(h => h.MaHoaDon).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (existingHoaDonIds.Count < 80)
             {
-                var hoaDons = new List<HoaDon>();
-                var svHoaDon = sinhViens.Take(30).ToList();
-                for (int i = 0; i < svHoaDon.Count; i++)
-                {
-                    var sv = svHoaDon[i];
-                    
-                    // Tạo hóa đơn Tiền phòng
-                    hoaDons.Add(new HoaDon
-                    {
-                        MaHoaDon = $"HD_{DateTime.Now.Ticks.ToString().Substring(8)}_P{i}",
-                        LoaiHoaDon = "Tiền phòng",
-                        ChiSoCu = null,
-                        ChiSoMoi = null,
-                        DonGia = 1200000m,
-                        TongTien = 1200000m,
-                        HinhThucThanhToan = "Chuyển khoản",
-                        TrangThai = i % 4 == 0 ? "Chưa thanh toán" : "Đã thanh toán",
-                        NgayLap = DateTime.Now.AddDays(-random.Next(1, 30)),
-                        MaSV = sv.MaSV,
-                        MaPhong = sv.MaPhong
-                    });
+                var newHoaDons = new List<HoaDon>();
+                var svListForBilling = allSinhViens.Where(s => s.TinhTrangLuuTru == "Đang ở" && !string.IsNullOrEmpty(s.MaPhong)).Take(55).ToList();
+                string[] phuongThucTT = { "Chuyển khoản", "Ví MoMo", "Tiền mặt (Admin thu)" };
 
-                    // Tạo hóa đơn Điện nước
-                    int chiSoCu = random.Next(100, 500);
-                    int chiSoMoi = chiSoCu + random.Next(30, 100);
-                    decimal donGiaDN = 3500m; // 3500 VNĐ / số điện
-                    decimal tongTienDN = (chiSoMoi - chiSoCu) * donGiaDN;
-                    
-                    hoaDons.Add(new HoaDon
+                for (int i = 0; i < svListForBilling.Count; i++)
+                {
+                    var sv = svListForBilling[i];
+                    var phong = allPhongs.FirstOrDefault(p => p.MaPhong == sv.MaPhong);
+                    decimal giaPhong = phong != null && phong.GiaPhong > 500000 ? phong.GiaPhong / 6 : 1500000m;
+
+                    string maHdPhong = $"HDP_{2026}_{i + 1:D3}";
+                    if (!existingHoaDonIds.Contains(maHdPhong))
                     {
-                        MaHoaDon = $"HD_{DateTime.Now.Ticks.ToString().Substring(8)}_DN{i}",
-                        LoaiHoaDon = "Điện nước",
-                        ChiSoCu = chiSoCu,
-                        ChiSoMoi = chiSoMoi,
-                        DonGia = donGiaDN,
-                        TongTien = tongTienDN,
-                        HinhThucThanhToan = i % 2 == 0 ? "Tiền mặt" : "Chuyển khoản",
-                        TrangThai = i % 3 == 0 ? "Chưa thanh toán" : "Đã thanh toán",
-                        NgayLap = DateTime.Now.AddDays(-random.Next(1, 30)),
-                        MaSV = sv.MaSV,
-                        MaPhong = sv.MaPhong
-                    });
+                        bool daThuPhong = i % 4 != 0;
+                        newHoaDons.Add(new HoaDon
+                        {
+                            MaHoaDon = maHdPhong,
+                            LoaiHoaDon = "Tiền phòng",
+                            ChiSoCu = null,
+                            ChiSoMoi = null,
+                            DonGia = giaPhong,
+                            TongTien = giaPhong,
+                            HinhThucThanhToan = daThuPhong ? phuongThucTT[i % phuongThucTT.Length] : "Chưa có",
+                            TrangThai = daThuPhong ? "Đã thanh toán" : "Chưa thanh toán",
+                            NgayLap = DateTime.Now.AddDays(-random.Next(2, 45)),
+                            MaSV = sv.MaSV,
+                            MaPhong = sv.MaPhong!
+                        });
+                        existingHoaDonIds.Add(maHdPhong);
+                    }
+
+                    string maHdDien = $"HDDN_{2026}_{i + 1:D3}";
+                    if (!existingHoaDonIds.Contains(maHdDien))
+                    {
+                        int csCu = random.Next(120, 450);
+                        int csMoi = csCu + random.Next(35, 110);
+                        decimal donGia = 3500m;
+                        bool daThuDien = i % 3 != 0;
+
+                        newHoaDons.Add(new HoaDon
+                        {
+                            MaHoaDon = maHdDien,
+                            LoaiHoaDon = "Điện nước",
+                            ChiSoCu = csCu,
+                            ChiSoMoi = csMoi,
+                            DonGia = donGia,
+                            TongTien = (csMoi - csCu) * donGia,
+                            HinhThucThanhToan = daThuDien ? phuongThucTT[(i + 1) % phuongThucTT.Length] : "Chưa có",
+                            TrangThai = daThuDien ? "Đã thanh toán" : "Chưa thanh toán",
+                            NgayLap = DateTime.Now.AddDays(-random.Next(1, 25)),
+                            MaSV = sv.MaSV,
+                            MaPhong = sv.MaPhong!
+                        });
+                        existingHoaDonIds.Add(maHdDien);
+                    }
                 }
-                context.HoaDons.AddRange(hoaDons);
-                context.SaveChanges();
+                if (newHoaDons.Any())
+                {
+                    context.HoaDons.AddRange(newHoaDons);
+                    context.SaveChanges();
+                }
             }
 
-            // 9. BÁO CÁO SỰ CỐ (BaoCaoSuCo)
-            if (!context.BaoCaoSuCos.Any())
+            // =========================================================================
+            // 7. BÁO CÁO SỰ CỐ & YÊU CẦU HỖ TRỢ SV (BaoCaoSuCos - Đảm bảo >= 24 bản ghi)
+            // =========================================================================
+            var existingSuCoIds = context.BaoCaoSuCos.Select(b => b.MaSuCo).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (existingSuCoIds.Count < 20)
             {
-                var suCos = new List<BaoCaoSuCo>();
-                var svSuCo = sinhViens.Skip(30).Take(15).ToList();
-                string[] tenSuCo = { "Hỏng quạt trần", "Điều hòa không mát", "Bóng đèn bị cháy", "Nước chảy yếu", "Cửa phòng hỏng khóa" };
-                string[] mucDo = { "Thấp", "Bình thường", "Khẩn cấp" };
-                string[] trangThai = { "Chờ xử lý", "Đang xử lý", "Đã xử lý" };
-                
-                for (int i = 0; i < svSuCo.Count; i++)
+                var newSuCos = new List<BaoCaoSuCo>();
+                var svSuCoList = allSinhViens.Where(s => s.TinhTrangLuuTru == "Đang ở" && !string.IsNullOrEmpty(s.MaPhong)).Take(25).ToList();
+
+                (string Ten, string MoTa, string MucDo, string TrangThai, bool IsYeuCau)[] mauBaoCao =
                 {
-                    var sv = svSuCo[i];
-                    suCos.Add(new BaoCaoSuCo
+                    ("Hỏng quạt trần phòng ở", "Quạt trần quay rất chậm và kêu to, nhờ kỹ thuật kiểm tra tụ quạt.", "Bình thường", "Chờ xử lý", false),
+                    ("Điều hòa không mát và chảy nước", "Điều hòa bật 20 độ nhưng chỉ ra gió nóng, nước nhỏ giọt xuống sàn.", "Nghiêm trọng", "Chờ xử lý", false),
+                    ("Chập ổ cắm điện bàn học số 3", "Ổ cắm điện có tia lửa khi cắm sạc laptop, cần thợ điện xử lý gấp.", "Khẩn cấp", "Chờ xử lý", false),
+                    ("Rò rỉ đường ống nước bồn rửa mặt", "Nước rỉ liên tục dưới gầm chậu rửa mặt gây ướt sàn nhà vệ sinh.", "Nghiêm trọng", "Chờ xử lý", false),
+                    ("[Xin chuyển phòng] Nguyện vọng: P.202", "Em muốn xin chuyển sang phòng 202 để ở cùng nhóm bạn học cùng lớp KTPM.", "Bình thường", "Chờ xử lý", true),
+                    ("Bóng đèn tuýp hành lang bị cháy", "Đèn ngoài ban công và đèn bàn học số 1 bị nhấp nháy rồi tắt hẳn.", "Bình thường", "Chờ xử lý", false),
+                    ("Vòi hoa sen bị gãy khóa nước", "Van gạt nước vòi hoa sen bị gãy không khóa chặt được nước.", "Khẩn cấp", "Đang xử lý", false),
+                    ("[Đăng ký gia hạn ở] Nguyện vọng: Học kỳ I 2026-2027", "Em xin đăng ký gia hạn hợp đồng lưu trú tại phòng hiện tại cho kỳ tới.", "Bình thường", "Đang xử lý", true),
+                    ("Khóa cửa chính bị kẹt chốt", "Chìa khóa mở rất khó khăn, chốt trong bị lệch.", "Bình thường", "Đang xử lý", false),
+                    ("Bình nóng lạnh không lên đèn báo", "Đã bật aptomat bình nóng lạnh 30 phút nhưng nước vẫn lạnh.", "Nghiêm trọng", "Chờ xử lý", false),
+                    ("[Đăng ký trả phòng] Nguyện vọng: Cuối tháng này", "Em chuẩn bị đi thực tập doanh nghiệp xa trường nên xin làm thủ tục trả phòng.", "Bình thường", "Chờ xử lý", true),
+                    ("Bồn cầu bị tắc thoát nước chậm", "Hệ thống xả nước bồn cầu bị nghẹt, cần thông tắc vệ sinh.", "Nghiêm trọng", "Đã xử lý", false),
+                    ("Cửa sổ kính bị lỏng bản lề", "Gió lớn làm cánh cửa sổ va đập mạnh, cần bắt lại vít bản lề.", "Bình thường", "Đã xử lý", false),
+                    ("Giường tầng số 2 bị lỏng ốc thang leo", "Thanh sắt bậc thang lên giường tầng 2 bị lung lay.", "Bình thường", "Đã xử lý", false),
+                    ("[Xin chuyển phòng] Nguyện vọng: P.305 (Phòng có điều hòa)", "Em muốn nâng cấp từ phòng thường sang phòng có điều hòa tại tầng 3.", "Bình thường", "Đã xử lý", true)
+                };
+
+                for (int i = 0; i < svSuCoList.Count; i++)
+                {
+                    var sv = svSuCoList[i];
+                    var mau = mauBaoCao[i % mauBaoCao.Length];
+                    string prefix = mau.IsYeuCau ? "YC" : "SC";
+                    string maSc = $"{prefix}_2026_{i + 1:D3}";
+                    if (existingSuCoIds.Contains(maSc)) continue;
+
+                    newSuCos.Add(new BaoCaoSuCo
                     {
-                        MaSuCo = $"SC_{DateTime.Now.Ticks.ToString().Substring(8)}_{i}",
-                        TenSuCo = tenSuCo[i % tenSuCo.Length],
-                        MoTa = "Thiết bị hỏng đột ngột, mong ban quản lý cử người xuống sửa chữa sớm.",
-                        MucDoKhanCap = mucDo[i % mucDo.Length],
+                        MaSuCo = maSc,
+                        TenSuCo = mau.Ten,
+                        MoTa = mau.MoTa,
+                        MucDoKhanCap = mau.MucDo,
                         HinhAnh = "",
-                        TrangThai = trangThai[i % trangThai.Length],
-                        NgayBaoCao = DateTime.Now.AddDays(-random.Next(1, 15)),
+                        TrangThai = mau.TrangThai,
+                        NgayBaoCao = DateTime.Now.AddHours(-(i * 9 + 2)),
                         MaSV = sv.MaSV,
-                        MaPhong = sv.MaPhong
+                        MaPhong = sv.MaPhong!
+                    });
+                    existingSuCoIds.Add(maSc);
+                }
+                if (newSuCos.Any())
+                {
+                    context.BaoCaoSuCos.AddRange(newSuCos);
+                    context.SaveChanges();
+                }
+            }
+
+            // =========================================================================
+            // 8. KỶ LUẬT & VI PHẠM NỘI QUY (ViPhams - Đảm bảo >= 35 bản ghi)
+            // =========================================================================
+            if (context.ViPhams.Count() < 30)
+            {
+                var newViPhams = new List<ViPham>();
+                var svViPhamList = allSinhViens.Skip(5).Take(36).ToList();
+                string[] noiDungVp =
+                {
+                    "Về muộn quá giờ quy định (sau 23:00)",
+                    "Sử dụng bếp điện đun nấu trong phòng ở",
+                    "Làm ồn, mở nhạc to sau 22:30 đêm",
+                    "Dẫn người lạ vào phòng không đăng ký với Bảo vệ",
+                    "Không thực hiện trực nhật vệ sinh phòng ở",
+                    "Tự ý di chuyển tài sản, giường tủ giữa các phòng"
+                };
+                string[] hinhThucXl = { "Nhắc nhở", "Cảnh cáo", "Phạt tiền", "Nhắc nhở", "Cảnh cáo", "Đình chỉ" };
+
+                for (int i = 0; i < svViPhamList.Count; i++)
+                {
+                    var sv = svViPhamList[i];
+                    string hinhThuc = hinhThucXl[i % hinhThucXl.Length];
+                    newViPhams.Add(new ViPham
+                    {
+                        MaSV = sv.MaSV,
+                        NoiDungViPham = noiDungVp[i % noiDungVp.Length],
+                        HinhThucXuLy = hinhThuc,
+                        NgayViPham = DateTime.Now.AddDays(-(i * 6 + random.Next(1, 5))),
+                        GhiChu = "Đội tự quản và Ban quản lý KTX lập biên bản kiểm tra định kỳ."
                     });
                 }
-                context.BaoCaoSuCos.AddRange(suCos);
+                context.ViPhams.AddRange(newViPhams);
+                context.SaveChanges();
+            }
+
+            DongBoYeuCauPhongDaDuyet(context);
+        }
+
+        /// <summary>
+        /// Đồng bộ tự động các yêu cầu hỗ trợ phòng (YC_) đã được Admin duyệt ("Đã xử lý"):
+        /// - Nếu là "Đăng ký trả phòng" -> chuyển SinhVien.TinhTrangLuuTru = "Đã rời đi" (sang Lịch sử sinh viên) và mở lại chỗ trống phòng.
+        /// - Nếu là "Xin chuyển phòng" -> tự động chuyển SinhVien.MaPhong sang phòng mới (nếu còn chỗ) và đồng bộ trạng thái phòng.
+        /// </summary>
+        public static void DongBoYeuCauPhongDaDuyet(ApplicationDbContext context)
+        {
+            var yeuCauDaDuyet = context.BaoCaoSuCos
+                .Where(b => b.TrangThai == "Đã xử lý"
+                         && (b.MaSuCo.StartsWith("YC_") || b.TenSuCo.StartsWith("["))
+                         && !b.MoTa.Contains("[Đã đồng bộ]"))
+                .OrderBy(b => b.NgayBaoCao)
+                .ToList();
+
+            if (!yeuCauDaDuyet.Any()) return;
+
+            bool hasChanges = false;
+            var allRooms = context.Phongs.ToList();
+
+            foreach (var yc in yeuCauDaDuyet)
+            {
+                var sv = context.SinhViens.FirstOrDefault(s => s.MaSV == yc.MaSV);
+                if (sv == null) continue;
+
+                // Đánh dấu yêu cầu này đã được đồng bộ 1 lần duy nhất để không ghi đè khi Admin sửa tay hồ sơ SV về sau
+                yc.MoTa = (yc.MoTa ?? "") + " [Đã đồng bộ]";
+                context.BaoCaoSuCos.Update(yc);
+                hasChanges = true;
+
+                // 1. Duyệt yêu cầu Đăng ký trả phòng -> Chuyển sang "Đã rời đi" (Lịch sử sinh viên)
+                if (yc.TenSuCo.Contains("Đăng ký trả phòng", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (sv.TinhTrangLuuTru != "Đã rời đi")
+                    {
+                        string? oldRoomCode = sv.MaPhong;
+                        sv.TinhTrangLuuTru = "Đã rời đi";
+                        context.SinhViens.Update(sv);
+
+                        if (!string.IsNullOrEmpty(oldRoomCode))
+                        {
+                            var oldRoom = allRooms.FirstOrDefault(p => p.MaPhong == oldRoomCode);
+                            if (oldRoom != null && oldRoom.TinhTrang == "Đã đầy")
+                            {
+                                oldRoom.TinhTrang = "Còn chỗ";
+                                context.Phongs.Update(oldRoom);
+                            }
+                        }
+                    }
+                }
+                // 2. Duyệt yêu cầu Xin chuyển phòng -> Cập nhật sang mã phòng mới
+                else if (yc.TenSuCo.Contains("Xin chuyển phòng", StringComparison.OrdinalIgnoreCase))
+                {
+                    string rawTarget = "";
+                    int idxArrow = yc.TenSuCo.LastIndexOf("phòng", StringComparison.OrdinalIgnoreCase);
+                    if (yc.TenSuCo.Contains("->", StringComparison.Ordinal) && idxArrow >= 0)
+                    {
+                        rawTarget = yc.TenSuCo.Substring(idxArrow + "phòng".Length).Trim();
+                    }
+                    else
+                    {
+                        int idxNv = yc.TenSuCo.IndexOf("Nguyện vọng:", StringComparison.OrdinalIgnoreCase);
+                        if (idxNv >= 0)
+                        {
+                            rawTarget = yc.TenSuCo.Substring(idxNv + "Nguyện vọng:".Length).Trim();
+                        }
+                    }
+
+                    int parenIdx = rawTarget.IndexOf('(');
+                    if (parenIdx > 0) rawTarget = rawTarget.Substring(0, parenIdx).Trim();
+
+                    rawTarget = rawTarget.ToUpper();
+                    if (rawTarget.StartsWith("P.")) rawTarget = rawTarget.Substring(2).Trim();
+                    else if (rawTarget.StartsWith("P ")) rawTarget = rawTarget.Substring(2).Trim();
+                    string normTarget = rawTarget.Replace(".", "").Replace(" ", "").Replace("-", "");
+
+                    if (!string.IsNullOrEmpty(normTarget))
+                    {
+                        var targetRoom = allRooms.FirstOrDefault(p =>
+                            p.MaPhong.Equals(rawTarget, StringComparison.OrdinalIgnoreCase) ||
+                            p.MaPhong.Replace(".", "").Replace(" ", "").Replace("-", "").ToUpper() == normTarget);
+
+                        if (targetRoom != null && sv.MaPhong != targetRoom.MaPhong)
+                        {
+                            int soDangO = context.SinhViens.Count(s => s.MaPhong == targetRoom.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sv.MaSV);
+                            if (soDangO < targetRoom.SoLuongGiuong)
+                            {
+                                string? oldRoomCode = sv.MaPhong;
+                                sv.MaPhong = targetRoom.MaPhong;
+                                context.SinhViens.Update(sv);
+
+                                if (soDangO + 1 >= targetRoom.SoLuongGiuong && targetRoom.TinhTrang == "Còn chỗ")
+                                {
+                                    targetRoom.TinhTrang = "Đã đầy";
+                                    context.Phongs.Update(targetRoom);
+                                }
+                                if (!string.IsNullOrEmpty(oldRoomCode))
+                                {
+                                    var oldRoom = allRooms.FirstOrDefault(p => p.MaPhong == oldRoomCode);
+                                    if (oldRoom != null && oldRoom.TinhTrang == "Đã đầy")
+                                    {
+                                        oldRoom.TinhTrang = "Còn chỗ";
+                                        context.Phongs.Update(oldRoom);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (hasChanges)
+            {
                 context.SaveChanges();
             }
         }

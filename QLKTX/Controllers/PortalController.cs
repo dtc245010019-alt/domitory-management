@@ -18,15 +18,18 @@ namespace QLKTX.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ILogger<PortalController> _logger;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
         public PortalController(
             ApplicationDbContext context, 
             IWebHostEnvironment webHostEnvironment,
-            ILogger<PortalController> logger)
+            ILogger<PortalController> logger,
+            Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _logger = logger;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -61,6 +64,40 @@ namespace QLKTX.Controllers
                 return NotFound("Không tìm thấy thông tin sinh viên.");
 
             return View(sv);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GuiYeuCauPhong(string LoaiYeuCau, string PhongMongMuon, string LyDo)
+        {
+            if (EnsureStudentSession(nameof(GuiYeuCauPhong), out string maSV) is { } redirect)
+                return redirect;
+
+            var sv = await _context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == maSV);
+            if (sv == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy hồ sơ sinh viên.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            string maPhongHienTai = !string.IsNullOrEmpty(sv.MaPhong) ? sv.MaPhong : (_context.Phongs.FirstOrDefault()?.MaPhong ?? "101");
+            var yeuCau = new BaoCaoSuCo
+            {
+                MaSuCo = "YC_" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+                TenSuCo = $"[{LoaiYeuCau}] Nguyện vọng: {PhongMongMuon}",
+                MoTa = LyDo ?? "Sinh viên gửi yêu cầu qua Portal",
+                MucDoKhanCap = "Bình thường",
+                HinhAnh = "",
+                MaSV = maSV,
+                MaPhong = maPhongHienTai,
+                TrangThai = "Chờ xử lý",
+                NgayBaoCao = DateTime.Now
+            };
+
+            _context.BaoCaoSuCos.Add(yeuCau);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"Đã gửi yêu cầu '{LoaiYeuCau}' ({PhongMongMuon}) tới Ban Quản lý thành công!";
+            return RedirectToAction(nameof(Index));
         }
 
         // ==========================================
@@ -308,9 +345,9 @@ namespace QLKTX.Controllers
             if (hd != null)
             {
                 hd.TrangThai = trangThaiMoi;
-                if (trangThaiMoi == "Đã thanh toán" && string.IsNullOrEmpty(hd.HinhThucThanhToan))
+                if (trangThaiMoi == "Đã thanh toán" && (string.IsNullOrEmpty(hd.HinhThucThanhToan) || hd.HinhThucThanhToan == "Chưa có"))
                 {
-                    hd.HinhThucThanhToan = "Tiền mặt (Admin thu)";
+                    hd.HinhThucThanhToan = HttpContext.Session.GetString("VaiTro") == "KeToan" ? "Tiền mặt (Kế toán thu)" : "Tiền mặt (Admin thu)";
                 }
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = $"Cập nhật trạng thái hóa đơn {maHoaDon} thành công!";
@@ -427,6 +464,7 @@ namespace QLKTX.Controllers
             return RedirectToAction(nameof(QuanLyHoaDonAdmin));
         }
 
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> QuanLySuCoAdmin()
         {
             if (EnsureAdminSession(nameof(QuanLySuCoAdmin)) is { } redirect)
@@ -442,6 +480,7 @@ namespace QLKTX.Controllers
         }
 
         [HttpPost]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> CapNhatTrangThaiSuCo(string maSuCo, string trangThaiMoi)
         {
             if (EnsureAdminSession(nameof(CapNhatTrangThaiSuCo)) is { } redirect)
@@ -487,21 +526,15 @@ namespace QLKTX.Controllers
                 }
 
                 string jsonData = System.Text.Json.JsonSerializer.Serialize(suCos);
-                string prompt = $@"Bạn là người quản lý ký túc xá. Dưới đây là danh sách sự cố đang chờ xử lý:
-{jsonData}
-
-Hãy:
-(1) Phân loại thành nhóm Điện, Nước, Khác.
-(2) Nêu sự cố nào khẩn cấp cần xử lý trước và lý do.
-(3) Tóm tắt ngắn gọn bằng tiếng Việt, trình bày theo gạch đầu dòng rõ ràng.
-Tuyệt đối không tự bịa thêm sự cố ngoài danh sách.";
+                string prompt = AIPrompts.BuildIncidentSummaryPrompt(jsonData);
+                string modelName = _configuration["Ollama:Model"] ?? "llama3";
 
                 var payload = new
                 {
-                    model = "llama3",
+                    model = modelName,
                     messages = new[]
                     {
-                        new { role = "system", content = "Bạn là trợ lý AI quản lý KTX. Phải trả lời 100% bằng tiếng Việt và tuân thủ định dạng yêu cầu." },
+                        new { role = "system", content = AIPrompts.IncidentSummarySystemPrompt },
                         new { role = "user", content = prompt }
                     },
                     stream = false

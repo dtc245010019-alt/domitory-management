@@ -43,11 +43,14 @@ namespace QLKTX.Controllers
                 if (!string.IsNullOrEmpty(account.MaSV))
                 {
                     HttpContext.Session.SetString("MaSV_DangNhap", account.MaSV);
+                    HttpContext.Session.SetString("VaiTro", "SinhVien");
                     return RedirectToAction("Index", "Portal");
                 }
                 else
                 {
                     HttpContext.Session.SetString("Admin_DangNhap", "true");
+                    HttpContext.Session.SetString("VaiTro", string.IsNullOrEmpty(account.Quyen) ? "Admin" : account.Quyen);
+                    HttpContext.Session.SetString("TenDangNhap", account.TenDangNhap);
                     return RedirectToAction("Index", "Home");
                 }
             }

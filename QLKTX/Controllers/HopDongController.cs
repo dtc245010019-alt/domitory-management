@@ -5,6 +5,7 @@ using QLKTX.Models;
 
 namespace QLKTX.Controllers
 {
+    [AdminAuthorize]
     public class HopDongController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -14,6 +15,52 @@ namespace QLKTX.Controllers
             _context = context;
         }
 
+        private SelectList BuildPhongSelectList(string? selectedMaPhong = null)
+        {
+            var phongs = _context.Phongs
+                .Include(p => p.SinhViens)
+                .AsNoTracking()
+                .ToList()
+                .Select(p =>
+                {
+                    int soDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru == "Đang ở") ?? 0;
+                    int conTrong = Math.Max(0, p.SoLuongGiuong - soDangO);
+                    return new
+                    {
+                        p.MaPhong,
+                        ConTrong = conTrong,
+                        IsSelected = p.MaPhong == selectedMaPhong,
+                        DisplayText = conTrong > 0
+                            ? $"P.{p.MaPhong} - {p.LoaiPhong} (Trống {conTrong}/{p.SoLuongGiuong} giường)"
+                            : $"P.{p.MaPhong} - {p.LoaiPhong} (ĐÃ ĐẦY {soDangO}/{p.SoLuongGiuong})"
+                    };
+                })
+                .Where(p => p.ConTrong > 0 || p.IsSelected)
+                .ToList();
+
+            return new SelectList(phongs, "MaPhong", "DisplayText", selectedMaPhong);
+        }
+
+        private async Task DongBoTrangThaiPhongAsync(string? maPhong)
+        {
+            if (string.IsNullOrEmpty(maPhong)) return;
+            var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == maPhong);
+            if (phong == null) return;
+
+            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == maPhong && s.TinhTrangLuuTru == "Đang ở");
+            if (soDangO >= phong.SoLuongGiuong && phong.TinhTrang == "Còn chỗ")
+            {
+                phong.TinhTrang = "Đã đầy";
+                _context.Phongs.Update(phong);
+                await _context.SaveChangesAsync();
+            }
+            else if (soDangO < phong.SoLuongGiuong && phong.TinhTrang == "Đã đầy")
+            {
+                phong.TinhTrang = "Còn chỗ";
+                _context.Phongs.Update(phong);
+                await _context.SaveChangesAsync();
+            }
+        }
 
         // GET: HopDong/Index
         public async Task<IActionResult> Index(string searchString)
@@ -59,9 +106,8 @@ namespace QLKTX.Controllers
         // GET: HopDong/Create
         public IActionResult Create()
         {
-            // Đổ dữ liệu vào Dropdown list cho Sinh viên (hiển thị Họ tên) và Phòng
             ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen");
-            ViewBag.MaPhong = new SelectList(_context.Phongs, "MaPhong", "MaPhong");
+            ViewBag.MaPhong = BuildPhongSelectList();
             return View();
         }
 
@@ -83,13 +129,41 @@ namespace QLKTX.Controllers
                 }
                 else
                 {
+                    if (!string.IsNullOrEmpty(hopDong.MaPhong) && hopDong.TrangThai == "Còn hiệu lực")
+                    {
+                        var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == hopDong.MaPhong);
+                        if (phong != null)
+                        {
+                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == hopDong.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != hopDong.MaSV);
+                            if (soDangO >= phong.SoLuongGiuong)
+                            {
+                                ModelState.AddModelError("MaPhong", $"Phòng P.{phong.MaPhong} đã đạt tối đa {phong.SoLuongGiuong}/{phong.SoLuongGiuong} giường, không thể lập hợp đồng mới vào phòng này!");
+                                ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", hopDong.MaSV);
+                                ViewBag.MaPhong = BuildPhongSelectList(hopDong.MaPhong);
+                                return View(hopDong);
+                            }
+                        }
+                    }
+
                     _context.Add(hopDong);
+
+                    var sv = await _context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == hopDong.MaSV);
+                    string? maPhongCu = sv?.MaPhong;
+                    if (sv != null && hopDong.TrangThai == "Còn hiệu lực" && !string.IsNullOrEmpty(hopDong.MaPhong))
+                    {
+                        sv.MaPhong = hopDong.MaPhong;
+                        _context.SinhViens.Update(sv);
+                    }
+
                     await _context.SaveChangesAsync();
+                    await DongBoTrangThaiPhongAsync(maPhongCu);
+                    await DongBoTrangThaiPhongAsync(hopDong.MaPhong);
+                    TempData["SuccessMessage"] = $"Đã lập hợp đồng {hopDong.MaHopDong} thành công!";
                     return RedirectToAction(nameof(Index));
                 }
             }
             ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", hopDong.MaSV);
-            ViewBag.MaPhong = new SelectList(_context.Phongs, "MaPhong", "MaPhong", hopDong.MaPhong);
+            ViewBag.MaPhong = BuildPhongSelectList(hopDong.MaPhong);
             return View(hopDong);
         }
 
@@ -102,7 +176,7 @@ namespace QLKTX.Controllers
             if (hopDong == null) return NotFound();
 
             ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", hopDong.MaSV);
-            ViewBag.MaPhong = new SelectList(_context.Phongs, "MaPhong", "MaPhong", hopDong.MaPhong);
+            ViewBag.MaPhong = BuildPhongSelectList(hopDong.MaPhong);
             return View(hopDong);
         }
 
@@ -123,6 +197,7 @@ namespace QLKTX.Controllers
                 {
                     _context.Update(hopDong);
                     await _context.SaveChangesAsync();
+                    await DongBoTrangThaiPhongAsync(hopDong.MaPhong);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -132,7 +207,7 @@ namespace QLKTX.Controllers
                 return RedirectToAction(nameof(Index));
             }
             ViewBag.MaSV = new SelectList(_context.SinhViens, "MaSV", "HoTen", hopDong.MaSV);
-            ViewBag.MaPhong = new SelectList(_context.Phongs, "MaPhong", "MaPhong", hopDong.MaPhong);
+            ViewBag.MaPhong = BuildPhongSelectList(hopDong.MaPhong);
             return View(hopDong);
         }
 

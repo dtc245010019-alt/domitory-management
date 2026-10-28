@@ -93,13 +93,47 @@
 
         <!-- Group 2: Liên lạc & Xếp phòng lưu trú -->
         <div class="card border-0 shadow-xs mb-4">
-            <div class="card-header bg-white py-3 px-4">
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-door-open-fill text-primary"></i>
                     <h5 class="fw-bold text-dark mb-0 fs-6">2. Thông Tin Liên Lạc & Xếp Phòng Ở</h5>
                 </div>
+                <button type="button" id="btnToggleAiBox" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-stars me-1"></i> AI Gợi ý phòng trống tối ưu
+                </button>
             </div>
             <div class="card-body p-4">
+                <!-- Khung AI Gợi ý xếp phòng trực tiếp -->
+                <div id="aiSuggestPanel" class="p-3 mb-3 rounded-3 border bg-light d-none">
+                    <div class="d-flex flex-wrap align-items-end gap-2 mb-2">
+                        <div>
+                            <label class="form-label small fw-semibold mb-1">Loại phòng ưu tiên</label>
+                            <select id="aiLoaiPhongSv" class="form-select form-select-sm">
+                                <option value="">-- Tất cả loại phòng --</option>
+                                <option value="Phòng thường">Phòng thường (9.000.000đ)</option>
+                                <option value="Phòng có điều hoà">Phòng có điều hoà (11.000.000đ)</option>
+                                <option value="Phòng điều hoà + nóng lạnh">Phòng điều hoà + nóng lạnh (13.000.000đ)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label small fw-semibold mb-1">Tầng ưu tiên</label>
+                            <select id="aiTangSv" class="form-select form-select-sm">
+                                <option value="">-- Tất cả Tầng --</option>
+                                <option value="1">Tầng 1</option>
+                                <option value="2">Tầng 2</option>
+                                <option value="3">Tầng 3</option>
+                                <option value="4">Tầng 4</option>
+                                <option value="5">Tầng 5</option>
+                            </select>
+                        </div>
+                        <button type="button" id="btnRunAiSv" class="btn btn-primary btn-sm">
+                            <i class="bi bi-magic me-1"></i> Phân tích & Tự động chọn
+                        </button>
+                    </div>
+                    <div id="aiQuickButtons" class="d-flex flex-wrap gap-2 mb-2"></div>
+                    <div id="aiResultTextSv" class="small text-dark bg-white p-2 rounded border d-none" style="white-space: pre-line;"></div>
+                </div>
+
                 <div class="row g-3">
                     
                     <!-- Số điện thoại -->
@@ -114,8 +148,8 @@
 
                     <!-- Xếp phòng -->
                     <div class="col-12 col-md-4">
-                        <label asp-for="MaPhong" class="form-label">Xếp Vào Phòng</label>
-                        <select asp-for="MaPhong" class="form-select" asp-items="ViewBag.Phongs">
+                        <label asp-for="MaPhong" class="form-label">Xếp Vào Phòng (Còn chỗ)</label>
+                        <select asp-for="MaPhong" id="selectMaPhongSv" class="form-select" asp-items="ViewBag.Phongs">
                             <option value="">-- Chọn phòng KTX --</option>
                         </select>
                         <span asp-validation-for="MaPhong" class="text-danger small mt-1 d-block"></span>
@@ -151,4 +185,65 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const btnToggle = document.getElementById('btnToggleAiBox');
+            const panel = document.getElementById('aiSuggestPanel');
+            const btnRun = document.getElementById('btnRunAiSv');
+            const resultText = document.getElementById('aiResultTextSv');
+            const quickButtons = document.getElementById('aiQuickButtons');
+            const selectPhong = document.getElementById('selectMaPhongSv');
+
+            if (btnToggle && panel) {
+                btnToggle.addEventListener('click', function () {
+                    panel.classList.toggle('d-none');
+                });
+            }
+
+            if (btnRun) {
+                btnRun.addEventListener('click', async function () {
+                    const loaiPhong = document.getElementById('aiLoaiPhongSv').value;
+                    const tangOrToa = document.getElementById('aiTangSv').value;
+
+                    btnRun.disabled = true;
+                    btnRun.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang phân tích...';
+                    resultText.classList.remove('d-none');
+                    resultText.textContent = 'AI đang kiểm tra số giường trống thực tế trong CSDL...';
+                    quickButtons.innerHTML = '';
+
+                    try {
+                        const res = await fetch('/Phong/GoiYXepPhongAI', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ loaiPhong, tangOrToa, soGiuongCan: 1 })
+                        });
+                        const data = await res.json();
+                        resultText.textContent = data.suggestion || 'Không có gợi ý.';
+
+                        if (data.recommendedMaPhong && selectPhong) {
+                            selectPhong.value = data.recommendedMaPhong;
+                        }
+
+                        if (Array.isArray(data.recommendedRooms)) {
+                            data.recommendedRooms.forEach(function (r) {
+                                const btn = document.createElement('button');
+                                btn.type = 'button';
+                                btn.className = 'btn btn-sm btn-success';
+                                btn.innerHTML = `<i class="bi bi-check2-circle me-1"></i>Chọn P.${r.maPhong} (Trống ${r.giuongTrong}/${r.soLuongGiuong})`;
+                                btn.addEventListener('click', function () {
+                                    if (selectPhong) selectPhong.value = r.maPhong;
+                                });
+                                quickButtons.appendChild(btn);
+                            });
+                        }
+                    } catch (e) {
+                        resultText.textContent = 'Không thể kết nối dịch vụ gợi ý phòng.';
+                    } finally {
+                        btnRun.disabled = false;
+                        btnRun.innerHTML = '<i class="bi bi-magic me-1"></i> Phân tích & Tự động chọn';
+                    }
+                });
+            }
+        });
+    </script>
 }

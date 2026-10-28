@@ -1,16 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using QLKTX.Models;
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace QLKTX.Controllers
 {
+    [AdminAuthorize]
     public class PhongController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public PhongController(ApplicationDbContext context)
+        public PhongController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         // GET: Phong/Index
@@ -56,6 +66,7 @@ namespace QLKTX.Controllers
         }
 
         // GET: Phong/Create
+        [AdminAuthorize(OnlyAdmin = true)]
         public IActionResult Create()
         {
             return View();
@@ -64,6 +75,7 @@ namespace QLKTX.Controllers
         // POST: Phong/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Create(Phong phong)
         {
             ModelState.Remove("SinhViens");
@@ -88,6 +100,7 @@ namespace QLKTX.Controllers
         }
 
         // GET: Phong/Edit/5
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Edit(string id)
         {
             if (id == null) return NotFound();
@@ -101,6 +114,7 @@ namespace QLKTX.Controllers
         // POST: Phong/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Edit(string id, Phong phong)
         {
             if (id != phong.MaPhong) return NotFound();
@@ -131,6 +145,7 @@ namespace QLKTX.Controllers
         }
 
         // GET: Phong/Delete/5
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> Delete(string id)
         {
             if (id == null) return NotFound();
@@ -146,6 +161,7 @@ namespace QLKTX.Controllers
         // POST: Phong/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
             var phong = await _context.Phongs.FindAsync(id);
@@ -174,5 +190,157 @@ namespace QLKTX.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+
+        // POST: Phong/GoiYXepPhongAI
+        [HttpPost]
+        public async Task<IActionResult> GoiYXepPhongAI([FromBody] GoiYPhongRequest req)
+        {
+            try
+            {
+                var phongs = await _context.Phongs
+                    .Include(p => p.SinhViens)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                var danhSachConCho = phongs
+                    .Select(p =>
+                    {
+                        int soDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru == "Đang ở") ?? 0;
+                        return new
+                        {
+                            p.MaPhong,
+                            p.LoaiPhong,
+                            p.SoLuongGiuong,
+                            SoDangO = soDangO,
+                            GiuongTrong = p.SoLuongGiuong - soDangO,
+                            p.GiaPhong,
+                            p.TinhTrang
+                        };
+                    })
+                    .Where(p => p.TinhTrang == "Còn chỗ" && p.GiuongTrong > 0)
+                    .ToList();
+
+                if (!string.IsNullOrWhiteSpace(req?.LoaiPhong))
+                {
+                    danhSachConCho = danhSachConCho
+                        .Where(p => p.LoaiPhong.Contains(req.LoaiPhong, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                }
+
+                if (!string.IsNullOrWhiteSpace(req?.TangOrToa))
+                {
+                    danhSachConCho = danhSachConCho
+                        .Where(p => p.MaPhong.StartsWith(req.TangOrToa, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                }
+
+                if (req?.SoGiuongCan > 0)
+                {
+                    danhSachConCho = danhSachConCho
+                        .Where(p => p.GiuongTrong >= req.SoGiuongCan)
+                        .ToList();
+                }
+
+                var topPhongs = danhSachConCho
+                    .OrderByDescending(p => p.GiuongTrong)
+                    .ThenBy(p => p.GiaPhong)
+                    .Take(5)
+                    .ToList();
+
+                if (!topPhongs.Any())
+                {
+                    return Json(new
+                    {
+                        success = true,
+                        suggestion = "Hiện không tìm thấy phòng nào còn đủ giường trống khớp với tiêu chí bạn vừa chọn. Vui lòng thử chọn tầng khác hoặc tất cả loại phòng."
+                    });
+                }
+
+                string criteriaDesc = $"Loại phòng: {(string.IsNullOrWhiteSpace(req?.LoaiPhong) ? "Tất cả" : req.LoaiPhong)}, " +
+                                      $"Khu/Tầng: {(string.IsNullOrWhiteSpace(req?.TangOrToa) ? "Tất cả" : req.TangOrToa)}, " +
+                                      $"Số chỗ cần xếp: {(req?.SoGiuongCan > 0 ? req.SoGiuongCan : 1)} sinh viên.";
+
+                string roomsJson = JsonSerializer.Serialize(topPhongs);
+                string prompt = AIPrompts.BuildRoomRecommendationPrompt(criteriaDesc, roomsJson);
+
+                string baseUrl = _configuration["Ollama:BaseUrl"] ?? "http://localhost:11434/api/chat";
+                string modelName = _configuration["Ollama:Model"] ?? "llama3";
+
+                var recommendedList = topPhongs.Take(3).Select(p => new
+                {
+                    maPhong = p.MaPhong,
+                    loaiPhong = p.LoaiPhong,
+                    giuongTrong = p.GiuongTrong,
+                    soLuongGiuong = p.SoLuongGiuong,
+                    giaPhong = p.GiaPhong
+                }).ToList();
+
+                try
+                {
+                    using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                    var payload = new
+                    {
+                        model = modelName,
+                        messages = new[]
+                        {
+                            new { role = "system", content = AIPrompts.RoomRecommendationSystemPrompt },
+                            new { role = "user", content = prompt }
+                        },
+                        stream = false
+                    };
+                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                    var res = await httpClient.PostAsync(baseUrl, content);
+                    if (res.IsSuccessStatusCode)
+                    {
+                        var json = await res.Content.ReadAsStringAsync();
+                        using var doc = JsonDocument.Parse(json);
+                        var aiText = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
+                        if (!string.IsNullOrWhiteSpace(aiText))
+                        {
+                            return Json(new
+                            {
+                                success = true,
+                                suggestion = aiText,
+                                recommendedMaPhong = topPhongs.First().MaPhong,
+                                recommendedRooms = recommendedList
+                            });
+                        }
+                    }
+                }
+                catch { }
+
+                // Fallback gợi ý thông minh khi dịch vụ Ollama chưa bật
+                var sb = new StringBuilder();
+                sb.AppendLine($"✨ AI ĐỀ XUẤT XẾP PHÒNG TỐI ƯU ({criteriaDesc}):");
+                sb.AppendLine();
+                int idx = 1;
+                foreach (var p in topPhongs.Take(3))
+                {
+                    sb.AppendLine($"{idx}. Phòng P.{p.MaPhong} ({p.LoaiPhong}):");
+                    sb.AppendLine($"   • Chỗ trống: Còn {p.GiuongTrong}/{p.SoLuongGiuong} giường trống (Đang ở: {p.SoDangO} SV)");
+                    sb.AppendLine($"   • Mức phí: {p.GiaPhong:N0} VNĐ/kỳ");
+                    sb.AppendLine($"   • Lý do đề xuất: Phòng thông thoáng, mật độ lưu trú thấp ({p.SoDangO}/{p.SoLuongGiuong}), sẵn sàng nhận ngay {req?.SoGiuongCan ?? 1} sinh viên.");
+                    idx++;
+                }
+                return Json(new
+                {
+                    success = true,
+                    suggestion = sb.ToString(),
+                    recommendedMaPhong = topPhongs.First().MaPhong,
+                    recommendedRooms = recommendedList
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, suggestion = "Lỗi phân tích gợi ý phòng: " + ex.Message });
+            }
+        }
+    }
+
+    public class GoiYPhongRequest
+    {
+        public string? LoaiPhong { get; set; }
+        public string? TangOrToa { get; set; }
+        public int SoGiuongCan { get; set; } = 1;
     }
 }

@@ -1,8 +1,10 @@
 @model IEnumerable<QLKTX.Models.SinhVien>
+@using Microsoft.AspNetCore.Http
 
 @{
     ViewData["Title"] = "Danh sách Sinh viên";
     var totalSv = Model?.Count() ?? 0;
+    bool isKeToan = Context.Session.GetString("VaiTro") == "KeToan";
 }
 
 <div class="container-fluid px-0">
@@ -19,46 +21,55 @@
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button class="btn btn-light btn-sm px-3" type="button" data-bs-toggle="collapse" data-bs-target="#excelImportCollapse" aria-expanded="false" aria-controls="excelImportCollapse">
-                <i class="bi bi-file-earmark-excel text-success me-1"></i> Import Excel
-            </button>
-            <a asp-action="Create" class="btn btn-primary btn-sm px-3">
-                <i class="bi bi-person-plus-fill me-1"></i> Thêm sinh viên mới
+            <a asp-action="ExportToExcel" class="btn btn-outline-success btn-sm px-3">
+                <i class="bi bi-file-earmark-arrow-down-fill me-1"></i> Xuất Excel
             </a>
+            @if (!isKeToan)
+            {
+                <button class="btn btn-light btn-sm px-3" type="button" data-bs-toggle="collapse" data-bs-target="#excelImportCollapse" aria-expanded="false" aria-controls="excelImportCollapse">
+                    <i class="bi bi-file-earmark-excel text-success me-1"></i> Import Excel
+                </button>
+                <a asp-action="Create" class="btn btn-primary btn-sm px-3">
+                    <i class="bi bi-person-plus-fill me-1"></i> Thêm sinh viên mới
+                </a>
+            }
         </div>
     </div>
 
     <!-- Khối Import Excel (Gọn gàng, trung tính, có thể thu gọn/mở rộng) -->
-    <div class="collapse mb-4" id="excelImportCollapse">
-        <div class="card border shadow-xs bg-white">
-            <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-file-earmark-spreadsheet-fill text-success fs-5"></i>
-                    <span class="fw-bold text-dark small">Nhập dữ liệu hàng loạt từ file Excel (.xlsx)</span>
+    @if (!isKeToan)
+    {
+        <div class="collapse mb-4" id="excelImportCollapse">
+            <div class="card border shadow-xs bg-white">
+                <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-file-earmark-spreadsheet-fill text-success fs-5"></i>
+                        <span class="fw-bold text-dark small">Nhập dữ liệu hàng loạt từ file Excel (.xlsx)</span>
+                    </div>
+                    <a asp-action="DownloadTemplate" asp-controller="SinhVien" class="btn btn-light btn-sm">
+                        <i class="bi bi-download me-1"></i> Tải file Excel mẫu
+                    </a>
                 </div>
-                <a asp-action="DownloadTemplate" asp-controller="SinhVien" class="btn btn-light btn-sm">
-                    <i class="bi bi-download me-1"></i> Tải file Excel mẫu
-                </a>
-            </div>
-            <div class="card-body px-4 py-3">
-                <form asp-action="ImportExcel" asp-controller="SinhVien" method="post" enctype="multipart/form-data">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-12 col-md-8 col-lg-6">
-                            <input type="file" name="fileExcel" class="form-control form-control-sm" accept=".xlsx" required />
+                <div class="card-body px-4 py-3">
+                    <form asp-action="ImportExcel" asp-controller="SinhVien" method="post" enctype="multipart/form-data">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-12 col-md-8 col-lg-6">
+                                <input type="file" name="fileExcel" class="form-control form-control-sm" accept=".xlsx" required />
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-cloud-arrow-up-fill me-1"></i> Tiến hành Import
+                                </button>
+                            </div>
                         </div>
-                        <div class="col-12 col-md-4">
-                            <button type="submit" class="btn btn-primary btn-sm">
-                                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Tiến hành Import
-                            </button>
+                        <div class="text-muted small mt-2" style="font-size: 0.76rem;">
+                            <i class="bi bi-info-circle me-1"></i> Cấu trúc các cột bắt buộc: <strong>A(Mã SV)</strong>, <strong>B(Họ Tên)</strong>, <strong>C(Ngày Sinh)</strong>, <strong>D(Lớp)</strong>, <strong>E(SĐT)</strong>, <strong>F(CCCD)</strong>.
                         </div>
-                    </div>
-                    <div class="text-muted small mt-2" style="font-size: 0.76rem;">
-                        <i class="bi bi-info-circle me-1"></i> Cấu trúc các cột bắt buộc: <strong>A(Mã SV)</strong>, <strong>B(Họ Tên)</strong>, <strong>C(Ngày Sinh)</strong>, <strong>D(Lớp)</strong>, <strong>E(SĐT)</strong>, <strong>F(CCCD)</strong>.
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
+    }
 
     <!-- Bảng Dữ Liệu Sinh Viên Trong Card Trung Tính -->
     <div class="card border-0 shadow-xs">
@@ -203,12 +214,15 @@
                                             <a asp-action="Details" asp-route-id="@item.MaSV" class="btn btn-outline-info btn-action-icon" title="Xem chi tiết hồ sơ">
                                                 <i class="bi bi-eye"></i>
                                             </a>
-                                            <a asp-action="Edit" asp-route-id="@item.MaSV" class="btn btn-outline-warning btn-action-icon" title="Chỉnh sửa thông tin">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <a asp-action="Delete" asp-route-id="@item.MaSV" class="btn btn-outline-danger btn-action-icon" title="Xóa sinh viên">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
+                                            @if (!isKeToan)
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@item.MaSV" class="btn btn-outline-warning btn-action-icon" title="Chỉnh sửa thông tin">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a asp-action="Delete" asp-route-id="@item.MaSV" class="btn btn-outline-danger btn-action-icon" title="Xóa sinh viên">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            }
                                         </div>
                                     </td>
                                 </tr>

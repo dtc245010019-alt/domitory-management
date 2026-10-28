@@ -1,9 +1,30 @@
 @model QLKTX.Models.SinhVien
+@using QLKTX.Models
+@inject ApplicationDbContext _context
 
 @{
     ViewData["Title"] = "Trang cá nhân";
     // ÉP DÙNG LAYOUT CỦA SINH VIÊN
     Layout = "~/Views/Shared/_StudentLayout.cshtml";
+    var lichSuYeuCau = _context.BaoCaoSuCos
+        .Where(b => b.MaSV == Model.MaSV && (b.MaSuCo.StartsWith("YC_") || b.TenSuCo.StartsWith("[")))
+        .OrderByDescending(b => b.NgayBaoCao)
+        .ToList();
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm mt-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mt-3" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
 <div class="row g-4 mt-2">
@@ -55,26 +76,291 @@
                         </div>
                         <div class="col-sm-4">
                             <div class="p-3 bg-light rounded-4 border shadow-sm">
-                                <h6 class="text-muted small fw-semibold text-uppercase mb-2">Giá phòng/Tháng</h6>
+                                <h6 class="text-muted small fw-semibold text-uppercase mb-2">Giá phòng/Kỳ</h6>
                                 <h5 class="fw-bold text-danger mb-0 mt-2">@Model.Phong.GiaPhong.ToString("N0")đ</h5>
                             </div>
                         </div>
                     </div>
 
                     <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Hành động nhanh</h6>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex flex-wrap gap-2">
                         <a asp-action="HoaDon" class="btn btn-primary rounded-pill px-4 shadow-sm"><i class="bi bi-receipt me-1"></i> Xem hóa đơn</a>
                         <a asp-action="BaoCaoSuCo" class="btn btn-outline-danger rounded-pill px-4"><i class="bi bi-tools me-1"></i> Báo hỏng thiết bị</a>
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalYeuCauPhong">
+                            <i class="bi bi-arrow-left-right me-1"></i> Xin chuyển / Trả phòng
+                        </button>
                     </div>
                 }
                 else
                 {
                     <div class="alert alert-warning text-center">
                         <i class="bi bi-exclamation-triangle fs-4 d-block mb-2"></i>
-                        Bạn hiện chưa được xếp vào phòng nào trong hệ thống Ký túc xá. Vui lòng liên hệ Ban quản lý.
+                        Bạn hiện chưa được xếp vào phòng nào trong hệ thống Ký túc xá. Vui lòng gửi đơn đăng ký hoặc liên hệ Ban quản lý.
+                    </div>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalYeuCauPhong">
+                            <i class="bi bi-journal-plus me-1"></i> Gửi đơn Đăng ký ở KTX
+                        </button>
                     </div>
                 }
             </div>
         </div>
     </div>
 </div>
+
+<!-- KHỐI THEO DÕI YÊU CẦU XIN CHUYỂN / GIA HẠN / TRẢ PHÒNG -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-white p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="mb-0 fw-semibold fs-6 text-dark">
+                        <i class="bi bi-clipboard2-check me-2 text-primary"></i> THEO DÕI YÊU CẦU CHUYỂN / GIA HẠN / TRẢ PHÒNG
+                    </h5>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill">@lichSuYeuCau.Count() yêu cầu</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalYeuCauPhong">
+                    <i class="bi bi-plus-circle me-1"></i> Tạo yêu cầu mới
+                </button>
+            </div>
+            <div class="card-body p-0">
+                @if (lichSuYeuCau.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-muted small text-uppercase">
+                                <tr>
+                                    <th class="ps-4 py-3">Mã Đơn</th>
+                                    <th class="py-3">Loại Yêu Cầu & Nguyện Vọng</th>
+                                    <th class="py-3">Lý Do Gửi</th>
+                                    <th class="py-3">Phòng Lúc Gửi</th>
+                                    <th class="py-3">Thời Gian Gửi</th>
+                                    <th class="pe-4 py-3 text-end">Trạng Thái Phê Duyệt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var yc in lichSuYeuCau)
+                                {
+                                    <tr>
+                                        <td class="ps-4 fw-semibold font-monospace text-primary">@yc.MaSuCo</td>
+                                        <td>
+                                            <span class="fw-bold text-dark">@yc.TenSuCo</span>
+                                        </td>
+                                        <td class="text-muted small" style="max-width: 280px;">@(yc.MoTa?.Replace(" [Đã đồng bộ]", ""))</td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                <i class="bi bi-door-open me-1"></i>@yc.MaPhong
+                                            </span>
+                                        </td>
+                                        <td class="small text-muted">
+                                            <i class="bi bi-clock me-1"></i>@yc.NgayBaoCao.ToString("dd/MM/yyyy HH:mm")
+                                        </td>
+                                        <td class="pe-4 text-end">
+                                            @if (yc.TrangThai == "Đã xử lý" || yc.TrangThai == "Đã duyệt")
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-semibold">
+                                                    <i class="bi bi-check-circle-fill me-1"></i> Đã được phê duyệt
+                                                </span>
+                                            }
+                                            else if (yc.TrangThai == "Đang xử lý")
+                                            {
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-2 fw-semibold">
+                                                    <i class="bi bi-hourglass-split me-1"></i> Đang xem xét hồ sơ
+                                                </span>
+                                            }
+                                            else if (yc.TrangThai == "Từ chối")
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2 fw-semibold">
+                                                    <i class="bi bi-x-circle-fill me-1"></i> Từ chối yêu cầu
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-2 fw-semibold">
+                                                    <i class="bi bi-clock-history me-1"></i> Chờ Ban Quản lý duyệt
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                        <p class="mb-2">Bạn chưa gửi yêu cầu xin chuyển phòng, gia hạn hay trả phòng nào.</p>
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalYeuCauPhong">
+                            Gửi yêu cầu ngay
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gửi yêu cầu Đăng ký ở / Xin chuyển phòng -->
+@{
+    var maPhongHienTaiSv = Model.Phong?.MaPhong ?? Model.MaPhong ?? "";
+    var danhSachPhongConCho = _context.Phongs
+        .Where(p => p.TinhTrang == "Còn chỗ" && p.MaPhong != maPhongHienTaiSv)
+        .OrderBy(p => p.MaPhong)
+        .Select(p => new { p.MaPhong, p.LoaiPhong, p.GiaPhong })
+        .ToList();
+}
+<div class="modal fade" id="modalYeuCauPhong" tabindex="-1" aria-labelledby="modalYeuCauPhongLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-primary text-white rounded-top-4">
+                <h5 class="modal-title fw-bold" id="modalYeuCauPhongLabel">
+                    <i class="bi bi-building-gear me-2"></i>Gửi Yêu Cầu Lưu Trú / Chuyển Phòng
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="GuiYeuCauPhong" method="post" id="formYeuCauPhong">
+                <div class="modal-body p-4">
+                    <div id="ycValidationAlert" class="alert alert-danger small py-2 px-3 rounded-3 d-none mb-3">
+                        <i class="bi bi-exclamation-octagon-fill me-1"></i>
+                        <span id="ycValidationMsg"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Loại yêu cầu <span class="text-danger">*</span></label>
+                        <select name="LoaiYeuCau" id="selectLoaiYeuCau" class="form-select" required>
+                            <option value="Xin chuyển phòng">Xin chuyển phòng</option>
+                            <option value="Đăng ký gia hạn ở">Đăng ký gia hạn ở</option>
+                            <option value="Đăng ký trả phòng">Đăng ký trả phòng</option>
+                        </select>
+                    </div>
+
+                    <!-- Ô nhập Mã phòng hiện tại đang ở (bắt buộc đúng mã phòng đang ở cho cả 3 loại yêu cầu) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" id="labelPhongHienTai">
+                            Mã phòng hiện tại đang ở <span class="text-danger">*</span>
+                        </label>
+                        <input type="text"
+                               id="inputPhongHienTai"
+                               class="form-control"
+                               placeholder="Nhập đúng mã phòng bạn đang ở (VD: @maPhongHienTaiSv)..."
+                               required />
+                        <div class="form-text text-muted small">
+                            <i class="bi bi-info-circle me-1"></i>Phòng hiện tại của bạn trên hệ thống: <strong class="text-primary">@(string.IsNullOrEmpty(maPhongHienTaiSv) ? "Chưa xếp" : maPhongHienTaiSv)</strong> (Bắt buộc nhập khớp mã phòng này).
+                        </div>
+                    </div>
+
+                    <!-- Ô nhập Mã phòng muốn chuyển đến (chỉ hiển thị khi chọn "Xin chuyển phòng") -->
+                    <div class="mb-3" id="groupPhongChuyenDen">
+                        <label class="form-label fw-semibold">
+                            Mã phòng muốn chuyển đến <span class="text-danger">*</span>
+                        </label>
+                        <input type="text"
+                               id="inputPhongChuyenDen"
+                               list="datalistPhongConCho"
+                               class="form-control"
+                               placeholder="Nhập hoặc chọn mã phòng muốn chuyển đến (VD: 202, B1-02)..." />
+                        <datalist id="datalistPhongConCho">
+                            @foreach (var p in danhSachPhongConCho)
+                            {
+                                <option value="@p.MaPhong">P.@p.MaPhong - @p.LoaiPhong (@p.GiaPhong.ToString("N0")đ)</option>
+                            }
+                        </datalist>
+                        <div class="form-text text-muted small">
+                            <i class="bi bi-check2-circle text-success me-1"></i>Gợi ý các phòng đang còn chỗ trống trong KTX.
+                        </div>
+                    </div>
+
+                    <!-- Input ẩn gửi chuỗi tổng hợp về Controller -->
+                    <input type="hidden" name="PhongMongMuon" id="hiddenPhongMongMuon" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Lý do chi tiết <span class="text-danger">*</span></label>
+                        <textarea name="LyDo" class="form-control" rows="3" placeholder="Nêu rõ lý do xin chuyển/gia hạn/trả phòng để Ban Quản lý xét duyệt..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="bi bi-send me-1"></i> Gửi Ban Quản lý</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const expectedRoomRaw = '@maPhongHienTaiSv';
+        const selectLoai = document.getElementById('selectLoaiYeuCau');
+        const groupChuyenDen = document.getElementById('groupPhongChuyenDen');
+        const inputHienTai = document.getElementById('inputPhongHienTai');
+        const inputChuyenDen = document.getElementById('inputPhongChuyenDen');
+        const hiddenMongMuon = document.getElementById('hiddenPhongMongMuon');
+        const form = document.getElementById('formYeuCauPhong');
+        const alertBox = document.getElementById('ycValidationAlert');
+        const alertMsg = document.getElementById('ycValidationMsg');
+
+        function normalizeRoom(code) {
+            let s = (code || '').trim().toUpperCase();
+            if (s.startsWith('P.')) s = s.substring(2).trim();
+            else if (s.startsWith('P ')) s = s.substring(2).trim();
+            return s.replace(/[\.\s\-]/g, '');
+        }
+
+        function updateModalFields() {
+            const loai = selectLoai.value;
+            alertBox.classList.add('d-none');
+            if (loai === 'Xin chuyển phòng') {
+                groupChuyenDen.classList.remove('d-none');
+                inputChuyenDen.required = true;
+            } else {
+                groupChuyenDen.classList.add('d-none');
+                inputChuyenDen.required = false;
+                inputChuyenDen.value = '';
+            }
+        }
+
+        if (selectLoai) {
+            selectLoai.addEventListener('change', updateModalFields);
+            updateModalFields();
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                alertBox.classList.add('d-none');
+                const loai = selectLoai.value;
+                const nhapHienTai = (inputHienTai.value || '').trim();
+                const nhapChuyenDen = (inputChuyenDen.value || '').trim();
+
+                if (expectedRoomRaw && normalizeRoom(nhapHienTai) !== normalizeRoom(expectedRoomRaw)) {
+                    e.preventDefault();
+                    alertMsg.textContent = `Mã phòng hiện tại bạn nhập ("${nhapHienTai}") không khớp với phòng bạn đang ở ("${expectedRoomRaw}"). Vui lòng nhập đúng mã phòng đang ở!`;
+                    alertBox.classList.remove('d-none');
+                    inputHienTai.focus();
+                    return;
+                }
+
+                if (loai === 'Xin chuyển phòng') {
+                    if (!nhapChuyenDen) {
+                        e.preventDefault();
+                        alertMsg.textContent = 'Vui lòng nhập mã phòng bạn muốn chuyển đến!';
+                        alertBox.classList.remove('d-none');
+                        inputChuyenDen.focus();
+                        return;
+                    }
+                    if (normalizeRoom(nhapChuyenDen) === normalizeRoom(expectedRoomRaw)) {
+                        e.preventDefault();
+                        alertMsg.textContent = 'Mã phòng muốn chuyển đến phải khác với phòng hiện tại bạn đang ở!';
+                        alertBox.classList.remove('d-none');
+                        inputChuyenDen.focus();
+                        return;
+                    }
+                    hiddenMongMuon.value = `Từ phòng ${expectedRoomRaw || nhapHienTai} -> Chuyển sang phòng ${nhapChuyenDen.toUpperCase()}`;
+                } else {
+                    hiddenMongMuon.value = `Phòng hiện tại: ${expectedRoomRaw || nhapHienTai.toUpperCase()}`;
+                }
+            });
+        }
+    });
+</script>

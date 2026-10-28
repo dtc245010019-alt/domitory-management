@@ -72,24 +72,55 @@
         </div>
     </footer>
 
-    <!-- ========================================== -->
-    <!-- Bổ sung: Bong bóng Chatbot AI ở góc phải -->
-    <!-- ========================================== -->
-    <div id="chat-widget" style="position: fixed; bottom: 25px; right: 25px; z-index: 9999;">
-        <button id="chat-toggle-btn" class="btn btn-primary rounded-circle shadow p-0" style="width: 55px; height: 55px; font-size: 24px;">💬</button>
+    <!-- ====================================================
+         WIDGET CHATBOT AI KTX FLOATING
+         ==================================================== -->
+    <div id="chat-widget">
+        <button type="button" id="chat-toggle-btn" title="Trợ lý AI Ký túc xá" aria-label="Mở Trợ lý AI KTX">
+            <i class="bi bi-robot"></i>
+            <span style="position: absolute; top: 4px; right: 4px; font-size: 11px;">✨</span>
+        </button>
 
-        <div id="chat-box" class="card shadow d-none mt-2" style="width: 340px; height: 430px; position: absolute; bottom: 65px; right: 0;">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
-                <strong>🤖 Trợ Lý AI KTX</strong>
-                <button id="chat-close-btn" class="btn btn-sm text-white p-0" style="font-size: 18px;">✕</button>
+        <div id="chat-box" class="d-none">
+            <div class="chat-header-glass">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                        <i class="bi bi-robot text-white"></i>
+                    </div>
+                    <div>
+                        <strong class="d-block small text-white lh-1">Trợ Lý AI KTX</strong>
+                        <span class="text-white opacity-75" style="font-size: 0.7rem;">● Trực tuyến 24/7</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" id="chat-close-btn" class="btn btn-sm text-white p-1" style="background: rgba(255,255,255,0.15); border-radius: 6px;" aria-label="Đóng chat">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
             </div>
-            <div id="chat-messages" class="card-body overflow-auto p-2" style="height: 320px; background-color: #f8f9fa;">
-                <div class="mb-2"><span class="d-inline-block p-2 rounded bg-white shadow-sm border small">Xin chào! Mình là Trợ lý AI KTX. Bạn cần hỗ trợ thông tin gì? 😊</span></div>
+
+            <div id="chat-messages">
+                <div class="msg-row-ai">
+                    <div class="msg-bubble-ai">
+                        👋 <strong>Xin chào!</strong> Tôi là Trợ Lý AI của Ký túc xá.<br />
+                        Bạn có câu hỏi gì về phòng ở, hợp đồng, chi phí điện nước hay thủ tục báo hỏng?
+                    </div>
+                </div>
             </div>
-            <div class="card-footer p-2 bg-white">
+
+            <div class="p-2 border-top bg-white d-flex gap-1 overflow-auto" style="scrollbar-width: none;">
+                <button type="button" class="btn btn-sm btn-primary py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Nhờ AI làm hộ')">⚡ Nhờ AI làm hộ</button>
+                <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Giá phòng KTX bao nhiêu?')">💰 Giá phòng?</button>
+                <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Hướng dẫn báo hỏng cơ sở vật chất?')">🛠 Báo sự cố?</button>
+                <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Quy định giờ giấc ký túc xá?')">⏰ Giờ giới nghiêm?</button>
+            </div>
+
+            <div class="p-3 border-top bg-white">
                 <div class="input-group">
-                    <input type="text" id="chat-input" class="form-control form-control-sm" placeholder="Nhập câu hỏi..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-                    <button class="btn btn-primary btn-sm" onclick="sendChatMessage()">Gửi</button>
+                    <input type="text" id="chat-input" class="form-control form-control-sm border bg-light" placeholder="Nhập câu hỏi... (Enter để gửi)" autocomplete="off" />
+                    <button type="button" class="btn btn-primary btn-sm px-3" onclick="sendChatMessage()" aria-label="Gửi tin nhắn">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -97,43 +128,110 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/chatbot-agent.js" asp-append-version="true"></script>
 
     <script>
-        document.getElementById('chat-toggle-btn').onclick = () => document.getElementById('chat-box').classList.toggle('d-none');
-        document.getElementById('chat-close-btn').onclick = () => document.getElementById('chat-box').classList.add('d-none');
+        document.addEventListener('DOMContentLoaded', function () {
+            // Chatbot Widget Toggle
+            const chatToggleBtn = document.getElementById('chat-toggle-btn');
+            const chatCloseBtn = document.getElementById('chat-close-btn');
+            const chatBox = document.getElementById('chat-box');
+            const chatInput = document.getElementById('chat-input');
+
+            function toggleChat() {
+                if (!chatBox) return;
+                chatBox.classList.toggle('d-none');
+                if (!chatBox.classList.contains('d-none') && chatInput) {
+                    setTimeout(() => chatInput.focus(), 150);
+                }
+            }
+
+            function closeChat() {
+                if (chatBox) chatBox.classList.add('d-none');
+            }
+
+            if (chatToggleBtn) chatToggleBtn.addEventListener('click', toggleChat);
+            if (chatCloseBtn) chatCloseBtn.addEventListener('click', closeChat);
+
+            if (chatInput) {
+                chatInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        sendChatMessage();
+                    }
+                });
+            }
+        });
+
+        function sendQuickPrompt(text) {
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.value = text;
+                sendChatMessage();
+            }
+        }
 
         async function sendChatMessage() {
-            let input = document.getElementById('chat-input');
-            let msg = input.value.trim();
-            if (!msg) return;
+            const chatInput = document.getElementById('chat-input');
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatInput || !chatMessages) return;
 
-            let chatMsgs = document.getElementById('chat-messages');
-            chatMsgs.innerHTML += `<div class="mb-2 text-end"><span class="d-inline-block p-2 rounded bg-primary text-white shadow-sm small">${msg}</span></div>`;
-            input.value = '';
-            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+            const message = chatInput.value.trim();
+            if (!message) return;
 
-            let loadingId = 'load-' + Date.now();
-            chatMsgs.innerHTML += `<div id="${loadingId}" class="mb-2 text-start"><span class="d-inline-block p-2 rounded bg-white shadow-sm border text-muted small">Đang suy nghĩ... 🤔</span></div>`;
-            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+            chatMessages.innerHTML += `
+                <div class="msg-row-user">
+                    <div class="msg-bubble-user">${escapeHtml(message)}</div>
+                </div>
+            `;
+            chatInput.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const loadingId = 'ai-load-' + Date.now();
+            chatMessages.innerHTML += `
+                <div id="${loadingId}" class="msg-row-ai">
+                    <div class="msg-bubble-ai text-muted small"><i class="bi bi-arrow-repeat me-1 spinner-border spinner-border-sm"></i>Đang xử lý...</div>
+                </div>
+            `;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
 
             try {
-                let res = await fetch('/Chatbot/Ask', {
+                const response = await fetch('/Chatbot/Ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg })
+                    body: JSON.stringify({ message: message })
                 });
-                if (!res.ok) {
-                    throw new Error('HTTP ' + res.status);
-                }
-                let data = await res.json();
-                document.getElementById(loadingId).remove();
-                chatMsgs.innerHTML += `<div class="mb-2 text-start"><span class="d-inline-block p-2 rounded bg-white shadow-sm border small">${data.response}${data.source ? `<br><small class="text-muted">📌 Nguồn: ${data.source}</small>` : ''}</span></div>`;
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+
+                const aiText = data.response || "Tôi đã nhận được câu hỏi nhưng chưa có phản hồi phù hợp.";
+                const formattedText = typeof formatAiMessageText === 'function' ? formatAiMessageText(aiText) : escapeHtml(aiText).replace(/\n/g, '<br />');
+                const cardHtml = (typeof renderActionCard === 'function' && data.actionCard) ? renderActionCard(data.actionCard) : '';
+                const quickBtnHtml = (typeof renderQuickActionButton === 'function' && data.quickAction) ? renderQuickActionButton(data.quickAction) : '';
+                const src = data.source ? `<div class="mt-1 pt-1 border-top text-muted" style="font-size:0.7rem;"><i class="bi bi-database me-1"></i>📌 Nguồn: ${escapeHtml(data.source)}</div>` : '';
+                chatMessages.innerHTML += `
+                    <div class="msg-row-ai">
+                        <div class="msg-bubble-ai">${formattedText}${cardHtml}${quickBtnHtml}${src}</div>
+                    </div>
+                `;
             } catch (err) {
-                console.error('Chatbot fetch error:', err);
-                document.getElementById(loadingId).remove();
-                chatMsgs.innerHTML += `<div class="mb-2 text-start"><span class="d-inline-block p-2 rounded bg-danger text-white small">Không thể kết nối AI Chatbot! (${err.message}) — mở Console (F12) để xem chi tiết.</span></div>`;
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+                chatMessages.innerHTML += `
+                    <div class="msg-row-ai">
+                        <div class="msg-bubble-ai text-danger small">Lỗi kết nối máy chủ AI (${escapeHtml(err.message)})</div>
+                    </div>
+                `;
             }
-            chatMsgs.scrollTop = chatMsgs.scrollHeight;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const p = document.createElement('p');
+            p.textContent = text;
+            return p.innerHTML;
         }
     </script>
 

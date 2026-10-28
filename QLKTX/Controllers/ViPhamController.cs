@@ -5,6 +5,7 @@ using QLKTX.Models;
 
 namespace QLKTX.Controllers
 {
+    [AdminAuthorize(OnlyAdmin = true)]
     public class ViPhamController : Controller
     {
         private readonly ApplicationDbContext _context;
