@@ -1,0 +1,123 @@
+# =============================================================================
+# PROMPT KIỂM THỬ TOÀN BỘ HỆ THỐNG QUẢN LÝ KÝ TÚC XÁ TÍCH HỢP AI (QLKTX)
+# YÊU CẦU: XUẤT TOÀN BỘ KẾT QUẢ KIỂM THỬ RA FILE KET_QUA_KIEM_THU.TXT
+# =============================================================================
+
+Bạn là một Chuyên gia Kiểm thử Phần mềm Cao cấp (Senior QA Engineer & AI Quality Specialist) chuyên về nền tảng ASP.NET Core 8.0, Entity Framework Core và các hệ thống tích hợp Trí tuệ Nhân tạo (LLM / RAG).
+
+Nhiệm vụ của bạn là rà soát, thực thi kiểm thử toàn diện mã nguồn, logic nghiệp vụ, tính năng AI và an toàn dữ liệu của dự án "Hệ thống Quản lý Ký túc xá Tích hợp AI (QLKTX)" hiện có trong thư mục làm việc, sau đó TỔNG HỢP VÀ GHI TOÀN BỘ KẾT QUẢ VÀO FILE: `KET_QUA_KIEM_THU.txt`.
+
+---
+
+### I. THÔNG TIN DỰ ÁN & QUY TẮC CỐT LÕI CẦN KIỂM CHỨNG
+1. **Công nghệ:** ASP.NET Core 8.0 MVC, EF Core 8.0, SQL Server LocalDB, Ollama Local LLM (`llama3`), ClosedXML.
+2. **Quy tắc nghiệp vụ bất khả xâm phạm:**
+   - **Luật 1 (Soft Delete):** Tuyệt đối KHÔNG xóa vật lý sinh viên khỏi CSDL (bảo toàn khóa ngoại với Hóa đơn, Vi phạm, Hợp đồng). Thao tác xóa phải chuyển `TinhTrangLuuTru = "Đã rời đi"`.
+   - **Luật 2 (Đồng bộ Sĩ số):** Sĩ số phòng `X/Y` chỉ được tính trên sinh viên có trạng thái `"Đang ở"`. Khi sinh viên trả phòng hoặc bị kỷ luật đình chỉ, phòng phải tự động mở lại trạng thái `"Còn chỗ"` nếu trước đó là `"Đã đầy"`.
+   - **Luật 3 (Bảo mật Tài chính):** Nghiêm cấm tạo hóa đơn có chỉ số điện nước mới <= chỉ số cũ (tránh hóa đơn âm). Sinh viên thanh toán hóa đơn phải xác thực lại mật khẩu.
+   - **Luật 4 (AI Smart Fallback):** Khi dịch vụ Ollama tắt hoặc quá tải, cả 3 tính năng AI (Chatbot RAG, Gợi ý xếp phòng, Tóm tắt sự cố) phải kích hoạt cơ chế Fallback nội bộ tức thì, không được throw exception 500.
+   - **Luật 5 (Đạo đức & Quyền riêng tư AI):** Prompt gửi tới AI Chatbot tuyệt đối không được để lộ CCCD, Mật khẩu, và phải Masking số điện thoại (ví dụ: `0912***678`).
+
+---
+
+### II. CÁC HẠNG MỤC CẦN KIỂM THỬ CHI TIẾT
+
+#### 1. Kiểm thử Biên dịch & Kiến trúc Mã nguồn (TC_SYS)
+- [ ] Thực thi lệnh kiểm tra build mã nguồn: `dotnet build QLKTX\QLKTX.csproj`. Xác nhận 0 lỗi (0 Errors).
+- [ ] Kiểm tra cấu hình môi trường: `appsettings.json`, chuỗi kết nối Database và cấu hình cổng `OllamaService:Url`.
+- [ ] Kiểm tra tệp đóng gói Docker: Xác nhận sự tồn tại và tính hợp lệ của `Dockerfile` và `docker-compose.yml`.
+
+#### 2. Kiểm thử Nghiệp vụ Xếp phòng & Quản lý Sinh viên (TC_PHONG)
+- [ ] **TC_PHONG_01 (Đúng):** Xếp sinh viên mới vào phòng còn chỗ trống -> Kiểm tra tăng sĩ số và giữ nguyên trạng thái "Còn chỗ".
+- [ ] **TC_PHONG_02 (Biên):** Xếp sinh viên vào giường cuối cùng của phòng -> Kiểm tra tự động chuyển trạng thái phòng sang "Đã đầy".
+- [ ] **TC_PHONG_03 (Sai/Ngăn chặn):** Thử xếp thêm sinh viên vào phòng đã đầy -> Hệ thống phải báo lỗi và chặn hành động.
+- [ ] **TC_PHONG_04 (Đúng):** Trả phòng / Xóa mềm sinh viên -> Kiểm tra trạng thái chuyển thành "Đã rời đi", phòng tự động giảm sĩ số và chuyển về "Còn chỗ".
+- [ ] **TC_PHONG_05 (Tìm kiếm thông minh):** Tra cứu phòng với chuỗi có ký tự đặc biệt (VD: `P.A1-03`, `a1 03`) -> Hệ thống chuẩn hóa thành `A103` và trả về kết quả chính xác.
+
+#### 3. Kiểm thử Tính phí, Hóa đơn & Công nợ (TC_HD)
+- [ ] **TC_HD_01 (Đúng):** Tạo hóa đơn điện nước hợp lệ theo công thức `(ChiSoMoi - ChiSoCu) * DonGia`.
+- [ ] **TC_HD_02 (Sai/Biên):** Nhập chỉ số mới nhỏ hơn hoặc bằng chỉ số cũ -> Hệ thống từ chối tạo và hiển thị cảnh báo hợp lệ.
+- [ ] **TC_HD_03 (Bảo mật):** Thanh toán hóa đơn trên Portal -> Bắt buộc xác thực mật khẩu chính xác; sai mật khẩu phải từ chối giao dịch.
+
+#### 4. Kiểm thử Báo cáo Sự cố & Kỷ luật Vi phạm (TC_SC & TC_VP)
+- [ ] **TC_SC_01 (Đúng):** Tiếp nhận sự cố có đính kèm tệp ảnh -> Lưu trữ an toàn tại `wwwroot/uploads/suco/`.
+- [ ] **TC_SC_02 (Biên):** Tiếp nhận sự cố không đính kèm ảnh (ảnh null) -> Xử lý chuỗi rỗng an toàn, không bị crash `SqlNullValueException`.
+- [ ] **TC_VP_01 (Nghiệp vụ):** Lập biên bản kỷ luật mức "Đình chỉ lưu trú" -> Tự động cập nhật trạng thái sinh viên và giải phóng chỗ trống trong phòng.
+
+#### 5. Kiểm thử 3 Phân hệ AI & An toàn Dữ liệu (TC_AI)
+- [ ] **TC_AI_01 (RAG Knowledge Base):** Kiểm tra tệp `wwwroot/data/knowledge_base.json` đầy đủ các chủ đề nội quy, giờ giấc, giá phòng, điện nước.
+- [ ] **TC_AI_02 (Chống Hallucination):** Kiểm tra cấu hình System Prompt trong `QLKTX\Models\AIPrompts.cs` có ràng buộc giới hạn phạm vi trả lời, chống bịa đặt thông tin.
+- [ ] **TC_AI_03 (AI Gợi ý xếp phòng):** Kiểm tra hàm `PhongController.GoiYXepPhongAI` lọc đúng phòng còn trống theo tầng/loại phòng và có cơ chế Smart Fallback khi mất kết nối Ollama.
+- [ ] **TC_AI_04 (AI Tóm tắt sự cố):** Kiểm tra hàm `PortalController.TomTatSuCoAI` phân nhóm chính xác (Điện, Nước, Nội thất) kèm thứ tự ưu tiên xử lý.
+- [ ] **TC_AI_05 (Quyền riêng tư AI):** Rà soát dữ liệu truyền vào LLM trong `ChatbotController.cs` -> Xác nhận đã lọc bỏ CCCD, mật khẩu và che số điện thoại (`MaskPhone`).
+
+#### 6. Chạy Kịch bản Tự động hóa hiện có
+- [ ] Thực thi kịch bản kiểm thử tự động tại thư mục: `tests/run_tests.ps1` bằng PowerShell để thu thập số liệu Pass/Fail chính thức.
+
+---
+
+### III. YÊU CẦU ĐỊNH DẠNG ĐẦU RA FILE `KET_QUA_KIEM_THU.txt`
+
+Sau khi hoàn tất kiểm thử, bạn hãy tạo/ghi đè file `KET_QUA_KIEM_THU.txt` tại thư mục gốc của dự án với định dạng chuẩn văn bản chuyên nghiệp như sau (sử dụng encoding UTF-8):
+
+```text
+================================================================================
+            BÁO CÁO KẾT QUẢ KIỂM THỬ TOÀN DIỆN DỰ ÁN QLKTX (AIA331)
+================================================================================
+Thời gian kiểm thử  : [YYYY-MM-DD HH:mm:ss]
+Hệ điều hành        : [Tên OS / Phiên bản]
+Môi trường thực thi : .NET 8.0 SDK / SQL Server / Ollama
+Người / Agent test  : [Tên người kiểm thử hoặc Chuyên gia QA AI]
+Mã đề tài           : 80309 - Hệ thống Quản lý Ký túc xá Tích hợp AI
+--------------------------------------------------------------------------------
+
+I. BẢNG TỔNG HỢP KẾT QUẢ
+- Tổng số Test Cases đã kiểm tra : [X]
+- Số Test Cases ĐẠT (PASS)       : [Y]
+- Số Test Cases KHÔNG ĐẠT (FAIL) : [Z]
+- Tỷ lệ Đạt                      : [P%]
+- Trạng thái chung               : [SẴN SÀNG TRIỂN KHAI / CẦN KHẮC PHỤC]
+
+--------------------------------------------------------------------------------
+II. CHI TIẾT TỪNG TEST CASE THEO NHÓM
+--------------------------------------------------------------------------------
+MÃ TC       | PHÂN LOẠI      | TRẠNG THÁI | MÔ TẢ & KẾT QUẢ ĐẠT ĐƯỢC
+--------------------------------------------------------------------------------
+TC_SYS_01   | Build & Code   | PASS       | Mã nguồn ASP.NET Core 8.0 biên dịch 0 lỗi.
+TC_PHONG_01 | Xếp phòng      | PASS       | Áp dụng Soft Delete, bảo toàn 100% khóa ngoại.
+TC_PHONG_02 | Đồng bộ sĩ số  | PASS       | Tự động cập nhật trạng thái phòng khi sĩ số thay đổi.
+TC_PHONG_03 | AI Chuyển phòng| PASS       | AI kiểm tra phòng đích còn chỗ, không bị quá tải.
+TC_HD_01    | Tính phí       | PASS       | Công thức (Mới - Cũ) * Đơn giá chính xác.
+TC_HD_02    | Biên hóa đơn   | PASS       | Chặn hóa đơn có chỉ số mới <= chỉ số cũ.
+TC_HD_03    | Bảo mật        | PASS       | Xác thực mật khẩu khi thanh toán trực tuyến.
+TC_SC_01    | Báo cáo sự cố  | PASS       | Xử lý ảnh đính kèm và ảnh null an toàn.
+TC_VP_01    | Kỷ luật        | PASS       | Đình chỉ lưu trú tự động giải phóng chỗ ở phòng.
+TC_AI_01    | AI Chatbot RAG | PASS       | Knowledge Base đầy đủ 7 chủ đề nội quy KTX.
+TC_AI_02    | Anti-Halluc    | PASS       | System Prompt ràng buộc không bịa đặt nội dung ngoài lề.
+TC_AI_03    | AI Gợi ý phòng | PASS       | Lọc phòng chuẩn xác, tích hợp Smart Fallback.
+TC_AI_04    | AI Tóm tắt     | PASS       | Phân nhóm Điện/Nước/Nội thất chính xác.
+TC_AI_05    | Bảo mật AI     | PASS       | Che CCCD, Mật khẩu và Masking số điện thoại.
+TC_HTTP_01  | Triển khai     | PASS       | Cấu hình cổng chạy ứng dụng và Docker Compose hợp lệ.
+--------------------------------------------------------------------------------
+
+III. ĐÁNH GIÁ CÁC QUY TẮC BẤT KHẢ XÂM PHẠM (BUSINESS RULES AUDIT)
+1. Cơ chế Soft Delete               : [ĐẠT / CHƯA ĐẠT - Chi tiết đánh giá]
+2. Cơ chế Đồng bộ Sĩ số X/Y         : [ĐẠT / CHƯA ĐẠT - Chi tiết đánh giá]
+3. Tính toàn vẹn Hóa đơn & Công nợ  : [ĐẠT / CHƯA ĐẠT - Chi tiết đánh giá]
+4. Cơ chế Dự phòng AI Fallback      : [ĐẠT / CHƯA ĐẠT - Chi tiết đánh giá]
+5. Bảo vệ Quyền riêng tư Dữ liệu AI : [ĐẠT / CHƯA ĐẠT - Chi tiết đánh giá]
+
+--------------------------------------------------------------------------------
+IV. DANH SÁCH LỖI VÀ KHUYẾN NGHỊ KHẮC PHỤC (NẾU CÓ)
+[Nếu có lỗi: Ghi rõ vị trí file, dòng code và giải pháp khắc phục]
+[Nếu không có lỗi: Ghi nhận hệ thống đạt chuẩn chất lượng và kiến trúc sạch]
+
+--------------------------------------------------------------------------------
+V. KẾT LUẬN & ĐỀ XUẤT
+[Tóm tắt kết luận của Chuyên gia QA về mức độ sẵn sàng báo cáo KT3 & Cuối kỳ]
+================================================================================
+```
+
+---
+### IV. HƯỚNG DẪN THỰC THI NGAY
+Sau khi đọc hiểu toàn bộ yêu cầu trên, bạn hãy lập tức tiến hành quét mã nguồn, chạy thử nghiệm các kiểm thử cần thiết và sinh ra tệp `KET_QUA_KIEM_THU.txt` hoàn chỉnh tại thư mục làm việc của dự án.
