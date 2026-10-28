@@ -1,0 +1,321 @@
+@model IEnumerable<QLKTX.Models.HoaDon>
+
+@{
+    ViewData["Title"] = "Lịch Sử Thu Tiền Hóa Đơn";
+    var countCanThu = ViewBag.CountCanThu ?? 0;
+    var countDaThu = ViewBag.CountDaThu ?? (Model?.Count() ?? 0);
+    var currentSearch = ViewData["CurrentSearch"]?.ToString() ?? "";
+    var currentLoai = ViewData["CurrentLoai"]?.ToString() ?? "";
+    bool hasFilter = !string.IsNullOrEmpty(currentSearch) || (!string.IsNullOrEmpty(currentLoai) && currentLoai != "Tất cả");
+}
+
+<!-- Alert Thông báo -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm border-0 mb-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm border-0 mb-3" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Tiêu đề & Breadcrumb -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="h4 mb-1 fw-bold text-dark">Lịch Sử Thu Tiền & Giao Dịch</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Dashboard</a></li>
+                <li class="breadcrumb-item"><a asp-action="QuanLyHoaDonAdmin" class="text-decoration-none">Hóa đơn</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Lịch sử thu tiền</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a asp-action="QuanLyHoaDonAdmin" class="btn btn-outline-primary btn-sm px-3 py-2 shadow-sm rounded-3">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại hóa đơn cần thu
+            <span class="badge bg-danger rounded-pill ms-1">@countCanThu</span>
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <!-- Header Card -->
+    <div class="card-header bg-success text-white p-3 border-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <h5 class="mb-0 fw-semibold fs-6">
+                    <i class="bi bi-clock-history me-2"></i>Lịch sử các hóa đơn đã thanh toán
+                    <span class="badge bg-white text-success ms-2 rounded-pill">@(Model?.Count() ?? 0) giao dịch</span>
+                </h5>
+            </div>
+            <div>
+                <span class="small opacity-75">Dữ liệu thu tiền lưu trữ và kiểm toán ký túc xá</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Thanh Công Cụ Lọc & Xóa Hàng Loạt -->
+    <div class="bg-white p-3 border-bottom">
+        <form asp-action="LichSuHoaDonAdmin" method="get" class="w-100" id="filterForm">
+            <div class="row g-3 align-items-center justify-content-between">
+                
+                <!-- Ô tìm kiếm -->
+                <div class="col-12 col-md-6 col-lg-5">
+                    <div class="input-group input-group-sm shadow-sm rounded">
+                        <span class="input-group-text bg-light border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" 
+                               name="searchString" 
+                               value="@currentSearch" 
+                               class="form-control bg-light border-start-0 ps-1" 
+                               placeholder="Tìm Mã hóa đơn, Mã SV, Họ tên, Phòng..." />
+                        <button type="submit" class="btn btn-success px-3">
+                            Tìm kiếm
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lọc loại hóa đơn & Nút xóa hàng loạt -->
+                <div class="col-12 col-md-6 col-lg-7">
+                    <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
+                        
+                        <!-- Nút Xóa Hàng Loạt (Hiện khi chọn ít nhất 1 dòng) -->
+                        <button type="button" 
+                                id="btnBulkDelete" 
+                                class="btn btn-danger btn-sm shadow-sm rounded-3 d-none fw-semibold"
+                                onclick="submitBulkDelete()">
+                            <i class="bi bi-trash3 me-1"></i> Xóa các mục đã chọn (<span id="selectedCount">0</span>)
+                        </button>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="form-label mb-0 small text-muted d-none d-sm-inline">Loại:</label>
+                            <select name="loaiHoaDon" class="form-select form-select-sm shadow-sm" style="width: auto; min-width: 140px;" onchange="this.form.submit()">
+                                <option value="Tất cả">Tất cả loại</option>
+                                <option value="Tiền phòng" selected="@(currentLoai == "Tiền phòng" ? "selected" : null)">Tiền phòng</option>
+                                <option value="Điện nước" selected="@(currentLoai == "Điện nước" ? "selected" : null)">Điện nước</option>
+                            </select>
+                        </div>
+                        
+                        @if (hasFilter)
+                        {
+                            <a asp-action="LichSuHoaDonAdmin" class="btn btn-outline-secondary btn-sm shadow-sm">
+                                <i class="bi bi-x-circle me-1"></i> Xóa lọc
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Form ẩn để gửi yêu cầu xóa hàng loạt -->
+    <form id="bulkDeleteForm" asp-action="XoaNhieuHoaDon" method="post" style="display: none;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+        <div id="bulkDeleteInputsContainer"></div>
+    </form>
+
+    <!-- Bảng danh sách lịch sử thu tiền -->
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tableLichSu">
+                <thead class="table-light text-muted small text-uppercase">
+                    <tr>
+                        <th style="width: 45px;" class="ps-3 text-center">
+                            <input type="checkbox" id="checkAll" class="form-check-input shadow-none" title="Chọn tất cả" />
+                        </th>
+                        <th class="fw-semibold" style="width: 135px;">Mã Hóa Đơn</th>
+                        <th class="fw-semibold">Sinh Viên</th>
+                        <th class="fw-semibold text-center" style="width: 100px;">Phòng</th>
+                        <th class="fw-semibold" style="width: 115px;">Loại</th>
+                        <th class="fw-semibold text-end" style="width: 140px;">Số Tiền Đã Thu</th>
+                        <th class="fw-semibold" style="width: 170px;">Hình Thức Thu</th>
+                        <th class="fw-semibold" style="width: 150px;">Ngày Lập</th>
+                        <th class="fw-semibold text-center" style="width: 140px;">Trạng Thái</th>
+                        <th class="pe-4 text-end fw-semibold" style="width: 140px;">Thao Tác</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-3 text-center">
+                                    <input type="checkbox" 
+                                           class="form-check-input check-item shadow-none" 
+                                           value="@item.MaHoaDon" />
+                                </td>
+                                <td class="fw-medium text-dark">@item.MaHoaDon</td>
+                                <td>
+                                    <div class="fw-medium text-dark">@(item.SinhVien?.HoTen ?? "N/A")</div>
+                                    <div class="small text-muted">@item.MaSV</div>
+                                </td>
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(item.MaPhong))
+                                    {
+                                        <span class="badge bg-light text-dark border"><i class="bi bi-door-open me-1"></i>@item.MaPhong</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.LoaiHoaDon == "Tiền phòng")
+                                    {
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">Tiền phòng</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">Điện nước</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <strong class="text-success fs-6">@string.Format("{0:N0} ₫", item.TongTien)</strong>
+                                </td>
+                                <td>
+                                    <span class="small text-secondary">
+                                        <i class="bi bi-wallet2 me-1"></i>@(string.IsNullOrEmpty(item.HinhThucThanhToan) || item.HinhThucThanhToan == "Chưa có" ? "Tiền mặt (Admin thu)" : item.HinhThucThanhToan)
+                                    </span>
+                                </td>
+                                <td class="small text-muted">@item.NgayLap.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-medium">
+                                        <i class="bi bi-check-circle me-1"></i>Đã thanh toán
+                                    </span>
+                                </td>
+                                <td class="pe-4 text-end">
+                                    <div class="d-flex align-items-center justify-content-end gap-1">
+                                        <!-- Nút Hủy thu (Chuyển lại về Chưa thanh toán nếu nhầm) -->
+                                        <form asp-action="CapNhatTrangThaiHoaDon" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="maHoaDon" value="@item.MaHoaDon" />
+                                            <input type="hidden" name="trangThaiMoi" value="Chưa thanh toán" />
+                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                            <button type="submit" 
+                                                    class="btn btn-sm btn-outline-warning rounded-pill px-2 py-1" 
+                                                    title="Chuyển lại về Chưa thanh toán"
+                                                    onclick="return confirm('Chuyển hóa đơn @item.MaHoaDon quay lại trạng thái CHƯA THANH TOÁN?');">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        </form>
+
+                                        <!-- Nút Xóa từng giao dịch -->
+                                        <form asp-action="XoaHoaDon" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="maHoaDon" value="@item.MaHoaDon" />
+                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                            <button type="submit" 
+                                                    class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" 
+                                                    title="Xóa giao dịch này"
+                                                    onclick="return confirm('Bạn có chắc chắn muốn xóa giao dịch @item.MaHoaDon này? Dữ liệu không thể khôi phục.');">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="10" class="text-center py-5 text-muted">
+                                <i class="bi bi-clock-history fs-1 d-block mb-3 opacity-50"></i>
+                                <div class="fw-semibold">Chưa có lịch sử giao dịch thu tiền nào!</div>
+                                <small class="text-muted">Các hóa đơn sau khi được xác nhận "Đã thu" sẽ hiển thị tại đây.</small>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const checkAll = document.getElementById('checkAll');
+            const checkItems = document.querySelectorAll('.check-item');
+            const btnBulkDelete = document.getElementById('btnBulkDelete');
+            const selectedCountSpan = document.getElementById('selectedCount');
+
+            function updateBulkDeleteState() {
+                const checkedBoxes = document.querySelectorAll('.check-item:checked');
+                const count = checkedBoxes.length;
+
+                if (selectedCountSpan) {
+                    selectedCountSpan.textContent = count;
+                }
+
+                if (btnBulkDelete) {
+                    if (count > 0) {
+                        btnBulkDelete.classList.remove('d-none');
+                    } else {
+                        btnBulkDelete.classList.add('d-none');
+                    }
+                }
+
+                // Cập nhật trạng thái checkbox "Chọn tất cả"
+                if (checkAll && checkItems.length > 0) {
+                    checkAll.checked = (count === checkItems.length);
+                    checkAll.indeterminate = (count > 0 && count < checkItems.length);
+                }
+            }
+
+            // Xử lý khi nhấn Check All
+            if (checkAll) {
+                checkAll.addEventListener('change', function () {
+                    const isChecked = this.checked;
+                    checkItems.forEach(cb => {
+                        cb.checked = isChecked;
+                    });
+                    updateBulkDeleteState();
+                });
+            }
+
+            // Xử lý khi nhấn từng checkbox con
+            checkItems.forEach(cb => {
+                cb.addEventListener('change', function () {
+                    updateBulkDeleteState();
+                });
+            });
+
+            // Hàm thực thi xóa hàng loạt
+            window.submitBulkDelete = function () {
+                const checkedBoxes = document.querySelectorAll('.check-item:checked');
+                const count = checkedBoxes.length;
+
+                if (count === 0) {
+                    alert('Vui lòng chọn ít nhất một giao dịch để xóa!');
+                    return;
+                }
+
+                const confirmMsg = `Bạn có chắc chắn muốn xóa ${count} giao dịch đã chọn? Dữ liệu không thể khôi phục.`;
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+
+                const container = document.getElementById('bulkDeleteInputsContainer');
+                container.innerHTML = '';
+
+                checkedBoxes.forEach(cb => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selectedIds';
+                    input.value = cb.value;
+                    container.appendChild(input);
+                });
+
+                document.getElementById('bulkDeleteForm').submit();
+            };
+        });
+    </script>
+}
+

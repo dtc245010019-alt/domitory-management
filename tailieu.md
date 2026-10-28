@@ -284,6 +284,14 @@ flowchart TB
     Ollama -.->|Timeout / Offline| Fallback
 ```
 
+#### 6.1. Giải trình Lựa chọn Công nghệ (Tech Stack) tương đương theo Đề cương 80309
+- **Backend & Database:** Đề cương đề tài định hướng các Web Framework phổ biến (FastAPI/Flask/Django/ASP.NET) và CSDL quan hệ (SQL Server/MySQL/PostgreSQL). Nhóm quyết định lựa chọn **ASP.NET Core 8.0 MVC** kết hợp **Entity Framework Core 8.0** và **SQL Server** vì:
+  1. Tính an toàn kiểu dữ liệu (Strongly-typed) và cơ chế Action Filter (`[AdminAuthorize]`) giúp phân quyền 3 vai trò chặt chẽ ở tầng middleware.
+  2. Entity Framework Core hỗ trợ xử lý khóa ngoại, quan hệ 1-N phức tạp và cơ chế xóa mềm (Soft Delete) ổn định, tránh mất dữ liệu lịch sử lưu trú.
+  3. Tích hợp sẵn Dependency Injection (`IHttpClientFactory`) quản lý kết nối HTTP Pooling tối ưu khi gọi mô hình ngôn ngữ lớn (LLM).
+- **Frontend:** HTML5, Razor Views (`.cshtml`), Bootstrap 5, Bootstrap Icons, Chart.js đảm bảo giao diện Responsive chuẩn SaaS Dashboard, hoạt động mượt mà trên cả trình duyệt máy tính và di động.
+- **AI Service:** Tích hợp mô hình cục bộ **Ollama (`llama3`)** qua chuẩn REST API JSON Payload, kết hợp cơ chế Retrieval-Augmented Generation (RAG) và Rule-based Smart Fallback, đáp ứng 100% mục tiêu của đề tài 80309.
+
 ---
 
 ### 7. Xác định Vị trí Ứng dụng AI trong Hệ thống (Tiêu chí 7)
@@ -354,7 +362,7 @@ Bảng dưới đây liệt kê các kịch bản kiểm thử (**Test Cases**) 
 
 | Mã TC | Phân loại | Tình huống kiểm thử | Đầu vào (Input) | Kết quả mong đợi (Expected) | Kết quả thực tế |
 | :---: | :---: | :--- | :--- | :--- | :---: |
-| **TC_HD_01** | **Đúng** | Tạo hóa đơn Điện nước hợp lệ | Chọn SV `DTC001`, Loại: `Điện nước`, `ChiSoCu = 100`, `ChiSoMoi = 150`, `DonGia = 3500`. | Tạo hóa đơn thành công với `TongTien = (150 - 100) * 3500 = 175,000 VNĐ`, trạng thái `Chưa thanh toán`. | **PASS** |
+| **TC_HD_01** | **Đúng** | Tạo hóa đơn Điện nước hợp lệ | Chọn SV `DTC001`, Loại: `Điện nước`, `ChiSoCu = 100`, `ChiSoMoi = 150`, `DonGia = 2500`. | Tạo hóa đơn thành công với `TongTien = (150 - 100) * 2500 = 125,000 VNĐ`, trạng thái `Chưa thanh toán`. | **PASS** |
 | **TC_HD_02** | **Biên / Sai** | Nhập chỉ số điện nước mới nhỏ hơn hoặc bằng chỉ số cũ | Chọn Loại: `Điện nước`, nhập `ChiSoCu = 200`, `ChiSoMoi = 200` (hoặc `180`). | Hệ thống từ chối lưu, báo lỗi Validation: *"Chỉ số mới phải lớn hơn Chỉ số cũ"*. | **PASS** |
 | **TC_HD_03** | **Sai** | Sinh viên thanh toán hóa đơn nhưng nhập sai mật khẩu xác nhận | Tại Portal `/Portal/HoaDon`, chọn thanh toán qua MoMo, nhập mật khẩu `"999999"` (sai). | Hủy giao dịch, giữ nguyên trạng thái `Chưa thanh toán` và báo lỗi: *"Xác minh thất bại: Mật khẩu không chính xác"*. | **PASS** |
 | **TC_HD_04** | **Đúng** | Sinh viên thanh toán hóa đơn với mật khẩu đúng | Nhập mật khẩu `"123"`, chọn phương thức `"Chuyển khoản"`. | Hóa đơn chuyển sang `"Đã thanh toán"`, công nợ trên Dashboard giảm tương ứng. | **PASS** |

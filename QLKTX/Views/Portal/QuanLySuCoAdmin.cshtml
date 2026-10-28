@@ -32,17 +32,28 @@
             </ol>
         </nav>
     </div>
-    <div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary bg-white shadow-sm px-3 py-2 fw-semibold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalLichSuSuCo">
+            <i class="bi bi-clock-history text-primary fs-6"></i>
+            <span>Quản Lý Lịch Sử</span>
+            <span class="badge bg-danger rounded-pill" id="badgeLichSuCount">@(ViewBag.CountLichSu ?? 0)</span>
+        </button>
         <button type="button" class="btn btn-sm text-white ai-btn-gradient shadow-sm px-3 py-2" onclick="callAiSummary()">
-            <i class="bi bi-stars"></i> ✨ AI Phân Tích & Tóm Tắt
+            <i class="bi bi-stars"></i> ✨ AI Phân Tích &amp; Tóm Tắt
         </button>
     </div>
 </div>
 
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
     <div class="card-header bg-danger text-white p-3 border-0">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-tools me-2"></i>Danh sách Báo cáo sự cố & Yêu cầu hỗ trợ SV</h5>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0 fw-semibold fs-6">
+                <i class="bi bi-tools me-2"></i>Yêu cầu cần xử lý
+                <span class="badge bg-white text-danger ms-2 rounded-pill">@(ViewBag.CountDangXuLy ?? (Model?.Count() ?? 0)) yêu cầu</span>
+            </h5>
+            <button type="button" class="btn btn-sm btn-light text-danger fw-semibold py-1 px-3 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#modalLichSuSuCo">
+                <i class="bi bi-clock-history me-1"></i> Xem lịch sử đã giải quyết (@(ViewBag.CountLichSu ?? 0))
+            </button>
         </div>
     </div>
     <div class="card-body p-0">
@@ -159,6 +170,164 @@
     </div>
 </div>
 
+<!-- MODAL QUẢN LÝ LỊCH SỬ BÁO CÁO & HỖ TRỢ SINH VIÊN -->
+<div class="modal fade" id="modalLichSuSuCo" tabindex="-1" aria-labelledby="modalLichSuSuCoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-light border-bottom p-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3">
+                        <i class="bi bi-clock-history fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="modalLichSuSuCoLabel">
+                            Quản Lý Lịch Sử Báo Cáo &amp; Hỗ Trợ Sinh Viên
+                        </h5>
+                        <span class="text-muted small">Tự động lưu trữ các yêu cầu đã hoàn thành (Duyệt/Đã xử lý) hoặc bị từ chối</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary rounded-pill px-3 py-2">@(ViewBag.CountLichSu ?? 0) yêu cầu</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-3">
+                <!-- Thanh công cụ: Chọn tất cả, Xóa đã chọn, Xóa toàn bộ, Tìm kiếm -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 p-2 bg-light rounded-3 border">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="form-check mb-0 ms-2">
+                            <input class="form-check-input" type="checkbox" id="chkSelectAllHistory" onchange="toggleSelectAllHistory(this)" />
+                            <label class="form-check-label small fw-bold text-dark" for="chkSelectAllHistory">
+                                Chọn tất cả
+                            </label>
+                        </div>
+                        <button type="button" id="btnDeleteSelected" class="btn btn-sm btn-outline-danger fw-semibold px-3 py-1 rounded-pill" disabled onclick="submitBulkDeleteHistory()">
+                            <i class="bi bi-trash3 me-1"></i> Xóa đã chọn (<span id="selectedCountText">0</span>)
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="text" id="historySearchInput" class="form-control form-control-sm" placeholder="Tìm mã, phòng, sinh viên..." style="width: 220px;" onkeyup="filterHistoryTable()" />
+                        <button type="button" class="btn btn-sm btn-danger fw-semibold px-3 py-1 rounded-pill text-nowrap" onclick="confirmDeleteAllHistory()">
+                            <i class="bi bi-trash-fill me-1"></i> Xóa toàn bộ lịch sử
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bảng lịch sử -->
+                <div class="table-responsive border rounded-3 bg-white" style="max-height: 480px;">
+                    <table class="table table-hover align-middle mb-0" id="tableLichSuSuCo">
+                        <thead class="table-light text-muted small text-uppercase sticky-top">
+                            <tr>
+                                <th style="width: 40px;" class="text-center">#</th>
+                                <th>Mã Sự Cố</th>
+                                <th>Phòng</th>
+                                <th>Người Báo</th>
+                                <th>Tên Sự Cố &amp; Nội Dung</th>
+                                <th>Mức Độ</th>
+                                <th>Trạng Thái</th>
+                                <th>Ngày Báo</th>
+                                <th class="text-end pe-3">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var lichSuList = ViewBag.LichSu as List<QLKTX.Models.BaoCaoSuCo> ?? new List<QLKTX.Models.BaoCaoSuCo>();
+                            }
+                            @if (lichSuList.Any())
+                            {
+                                foreach (var item in lichSuList)
+                                {
+                                    <tr id="history-row-@item.MaSuCo">
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input chk-history-item" value="@item.MaSuCo" onchange="updateSelectedHistoryCount()" />
+                                        </td>
+                                        <td class="fw-medium text-dark font-monospace small">@item.MaSuCo</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(item.MaPhong))
+                                            {
+                                                <span class="badge bg-light text-dark border"><i class="bi bi-door-open me-1"></i>@item.MaPhong</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="fw-medium text-dark small">@(item.SinhVien?.HoTen ?? "N/A")</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">@item.MaSV</div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold text-dark small">@item.TenSuCo</div>
+                                            <div class="text-muted text-truncate small" style="max-width: 250px;" title="@item.MoTa">@item.MoTa</div>
+                                        </td>
+                                        <td>
+                                            @if (item.MucDoKhanCap == "Cao" || item.MucDoKhanCap == "Khẩn cấp")
+                                            {
+                                                <span class="badge bg-danger">@item.MucDoKhanCap</span>
+                                            }
+                                            else if (item.MucDoKhanCap == "Nghiêm trọng" || item.MucDoKhanCap == "Bình thường")
+                                            {
+                                                <span class="badge bg-warning text-dark">@item.MucDoKhanCap</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-info text-dark">Thấp</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (item.TrangThai == "Đã xử lý")
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold">
+                                                    <i class="bi bi-check-circle-fill me-1"></i>Đã xử lý / Duyệt
+                                                </span>
+                                            }
+                                            else if (item.TrangThai == "Từ chối")
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
+                                                    <i class="bi bi-x-circle-fill me-1"></i>Từ chối
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@item.TrangThai</span>
+                                            }
+                                        </td>
+                                        <td class="small text-muted">@item.NgayBaoCao.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td class="text-end pe-3">
+                                            <form asp-action="XoaSuCo" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn yêu cầu @item.MaSuCo khỏi hệ thống?');">
+                                                <input type="hidden" name="maSuCo" value="@item.MaSuCo" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2 rounded-2" title="Xóa yêu cầu này">
+                                                    <i class="bi bi-trash"></i> Xóa
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr id="emptyHistoryRow">
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        <i class="bi bi-clock-history fs-1 d-block mb-2 opacity-50"></i>
+                                        Chưa có báo cáo hoặc yêu cầu nào trong lịch sử (đã xử lý hoặc từ chối).
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Form ẩn xử lý Xóa nhiều mục đã chọn -->
+                <form id="formBulkDeleteHistory" asp-action="XoaNhieuSuCo" method="post" class="d-none">
+                    <div id="bulkDeleteInputsContainer"></div>
+                </form>
+
+                <!-- Form ẩn xử lý Xóa toàn bộ lịch sử -->
+                <form id="formDeleteAllHistory" asp-action="XoaTatCaLichSu" method="post" class="d-none"></form>
+            </div>
+            <div class="modal-footer bg-light border-top p-2">
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- KHỐI AI MODAL & SCRIPT CHẠY ĐỘC LẬP -->
 <div class="modal fade" id="aiSuCoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -193,6 +362,75 @@
 </div>
 
 <script>
+    // Xử lý Checkbox & Xóa Lịch sử
+    function toggleSelectAllHistory(master) {
+        const checkboxes = document.querySelectorAll('.chk-history-item');
+        checkboxes.forEach(chk => {
+            const row = chk.closest('tr');
+            if (row && row.style.display !== 'none') {
+                chk.checked = master.checked;
+            }
+        });
+        updateSelectedHistoryCount();
+    }
+
+    function updateSelectedHistoryCount() {
+        const checked = document.querySelectorAll('.chk-history-item:checked');
+        const btn = document.getElementById('btnDeleteSelected');
+        const countSpan = document.getElementById('selectedCountText');
+        const master = document.getElementById('chkSelectAllHistory');
+
+        if (countSpan) countSpan.textContent = checked.length;
+        if (btn) btn.disabled = checked.length === 0;
+
+        const allCheckboxes = document.querySelectorAll('.chk-history-item');
+        if (master && allCheckboxes.length > 0) {
+            master.checked = checked.length === allCheckboxes.length;
+        }
+    }
+
+    function submitBulkDeleteHistory() {
+        const checked = document.querySelectorAll('.chk-history-item:checked');
+        if (checked.length === 0) return;
+
+        if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn ${checked.length} yêu cầu đã chọn khỏi lịch sử?`)) {
+            return;
+        }
+
+        const container = document.getElementById('bulkDeleteInputsContainer');
+        container.innerHTML = '';
+        checked.forEach(chk => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'maSuCos';
+            input.value = chk.value;
+            container.appendChild(input);
+        });
+
+        document.getElementById('formBulkDeleteHistory').submit();
+    }
+
+    function confirmDeleteAllHistory() {
+        const totalCount = @(ViewBag.CountLichSu ?? 0);
+        if (totalCount === 0) {
+            alert('Hiện không có yêu cầu nào trong phần lịch sử để xóa.');
+            return;
+        }
+
+        if (confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa sạch TOÀN BỘ ${totalCount} yêu cầu đã đóng trong phần lịch sử? Thao tác này không thể hoàn tác!`)) {
+            document.getElementById('formDeleteAllHistory').submit();
+        }
+    }
+
+    function filterHistoryTable() {
+        const filter = (document.getElementById('historySearchInput')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('#tableLichSuSuCo tbody tr:not(#emptyHistoryRow)');
+        rows.forEach(r => {
+            const text = r.textContent.toLowerCase();
+            r.style.display = text.includes(filter) ? '' : 'none';
+        });
+    }
+
     // Bọc trong arrow function tránh biến toàn cục
     const callAiSummary = async () => {
         const modal = new bootstrap.Modal(document.getElementById('aiSuCoModal'));

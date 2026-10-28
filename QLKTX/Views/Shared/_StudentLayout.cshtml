@@ -99,25 +99,42 @@
                 </div>
             </div>
 
+            <!-- Thanh chuyển 2 chế độ: Nhờ AI làm hộ & Hỏi đáp -->
+            <div class="p-1 bg-light border-bottom d-flex gap-1 px-2 pt-2">
+                <button type="button" id="mode-btn-action" class="btn btn-sm flex-fill fw-semibold py-1 px-2 rounded-pill text-secondary bg-white border" style="font-size: 0.76rem;" onclick="switchChatMode('ACTION', true)">
+                    ⚡ Nhờ AI làm hộ
+                </button>
+                <button type="button" id="mode-btn-qa" class="btn btn-sm flex-fill fw-bold py-1 px-2 rounded-pill shadow-sm text-white" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-size: 0.76rem;" onclick="switchChatMode('QA', true)">
+                    💬 Hỏi đáp
+                </button>
+            </div>
+            <div id="chat-mode-banner" class="px-3 py-1 border-bottom d-flex align-items-center justify-content-between" style="background: #eff6ff; color: #1d4ed8; font-size: 0.72rem;">
+                <span>💬 <strong>Chế độ Hỏi đáp:</strong> Đặt câu hỏi để AI tra cứu &amp; liệt kê chi tiết</span>
+            </div>
+
             <div id="chat-messages">
                 <div class="msg-row-ai">
                     <div class="msg-bubble-ai">
-                        👋 <strong>Xin chào!</strong> Tôi là Trợ Lý AI của Ký túc xá.<br />
-                        Bạn có câu hỏi gì về phòng ở, hợp đồng, chi phí điện nước hay thủ tục báo hỏng?
+                        👋 <strong>Xin chào bạn!</strong> Tôi là Trợ Lý AI Tiện ích Sinh viên KTX.<br />
+                        Tôi có thể hỗ trợ các tiện ích lưu trú cho bạn:<br />
+                        • ⚡ <strong>Nhờ AI làm hộ:</strong> Gõ <em>"báo hỏng thiết bị phòng tôi"</em>, <em>"gia hạn phòng cho tôi"</em>, <em>"xin chuyển phòng"</em>...<br />
+                        • 💬 <strong>Tra cứu cá nhân:</strong> Gõ <em>"tôi còn hóa đơn nào chưa thanh toán"</em>, <em>"hợp đồng khi nào hết hạn"</em>, <em>"bạn cùng phòng"</em>...
                     </div>
                 </div>
             </div>
 
-            <div class="p-2 border-top bg-white d-flex gap-1 overflow-auto" style="scrollbar-width: none;">
-                <button type="button" class="btn btn-sm btn-primary py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Nhờ AI làm hộ')">⚡ Nhờ AI làm hộ</button>
-                <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Giá phòng KTX bao nhiêu?')">💰 Giá phòng?</button>
-                <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Hướng dẫn báo hỏng cơ sở vật chất?')">🛠 Báo sự cố?</button>
-                <button type="button" class="btn btn-sm btn-light py-1 px-2 text-nowrap" style="font-size: 0.72rem; border-radius: 20px;" onclick="sendQuickPrompt('Quy định giờ giấc ký túc xá?')">⏰ Giờ giới nghiêm?</button>
+            <div id="chat-quick-chips" class="p-2 border-top bg-white d-flex gap-1 overflow-auto" style="scrollbar-width: none;">
+                <button type="button" class="btn btn-sm btn-light border py-1 px-2 text-nowrap" style="font-size: 0.71rem; border-radius: 20px;" onclick="sendQuickPrompt('Tôi còn hóa đơn nào chưa thanh toán?', 'QA')">🧾 Hóa đơn chưa thanh toán?</button>
+                <button type="button" class="btn btn-sm btn-light border py-1 px-2 text-nowrap" style="font-size: 0.71rem; border-radius: 20px;" onclick="sendQuickPrompt('Hợp đồng của tôi khi nào hết hạn?', 'QA')">📄 Hạn hợp đồng của tôi?</button>
+                <button type="button" class="btn btn-sm btn-light border py-1 px-2 text-nowrap" style="font-size: 0.71rem; border-radius: 20px;" onclick="sendQuickPrompt('Phòng tôi hiện có những ai?', 'QA')">👥 Bạn cùng phòng?</button>
+                <button type="button" class="btn btn-sm btn-light border py-1 px-2 text-nowrap" style="font-size: 0.71rem; border-radius: 20px;" onclick="sendQuickPrompt('Sự cố phòng tôi đã được xử lý chưa?', 'QA')">🔧 Tiến độ sửa sự cố?</button>
+                <button type="button" class="btn btn-sm btn-light border py-1 px-2 text-nowrap" style="font-size: 0.71rem; border-radius: 20px;" onclick="sendQuickPrompt('Phòng tôi có những cơ sở vật chất nào?', 'QA')">🛋 Thiết bị phòng tôi?</button>
+                <button type="button" class="btn btn-sm btn-light border py-1 px-2 text-nowrap" style="font-size: 0.71rem; border-radius: 20px;" onclick="sendQuickPrompt('Tôi có bị vi phạm kỷ luật nào không?', 'QA')">⚠️ Kiểm tra vi phạm?</button>
             </div>
 
             <div class="p-3 border-top bg-white">
                 <div class="input-group">
-                    <input type="text" id="chat-input" class="form-control form-control-sm border bg-light" placeholder="Nhập câu hỏi... (Enter để gửi)" autocomplete="off" />
+                    <input type="text" id="chat-input" class="form-control form-control-sm border bg-light" placeholder="Nhập câu hỏi (VD: tôi còn hóa đơn nào chưa thanh toán?)..." autocomplete="off" />
                     <button type="button" class="btn btn-primary btn-sm px-3" onclick="sendChatMessage()" aria-label="Gửi tin nhắn">
                         <i class="bi bi-send-fill"></i>
                     </button>
@@ -128,6 +145,7 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>window.chatUserRole = 'SinhVien';</script>
     <script src="~/js/chatbot-agent.js" asp-append-version="true"></script>
 
     <script>
@@ -163,7 +181,10 @@
             }
         });
 
-        function sendQuickPrompt(text) {
+        function sendQuickPrompt(text, modeOverride) {
+            if (modeOverride && typeof switchChatMode === 'function') {
+                switchChatMode(modeOverride, false);
+            }
             const chatInput = document.getElementById('chat-input');
             if (chatInput) {
                 chatInput.value = text;
@@ -179,9 +200,14 @@
             const message = chatInput.value.trim();
             if (!message) return;
 
+            const activeMode = window.currentChatMode || 'QA';
+            const modeBadge = activeMode === 'ACTION'
+                ? '<span class="badge bg-warning text-dark me-1" style="font-size:0.65rem;">⚡ Làm hộ</span>'
+                : '<span class="badge bg-info text-white me-1" style="font-size:0.65rem;">💬 Hỏi đáp</span>';
+
             chatMessages.innerHTML += `
                 <div class="msg-row-user">
-                    <div class="msg-bubble-user">${escapeHtml(message)}</div>
+                    <div class="msg-bubble-user">${modeBadge}${escapeHtml(message)}</div>
                 </div>
             `;
             chatInput.value = '';
@@ -190,7 +216,7 @@
             const loadingId = 'ai-load-' + Date.now();
             chatMessages.innerHTML += `
                 <div id="${loadingId}" class="msg-row-ai">
-                    <div class="msg-bubble-ai text-muted small"><i class="bi bi-arrow-repeat me-1 spinner-border spinner-border-sm"></i>Đang xử lý...</div>
+                    <div class="msg-bubble-ai text-muted small"><i class="bi bi-arrow-repeat me-1 spinner-border spinner-border-sm"></i>${activeMode === 'ACTION' ? 'AI đang tự động thực thi...' : 'AI đang tra cứu dữ liệu...'}</div>
                 </div>
             `;
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -199,7 +225,7 @@
                 const response = await fetch('/Chatbot/Ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify({ message: message, mode: activeMode, role: 'SinhVien' })
                 });
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();

@@ -1,40 +1,114 @@
-﻿@model IEnumerable<QLKTX.Models.CoSoVatChat>
+@model IEnumerable<QLKTX.Models.CoSoVatChat>
 
 @{
     ViewData["Title"] = "Quản lý Cơ sở vật chất";
+    var danhSachPhong = ViewBag.DanhSachPhong as List<string> ?? new List<string>();
+    var currentFilter = ViewData["CurrentFilter"]?.ToString() ?? "";
+    var currentMaPhong = ViewData["CurrentMaPhong"]?.ToString() ?? "";
+    bool hasFilter = !string.IsNullOrEmpty(currentFilter) || !string.IsNullOrEmpty(currentMaPhong);
 }
 
 <div class="container-fluid mt-4">
-    <div class="card shadow">
+    <div class="card shadow border-0 rounded-3">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">QUẢN LÝ CƠ SỞ VẬT CHẤT</h4>
             <a asp-action="Create" class="btn btn-light btn-sm fw-bold"><i class="bi bi-plus-lg"></i> Thêm thiết bị mới</a>
         </div>
-        <div class="card-body">
 
-            <form asp-action="Index" method="get" class="mb-4 d-flex">
-                <div class="input-group w-50 shadow-sm border-primary">
-                    <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
-                    <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Nhập tên thiết bị, phòng hoặc tình trạng..." />
-                    <button type="submit" class="btn btn-primary fw-bold">Tìm kiếm</button>
+        <div class="card-body p-4">
+
+            <!-- THANH TÌM KIẾM & BỘ LỌC THEO MÃ PHÒNG -->
+            <form asp-action="Index" method="get" class="mb-4" id="searchForm">
+                <div class="row g-2 align-items-center">
+                    
+                    <!-- 1. Bộ lọc chọn theo phòng -->
+                    <div class="col-md-3 col-sm-12">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-primary fw-semibold">
+                                <i class="bi bi-door-open-fill me-1"></i>Phòng
+                            </span>
+                            <select name="maPhong" class="form-select border-primary" onchange="this.form.submit()">
+                                <option value="">-- Tất cả các phòng --</option>
+                                @foreach (var p in danhSachPhong)
+                                {
+                                    <option value="@p" selected="@(currentMaPhong == p)">Phòng @p</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 2. Ô tìm kiếm đa năng (hỗ trợ gõ mã phòng VD: 101, tên thiết bị, mã TB) -->
+                    <div class="col-md-7 col-sm-12">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-primary">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" 
+                                   id="assetSearchInput" 
+                                   name="searchString" 
+                                   value="@currentFilter" 
+                                   class="form-control" 
+                                   placeholder="Nhập tên thiết bị, phòng hoặc tình trạng..." 
+                                   autocomplete="off" />
+                            <button type="submit" class="btn btn-primary fw-bold px-3">
+                                <i class="bi bi-search me-1"></i> Tìm kiếm
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Nút xóa bộ lọc -->
+                    <div class="col-md-2 col-sm-12">
+                        @if (hasFilter)
+                        {
+                            <a asp-action="Index" class="btn btn-outline-danger fw-semibold w-100">
+                                <i class="bi bi-x-circle me-1"></i> Xóa bộ lọc
+                            </a>
+                        }
+                    </div>
                 </div>
-                @if (ViewData["CurrentFilter"] != null && ViewData["CurrentFilter"].ToString() != "")
-                {
-                    <a asp-action="Index" class="btn btn-outline-danger ms-2 fw-bold"><i class="bi bi-x-circle"></i> Xóa bộ lọc</a>
-                }
             </form>
 
+            <!-- THÔNG BÁO BỘ LỌC ĐANG ÁP DỤNG -->
+            @if (hasFilter)
+            {
+                <div class="alert alert-info py-2 px-3 d-flex align-items-center justify-content-between mb-3 rounded-3 border-0 bg-info-subtle text-info-emphasis">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <i class="bi bi-funnel-fill text-info fs-5"></i>
+                        <span>Đang hiển thị cơ sở vật chất theo bộ lọc:</span>
+                        @if (!string.IsNullOrEmpty(currentMaPhong))
+                        {
+                            <span class="badge bg-primary fs-6 px-2 py-1">
+                                <i class="bi bi-door-open me-1"></i>Phòng: @currentMaPhong
+                            </span>
+                        }
+                        @if (!string.IsNullOrEmpty(currentFilter))
+                        {
+                            <span class="badge bg-secondary fs-6 px-2 py-1">
+                                <i class="bi bi-search me-1"></i>Từ khóa: "@currentFilter"
+                            </span>
+                        }
+                        <span class="text-secondary fw-semibold ms-1">
+                            (Tìm thấy <span id="assetCount">@(Model?.Count() ?? 0)</span> thiết bị)
+                        </span>
+                    </div>
+                    <a asp-action="Index" class="btn btn-sm btn-outline-secondary fw-semibold">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Xem tất cả
+                    </a>
+                </div>
+            }
+
+            <!-- BẢNG DANH SÁCH THIẾT BỊ -->
             <div class="table-responsive">
-                <table class="table table-hover border align-middle">
+                <table class="table table-hover border align-middle mb-0" id="assetTable">
                     <thead class="table-light">
                         <tr>
-                            <th>Mã TB</th>
+                            <th style="width: 110px;">Mã TB</th>
                             <th>Tên Thiết Bị</th>
                             <th>Loại Thiết Bị</th>
-                            <th>Phòng</th>
-                            <th>Số Lượng</th>
-                            <th>Tình Trạng</th>
-                            <th class="text-center">Thao tác</th>
+                            <th style="width: 120px;" class="text-center">Phòng</th>
+                            <th style="width: 100px;" class="text-center">Số Lượng</th>
+                            <th style="width: 140px;">Tình Trạng</th>
+                            <th class="text-center" style="width: 220px;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -42,12 +116,25 @@
                         {
                             @foreach (var item in Model)
                             {
-                                <tr>
+                                <tr class="asset-row" 
+                                    data-maphong="@(item.MaPhong?.ToLower())" 
+                                    data-tentb="@(item.TenThietBi?.ToLower())" 
+                                    data-matb="@(item.MaThietBi?.ToLower())" 
+                                    data-loaitb="@(item.LoaiThietBi?.ToLower())" 
+                                    data-tinhtrang="@(item.TinhTrang?.ToLower())">
                                     <td><strong>@item.MaThietBi</strong></td>
-                                    <td>@item.TenThietBi</td>
-                                    <td>@item.LoaiThietBi</td>
-                                    <td><span class="badge bg-info text-dark fs-6">@item.MaPhong</span></td>
-                                    <td>@item.SoLuong</td>
+                                    <td class="fw-medium text-dark">@item.TenThietBi</td>
+                                    <td>
+                                        <span class="text-secondary">@(string.IsNullOrEmpty(item.LoaiThietBi) ? "Mặc định" : item.LoaiThietBi)</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a asp-action="Index" asp-route-maPhong="@item.MaPhong" 
+                                           class="badge bg-info text-dark fs-6 text-decoration-none px-2 py-1" 
+                                           title="Bấm để lọc toàn bộ thiết bị của phòng @item.MaPhong">
+                                            @item.MaPhong
+                                        </a>
+                                    </td>
+                                    <td class="text-center fw-bold">@item.SoLuong</td>
                                     <td>
                                         @if (item.TinhTrang == "Đang sử dụng")
                                         {
@@ -63,22 +150,92 @@
                                         }
                                     </td>
                                     <td class="text-center">
-                                        <a asp-action="Edit" asp-route-id="@item.MaThietBi" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil-square"></i> Sửa</a>
-                                        <a asp-action="Details" asp-route-id="@item.MaThietBi" class="btn btn-outline-info btn-sm"><i class="bi bi-info-circle"></i> Chi tiết</a>
-                                        <a asp-action="Delete" asp-route-id="@item.MaThietBi" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Xóa</a>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a asp-action="Edit" asp-route-id="@item.MaThietBi" class="btn btn-outline-warning" title="Chỉnh sửa">
+                                                <i class="bi bi-pencil-square me-1"></i>Sửa
+                                            </a>
+                                            <a asp-action="Details" asp-route-id="@item.MaThietBi" class="btn btn-outline-info" title="Xem chi tiết">
+                                                <i class="bi bi-info-circle me-1"></i>Chi tiết
+                                            </a>
+                                            <a asp-action="Delete" asp-route-id="@item.MaThietBi" class="btn btn-outline-danger" title="Xóa thiết bị">
+                                                <i class="bi bi-trash me-1"></i>Xóa
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             }
                         }
                         else
                         {
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-4">Không tìm thấy thiết bị nào khớp với từ khóa tìm kiếm.</td>
+                            <tr id="emptyRow">
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    <i class="bi bi-search fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                                    <p class="mb-1 fw-semibold">Không tìm thấy thiết bị nào khớp với từ khóa hoặc phòng đã chọn.</p>
+                                    <small>Hãy thử nhập mã phòng khác (VD: 101, 102...) hoặc bấm <a asp-action="Index">Xem tất cả</a>.</small>
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3 text-muted small">
+                <span>Tổng số thiết bị trong danh sách: <strong>@(Model?.Count() ?? 0)</strong></span>
+            </div>
+
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('assetSearchInput');
+            const rows = document.querySelectorAll('.asset-row');
+            const assetCount = document.getElementById('assetCount');
+
+            if (searchInput && rows.length > 0) {
+                // Lọc nhanh trực tiếp trên giao diện khi người dùng nhập vào ô tìm kiếm
+                searchInput.addEventListener('input', function () {
+                    let val = this.value.trim().toLowerCase();
+                    // Loại bỏ tiền tố "phòng ", "phong ", "p.", "p" nếu có
+                    let roomKey = val;
+                    if (roomKey.startsWith('phòng ')) roomKey = roomKey.replace('phòng ', '').trim();
+                    else if (roomKey.startsWith('phong ')) roomKey = roomKey.replace('phong ', '').trim();
+                    else if (roomKey.startsWith('p.')) roomKey = roomKey.replace('p.', '').trim();
+                    else if (roomKey.startsWith('p') && roomKey.length > 1 && !isNaN(roomKey[1])) roomKey = roomKey.substring(1).trim();
+
+                    let visibleCount = 0;
+
+                    rows.forEach(function (row) {
+                        const maPhong = row.getAttribute('data-maphong') || '';
+                        const tenTb = row.getAttribute('data-tentb') || '';
+                        const maTb = row.getAttribute('data-matb') || '';
+                        const loaiTb = row.getAttribute('data-loaitb') || '';
+                        const tinhTrang = row.getAttribute('data-tinhtrang') || '';
+
+                        const isMatch = val === '' 
+                            || maPhong.includes(val) 
+                            || maPhong === roomKey
+                            || maPhong.includes(roomKey)
+                            || tenTb.includes(val) 
+                            || maTb.includes(val) 
+                            || loaiTb.includes(val) 
+                            || tinhTrang.includes(val);
+
+                        if (isMatch) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+
+                    if (assetCount) {
+                        assetCount.textContent = visibleCount;
+                    }
+                });
+            }
+        });
+    </script>
+}

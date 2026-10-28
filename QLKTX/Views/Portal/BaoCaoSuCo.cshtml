@@ -63,8 +63,17 @@
 
     <div class="col-md-7">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
-            <div class="card-header bg-light p-3 border-bottom">
+            <div class="card-header bg-light p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0 fw-semibold fs-6 text-dark"><i class="bi bi-clock-history me-2 text-secondary"></i> LỊCH SỬ BÁO CÁO CỦA PHÒNG</h5>
+                @if (Model != null && Model.Any(b => b.TrangThai == "Đã xử lý" || b.TrangThai == "Đã hoàn thành" || b.TrangThai == "Đã duyệt" || b.TrangThai == "Từ chối"))
+                {
+                    <form asp-action="XoaTatCaYeuCauDaHoanThanhVaTuChoi" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa tất cả yêu cầu đã hoàn thành và bị từ chối khỏi lịch sử?');">
+                        <input type="hidden" name="returnUrl" value="/Portal/BaoCaoSuCo" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" style="font-size: 0.78rem;">
+                            <i class="bi bi-trash3 me-1"></i> Xóa tất cả đã xong / từ chối
+                        </button>
+                    </form>
+                }
             </div>
             <div class="card-body p-0">
                 <ul class="list-group list-group-flush">
@@ -75,34 +84,64 @@
                             <li class="list-group-item p-4">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <h6 class="fw-bold mb-0 text-primary">@item.TenSuCo</h6>
-                                    @if (item.TrangThai == "Đã xử lý")
-                                    {
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-medium">
-                                            <i class="bi bi-check-circle me-1"></i>Đã xử lý
-                                        </span>
-                                    }
-                                    else if (item.TrangThai == "Đang xử lý")
-                                    {
-                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fw-medium">
-                                            <i class="bi bi-hammer me-1"></i>Đang xử lý
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
-                                            <i class="bi bi-clock me-1"></i>Chờ xử lý
-                                        </span>
-                                    }
+                                    <div>
+                                        @if (item.TrangThai == "Đã xử lý" || item.TrangThai == "Đã hoàn thành" || item.TrangThai == "Đã duyệt")
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-medium">
+                                                <i class="bi bi-check-circle me-1"></i>Đã xử lý
+                                            </span>
+                                        }
+                                        else if (item.TrangThai == "Từ chối")
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
+                                                <i class="bi bi-x-circle me-1"></i>Từ chối
+                                            </span>
+                                        }
+                                        else if (item.TrangThai == "Đang xử lý")
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 fw-medium">
+                                                <i class="bi bi-hammer me-1"></i>Đang xử lý
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
+                                                <i class="bi bi-clock me-1"></i>Chờ xử lý
+                                            </span>
+                                        }
+                                    </div>
                                 </div>
                                 <p class="text-muted small mb-2">
                                     <i class="bi bi-calendar-event"></i> @item.NgayBaoCao.ToString("dd/MM/yyyy HH:mm") |
                                     <span class="text-danger"><i class="bi bi-exclamation-circle"></i> @item.MucDoKhanCap</span>
                                 </p>
-                                <p class="mb-2 text-dark">@item.MoTa</p>
+                                <p class="mb-2 text-dark">@(item.MoTa?.Replace(" [Đã đồng bộ]", ""))</p>
 
                                 @if (!string.IsNullOrEmpty(item.HinhAnh))
                                 {
                                     <img src="@item.HinhAnh" alt="Ảnh sự cố" class="img-thumbnail mt-2 shadow-sm" style="max-height: 150px; border-radius: 8px;" />
+                                }
+
+                                @if (item.TrangThai == "Đã xử lý" || item.TrangThai == "Đã hoàn thành" || item.TrangThai == "Đã duyệt" || item.TrangThai == "Từ chối")
+                                {
+                                    <div class="d-flex justify-content-end align-items-center gap-2 mt-3 pt-2 border-top">
+                                        @if (item.TrangThai == "Từ chối")
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold btn-yeu-cau-lai"
+                                                    data-masuco="@item.MaSuCo"
+                                                    data-tensuco="@item.TenSuCo"
+                                                    data-mota="@(item.MoTa?.Replace(" [Đã đồng bộ]", ""))">
+                                                <i class="bi bi-arrow-repeat me-1"></i> Yêu cầu lại
+                                            </button>
+                                        }
+                                        <form asp-action="XoaYeuCauSinhVien" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa yêu cầu này khỏi lịch sử?');">
+                                            <input type="hidden" name="maSuCo" value="@item.MaSuCo" />
+                                            <input type="hidden" name="returnUrl" value="/Portal/BaoCaoSuCo" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold">
+                                                <i class="bi bi-trash3 me-1"></i> Xóa
+                                            </button>
+                                        </form>
+                                    </div>
                                 }
                             </li>
                         }
@@ -119,3 +158,77 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL GỬI LẠI YÊU CẦU CHO SINH VIÊN -->
+<div class="modal fade" id="modalGuiLaiYeuCau" tabindex="-1" aria-labelledby="modalGuiLaiYeuCauLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white p-3 border-0">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-repeat fs-5"></i>
+                    <h5 class="modal-title fw-bold mb-0" id="modalGuiLaiYeuCauLabel">Gửi Lại Yêu Cầu</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="GuiLaiYeuCau" method="post">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="maSuCo" id="guiLaiMaSuCo" />
+                    <input type="hidden" name="returnUrl" value="/Portal/BaoCaoSuCo" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-muted text-uppercase">Yêu cầu / Sự cố:</label>
+                        <input type="text" id="guiLaiTenSuCo" class="form-control form-control-sm bg-light fw-bold text-dark border-secondary-subtle" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-muted text-uppercase">Nội dung / Lý do gửi lại:</label>
+                        <textarea name="moTaMoi" id="guiLaiMoTa" class="form-control border-secondary-subtle" rows="4" placeholder="Nhập nội dung giải thích thêm hoặc cập nhật thông tin..." required></textarea>
+                        <div class="form-text small text-muted">
+                            <i class="bi bi-pencil-square me-1"></i> Bạn có thể cập nhật thông tin rõ ràng hơn để Ban Quản lý dễ dàng xét duyệt lại.
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 small rounded-3 mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle-fill fs-6 text-primary flex-shrink-0"></i>
+                        <span>Sau khi gửi lại, yêu cầu sẽ được chuyển về trạng thái <strong>Chờ xử lý</strong> và gửi trực tiếp tới Ban Quản lý.</span>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="bi bi-send-fill me-1"></i> Gửi lại yêu cầu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalEl = document.getElementById('modalGuiLaiYeuCau');
+        const bsModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+        document.querySelectorAll('.btn-yeu-cau-lai').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const maSuCo = this.getAttribute('data-masuco') || '';
+                const tenSuCo = this.getAttribute('data-tensuco') || '';
+                const moTa = this.getAttribute('data-mota') || '';
+
+                const inputMa = document.getElementById('guiLaiMaSuCo');
+                const inputTen = document.getElementById('guiLaiTenSuCo');
+                const inputMoTa = document.getElementById('guiLaiMoTa');
+
+                if (inputMa) inputMa.value = maSuCo;
+                if (inputTen) inputTen.value = tenSuCo;
+                if (inputMoTa) inputMoTa.value = moTa;
+
+                if (bsModal) {
+                    bsModal.show();
+                }
+            });
+        });
+    });
+</script>
+}

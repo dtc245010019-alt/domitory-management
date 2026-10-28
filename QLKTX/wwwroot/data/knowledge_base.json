@@ -3,16 +3,27 @@
     "intent": "XIN_CHAO",
     "facts": [
       "Xin chào! Mình là Trợ lý AI KTX kiêm Trợ lý Hành động (AI Action Agent).",
-      "Bạn cần hỗ trợ thông tin gì về nội quy, điện nước, báo hỏng hay muốn nhờ mình thực hiện trực tiếp các thao tác (báo sự cố hộ, xin chuyển phòng, gia hạn hợp đồng, trả phòng, thanh toán hóa đơn) ạ?"
+      "Bạn cần hỗ trợ thông tin gì về nội quy, biểu phí phòng, điện nước, báo hỏng hay muốn nhờ mình thực hiện trực tiếp các thao tác (báo sự cố hộ, xin chuyển phòng, gia hạn hợp đồng, trả phòng, thanh toán hóa đơn) ạ?"
     ]
   },
   {
     "intent": "HOADON_DIEN_NUOC",
     "facts": [
       "Hóa đơn điện nước được chốt từ ngày 25 đến ngày 28 hàng tháng.",
-      "Đơn giá điện: 2.000 VNĐ / kWh.",
-      "Đơn giá nước: 10.000 VNĐ / m3.",
-      "Sinh viên thanh toán trực tiếp tại mục Hóa đơn trên Student Portal, tại Văn phòng Ban quản lý, hoặc nhờ Trợ lý AI thanh toán hộ ngay trong khung chat."
+      "Đơn giá điện sinh hoạt: 2.500 VNĐ / kWh (tính chuẩn theo công thức: (Chỉ số mới - Chỉ số cũ) × Đơn giá).",
+      "Đơn giá nước sạch: 15.000 VNĐ / m³.",
+      "Miễn phí 100% Internet Wifi tốc độ cao và phí thu gom rác sinh hoạt hành lang.",
+      "Sinh viên thanh toán trực tiếp tại mục Hóa đơn trên Student Portal (xác thực mật khẩu cá nhân), tại Văn phòng Ban quản lý, hoặc mở phiếu thanh toán an toàn qua Trợ lý AI."
+    ]
+  },
+  {
+    "intent": "BANG_GIA_PHONG",
+    "facts": [
+      "Biểu phí tiền phòng niêm yết tại KTX (quy định tính theo đầu Sinh viên / Tháng):",
+      "Phòng thường (quạt trần, 6-8 người): 350.000 VNĐ / sinh viên / tháng (hoặc 1.750.000 VNĐ / kỳ 5 tháng).",
+      "Phòng có điều hòa (4-6 người): 650.000 VNĐ / sinh viên / tháng (hoặc 3.250.000 VNĐ / kỳ 5 tháng).",
+      "Phòng điều hòa + nóng lạnh (4 người): 950.000 VNĐ / sinh viên / tháng (hoặc 4.750.000 VNĐ / kỳ 5 tháng).",
+      "Mức tiền đặt cọc hợp đồng lưu trú tiêu chuẩn: 1.000.000 VNĐ / hợp đồng (được hoàn trả khi sinh viên làm thủ tục trả phòng và thanh lý hợp đồng đúng quy định)."
     ]
   },
   {
@@ -34,9 +45,9 @@
   {
     "intent": "GUI_XE_RA_VAO",
     "facts": [
-      "Bãi xe phục vụ 24/7 cho sinh viên nội trú.",
-      "Phí gửi xe máy: 50.000 VNĐ / tháng.",
-      "Phí gửi xe điện: 80.000 VNĐ / tháng (đã bao gồm tiền sạc điện tại bãi)."
+      "Bãi xe phục vụ 24/7 cho sinh viên nội trú KTX, có camera an ninh và bảo vệ trực trông giữ.",
+      "Phí gửi xe máy: 80.000 VNĐ / tháng.",
+      "Phí gửi xe đạp điện / xe máy điện (kèm sạc an toàn): 130.000 VNĐ / tháng."
     ]
   },
   {
@@ -44,7 +55,7 @@
     "facts": [
       "Thủ tục trả phòng cần đăng ký trước ít nhất 15 ngày khi hết hạn hợp đồng.",
       "Sinh viên có thể nhờ Trợ lý AI tạo đơn Đăng ký trả phòng, Xin chuyển phòng hoặc Gia hạn hợp đồng ngay trong khung chat.",
-      "Sinh viên dọn dẹp vệ sinh phòng sạch sẽ và bàn giao lại chìa khóa, thẻ ra vào cho Trưởng nhà."
+      "Sinh viên dọn dẹp vệ sinh phòng sạch sẽ và bàn giao lại chìa khóa, thẻ ra vào cho Trưởng nhà để nhận lại tiền cọc 1.000.000 VNĐ."
     ]
   },
   {

@@ -2,20 +2,44 @@
 
 @{
     ViewData["Title"] = "Quản Lý Hóa Đơn Điện Nước";
+    var countDaThu = ViewBag.CountDaThu ?? 0;
+    var currentSearch = ViewData["CurrentSearch"]?.ToString() ?? "";
+    var currentLoai = ViewData["CurrentLoai"]?.ToString() ?? "";
+    bool hasFilter = !string.IsNullOrEmpty(currentSearch) || (!string.IsNullOrEmpty(currentLoai) && currentLoai != "Tất cả");
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<!-- Alert Thông báo -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm border-0 mb-3" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm border-0 mb-3" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-        <h2 class="h4 mb-1 fw-bold text-dark">Quản Lý Hóa Đơn Điện Nước</h2>
+        <h2 class="h4 mb-1 fw-bold text-dark">Quản Lý Hóa Đơn Thu Phí</h2>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0 small">
                 <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none">Dashboard</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Hóa đơn</li>
+                <li class="breadcrumb-item active" aria-current="page">Hóa đơn cần thu</li>
             </ol>
         </nav>
     </div>
-    <div>
-        <a asp-action="TaoHoaDon" class="btn btn-primary btn-sm px-3 py-2 shadow-sm">
+    <div class="d-flex align-items-center gap-2">
+        <a asp-action="LichSuHoaDonAdmin" class="btn btn-outline-secondary btn-sm px-3 py-2 shadow-sm rounded-3">
+            <i class="bi bi-clock-history me-1"></i> Lịch sử thu tiền
+            <span class="badge bg-success rounded-pill ms-1">@countDaThu</span>
+        </a>
+        <a asp-action="TaoHoaDon" class="btn btn-primary btn-sm px-3 py-2 shadow-sm rounded-3">
             <i class="bi bi-plus-lg me-1"></i> Thêm hóa đơn mới
         </a>
     </div>
@@ -23,8 +47,14 @@
 
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
     <div class="card-header bg-primary text-white p-3 border-0">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold fs-6"><i class="bi bi-receipt me-2"></i>Danh sách Hóa đơn</h5>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0 fw-semibold fs-6">
+                <i class="bi bi-receipt me-2"></i>Hóa đơn cần thu
+                <span class="badge bg-white text-primary ms-2 rounded-pill">@(Model?.Count() ?? 0) cần thu</span>
+            </h5>
+            <a asp-action="LichSuHoaDonAdmin" class="btn btn-sm btn-light text-primary fw-semibold py-1 px-3 rounded-pill shadow-sm">
+                <i class="bi bi-clock-history me-1"></i> Xem lịch sử đã thu (@countDaThu)
+            </a>
         </div>
     </div>
     
@@ -34,14 +64,14 @@
             <div class="row g-3 align-items-center justify-content-between">
                 
                 <!-- Ô tìm kiếm -->
-                <div class="col-12 col-md-5 col-lg-5">
+                <div class="col-12 col-md-6 col-lg-5">
                     <div class="input-group input-group-sm shadow-sm rounded">
                         <span class="input-group-text bg-light border-end-0 text-muted">
                             <i class="bi bi-search"></i>
                         </span>
                         <input type="text" 
                                name="searchString" 
-                               value="@ViewData["CurrentSearch"]" 
+                               value="@currentSearch" 
                                class="form-control bg-light border-start-0 ps-1" 
                                placeholder="Tìm Mã hóa đơn, Mã SV, Họ tên, Phòng..." />
                         <button type="submit" class="btn btn-primary px-3">
@@ -50,31 +80,20 @@
                     </div>
                 </div>
 
-                <!-- Lọc trạng thái & loại -->
-                <div class="col-12 col-md-7 col-lg-7">
+                <!-- Lọc loại hóa đơn -->
+                <div class="col-12 col-md-6 col-lg-7">
                     <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
                         
                         <div class="d-flex align-items-center gap-1">
-                            <label class="form-label mb-0 small text-muted d-none d-sm-inline">Trạng thái:</label>
-                            <select name="trangThai" class="form-select form-select-sm shadow-sm" style="width: auto; min-width: 140px;" onchange="this.form.submit()">
-                                <option value="Tất cả">Tất cả trạng thái</option>
-                                <option value="Đã thanh toán" selected="@(ViewData["CurrentTrangThai"]?.ToString() == "Đã thanh toán" ? "selected" : null)">Đã thanh toán</option>
-                                <option value="Chưa thanh toán" selected="@(ViewData["CurrentTrangThai"]?.ToString() == "Chưa thanh toán" ? "selected" : null)">Chưa thanh toán</option>
-                            </select>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-1">
                             <label class="form-label mb-0 small text-muted d-none d-sm-inline">Loại:</label>
-                            <select name="loaiHoaDon" class="form-select form-select-sm shadow-sm" style="width: auto; min-width: 130px;" onchange="this.form.submit()">
+                            <select name="loaiHoaDon" class="form-select form-select-sm shadow-sm" style="width: auto; min-width: 140px;" onchange="this.form.submit()">
                                 <option value="Tất cả">Tất cả loại</option>
-                                <option value="Tiền phòng" selected="@(ViewData["CurrentLoai"]?.ToString() == "Tiền phòng" ? "selected" : null)">Tiền phòng</option>
-                                <option value="Điện nước" selected="@(ViewData["CurrentLoai"]?.ToString() == "Điện nước" ? "selected" : null)">Điện nước</option>
+                                <option value="Tiền phòng" selected="@(currentLoai == "Tiền phòng" ? "selected" : null)">Tiền phòng</option>
+                                <option value="Điện nước" selected="@(currentLoai == "Điện nước" ? "selected" : null)">Điện nước</option>
                             </select>
                         </div>
                         
-                        @if (!string.IsNullOrEmpty(ViewData["CurrentSearch"]?.ToString()) || 
-                             (!string.IsNullOrEmpty(ViewData["CurrentTrangThai"]?.ToString()) && ViewData["CurrentTrangThai"]?.ToString() != "Tất cả") || 
-                             (!string.IsNullOrEmpty(ViewData["CurrentLoai"]?.ToString()) && ViewData["CurrentLoai"]?.ToString() != "Tất cả"))
+                        @if (hasFilter)
                         {
                             <a asp-action="QuanLyHoaDonAdmin" class="btn btn-outline-danger btn-sm shadow-sm">
                                 <i class="bi bi-x-circle"></i> Xóa lọc
@@ -91,14 +110,14 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light text-muted small text-uppercase">
                     <tr>
-                        <th class="ps-4 fw-semibold">Mã Hóa Đơn</th>
+                        <th class="ps-4 fw-semibold" style="width: 140px;">Mã Hóa Đơn</th>
                         <th class="fw-semibold">Sinh Viên</th>
-                        <th class="fw-semibold">Phòng</th>
-                        <th class="fw-semibold">Loại</th>
-                        <th class="fw-semibold">Tổng Tiền</th>
-                        <th class="fw-semibold">Trạng Thái</th>
-                        <th class="fw-semibold">Ngày Lập</th>
-                        <th class="pe-4 text-end fw-semibold">Hành Động</th>
+                        <th class="fw-semibold text-center" style="width: 110px;">Phòng</th>
+                        <th class="fw-semibold" style="width: 120px;">Loại</th>
+                        <th class="fw-semibold text-end" style="width: 140px;">Tổng Tiền</th>
+                        <th class="fw-semibold text-center" style="width: 150px;">Trạng Thái</th>
+                        <th class="fw-semibold" style="width: 160px;">Ngày Lập</th>
+                        <th class="pe-4 text-end fw-semibold" style="width: 130px;">Hành Động</th>
                     </tr>
                 </thead>
                 <tbody class="border-top-0">
@@ -112,46 +131,38 @@
                                     <div class="fw-medium text-dark">@(item.SinhVien?.HoTen ?? "N/A")</div>
                                     <div class="small text-muted">@item.MaSV</div>
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     @if (!string.IsNullOrEmpty(item.MaPhong))
                                     {
-                                        <span class="badge bg-light text-dark border"><i class="bi bi-door-open me-1"></i>@item.MaPhong</span>
+                                        <span class="badge bg-light text-primary border"><i class="bi bi-door-open me-1"></i>@item.MaPhong</span>
                                     }
                                 </td>
-                                <td>@item.LoaiHoaDon</td>
-                                <td><strong class="text-primary">@item.TongTien.ToString("N0") ₫</strong></td>
                                 <td>
-                                    @if (item.TrangThai == "Đã thanh toán")
+                                    @if (item.LoaiHoaDon == "Tiền phòng")
                                     {
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-medium">
-                                            <i class="bi bi-check-circle me-1"></i>Đã thanh toán
-                                        </span>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">Tiền phòng</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
-                                            <i class="bi bi-x-circle me-1"></i>Chưa thanh toán
-                                        </span>
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">Điện nước</span>
                                     }
+                                </td>
+                                <td class="text-end"><strong class="text-danger fs-6">@string.Format("{0:N0} ₫", item.TongTien)</strong></td>
+                                <td class="text-center">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-medium">
+                                        <i class="bi bi-clock me-1"></i>Chưa thanh toán
+                                    </span>
                                 </td>
                                 <td class="small text-muted">@item.NgayLap.ToString("dd/MM/yyyy HH:mm")</td>
                                 <td class="pe-4 text-end">
                                     <form asp-action="CapNhatTrangThaiHoaDon" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
                                         <input type="hidden" name="maHoaDon" value="@item.MaHoaDon" />
-                                        @if (item.TrangThai == "Đã thanh toán")
-                                        {
-                                            <input type="hidden" name="trangThaiMoi" value="Chưa thanh toán" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('Chuyển trạng thái hóa đơn @item.MaHoaDon thành CHƯA THANH TOÁN?');">
-                                                <i class="bi bi-arrow-counterclockwise"></i> Hủy
-                                            </button>
-                                        }
-                                        else
-                                        {
-                                            <input type="hidden" name="trangThaiMoi" value="Đã thanh toán" />
-                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Xác nhận ĐÃ THU TIỀN hóa đơn @item.MaHoaDon?');">
-                                                <i class="bi bi-check2"></i> Đã thu
-                                            </button>
-                                        }
+                                        <input type="hidden" name="trangThaiMoi" value="Đã thanh toán" />
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm" onclick="return confirm('Xác nhận ĐÃ THU TIỀN hóa đơn @item.MaHoaDon? Hóa đơn sẽ được chuyển sang Lịch sử thu tiền.');">
+                                            <i class="bi bi-check2-circle me-1"></i> Đã thu
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
@@ -161,8 +172,9 @@
                     {
                         <tr>
                             <td colspan="8" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
-                                Không có hóa đơn nào.
+                                <i class="bi bi-check-circle fs-1 d-block mb-3 text-success opacity-50"></i>
+                                <div class="fw-semibold">Hiện không có hóa đơn nào cần thu!</div>
+                                <small class="text-muted">Tất cả các hóa đơn đã được thu hoặc không khớp với bộ lọc.</small>
                             </td>
                         </tr>
                     }
