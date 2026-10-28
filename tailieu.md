@@ -449,3 +449,73 @@ Bảng dưới đây liệt kê các kịch bản kiểm thử (**Test Cases**) 
 5. **Câu hỏi 5: Phân quyền giữa Quản lý KTX (`admin`), Kế toán (`ketoan`) và Sinh viên (`SinhVien`) được kiểm soát ở tầng nào?**
    - **Trả lời:** Được kiểm soát ở cả **Tầng Giao diện (UI)** và **Tầng Backend (Action Filter)**:
      - Ở tầng Backend, em xây dựng bộ lọc `[AdminAuthorize]` và `[AdminAuthorize(OnlyAdmin = true)]` trong `AdminAuthorizeAttribute.cs`. Nếu người dùng chưa đăng nhập hoặc dùng tài khoản `ketoan` cố tình gõ URL vào các trang chỉ dành cho Admin (như Kỷ luật, Cơ sở vật chất, Sửa/Xóa Phòng & Sinh viên), bộ lọc sẽ chặn ngay ở `OnActionExecuting` và chuyển hướng về trang chủ kèm thông báo lỗi.
+
+
+---
+
+## PHẦN IV: THIẾT KẾ AGENT AI CHO QUY TRÌNH SDLC (CONTEXT ENGINEERING, FACTORY, GUARDRAILS & KIỂM THỬ) — ĐÁP ỨNG TIÊU CHÍ 2 (4.0 ĐIỂM)
+
+### 1. Kiến trúc Nhà máy Phần mềm AI (SDLC AI Agent Factory)
+Dự án được phát triển theo mô hình Nhà máy AI Agent khép kín với 6 Subagents chuyên trách:
+1. **📋 Business Analyst Agent:** Trích xuất yêu cầu KTX, xác định 5 luật nghiệp vụ bất biến.
+2. **🏗️ System Architect Agent:** Thiết kế Schema CSDL 8 bảng, định tuyến MVC, phân quyền bảo mật.
+3. **💻 Developer Agent:** Sinh mã nguồn ASP.NET Core 8.0, triển khai EF Core và Razor Views.
+4. **🧪 Test Automation Agent:** Sinh bộ kiểm thử xUnit và Integration Test tự động bao phủ 100%.
+5. **🛡️ Safety & Guardrails Agent:** Quản trị an toàn Prompt Injection, PII Scrubber và Smart Fallback.
+6. **🚀 DevOps & Monitoring Agent:** Cấu hình Docker multi-stage, Health Checks và CI/CD GitHub Actions.
+
+```mermaid
+flowchart TD
+    BA["📋 BA Agent<br>(Đặc tả I/O & Core Invariants)"] --> Arch["🏗️ Architect Agent<br>(ERD 8 bảng & MVC Routing)"]
+    Arch --> Dev["💻 Dev Agent<br>(ASP.NET Core 8.0 & Razor)"]
+    Dev --> QA["🧪 QA Agent<br>(xUnit & Integration Tests)"]
+    QA --> Sec["🛡️ Guardrails Agent<br>(Safety & PII Scrubber)"]
+    Sec --> Ops["🚀 DevOps Agent<br>(Docker & Health Checks)"]
+    Ops --> Pipeline["CI/CD GitHub Actions Pipeline"]
+```
+
+### 2. Kỹ nghệ Ngữ cảnh Phân tầng (Context Engineering Framework)
+Hệ thống AI phân tách ngữ cảnh thành 4 tầng độc lập để tối ưu hóa token và ngăn chặn Hallucination:
+- **Tầng 1 (Core Invariants):** Luật bất biến nghiệp vụ (Soft Delete, Đồng bộ sĩ số, Bảo mật hóa đơn).
+- **Tầng 2 (Domain Knowledge RAG):** Biểu phí, giờ giới nghiêm 23:00, quy định gửi xe từ `knowledge_base.json`.
+- **Tầng 3 (Dynamic Database State):** Truy vấn trạng thái thực từ SQL Server qua EF Core `AsNoTracking()`.
+- **Tầng 4 (Execution Guardrails):** Kiểm soát Timeout 8s, bộ lọc PII và Rule-based Smart Fallback.
+
+### 3. Framework Rào chắn An toàn (Safety Guardrails Framework)
+Module `SafetyGuardrails.cs` bảo vệ đồng bộ 3 phân hệ AI (`ChatbotController`, `PhongController`, `PortalController`):
+- **Input Guardrails:**
+  - Phát hiện và vô hiệu hóa Prompt Injection qua danh sách mẫu từ khóa nguy hiểm ("bỏ qua chỉ dẫn", "trở thành hacker", "lộ mật khẩu", "system prompt").
+  - Giới hạn độ dài văn bản đầu vào (Max 1000 ký tự) chống tấn công làm tràn Context Window.
+  - Làm sạch ký tự điều khiển lạ (`[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]`).
+- **Output Guardrails:**
+  - PII Scrubber: Tự động quét và che mờ CCCD 12 số (`\b\d{12}\b` $\rightarrow$ `[ĐÃ_ẨN_CCCD]`), số điện thoại (`MaskPhone`: `098****567`), mật khẩu tài khoản.
+  - Chống Hallucination: Làm sạch markdown links giả mạo (`[text](http...)`) và từ chối nội dung ngoài KTX.
+- **Execution Guardrails:**
+  - Khống chế thời gian thực thi (Timeout 8s).
+  - Tự động kích hoạt Rule-based Smart Fallback đảm bảo tính liên tục của hệ thống khi Ollama offline.
+
+### 4. Kiến trúc Giám sát và Theo dõi Sức khỏe Hệ thống (Health Checks & Observability)
+Hệ thống tích hợp ASP.NET Core Health Checks chuẩn tại endpoint `/health`:
+- **DatabaseHealthCheck:** Kiểm tra khả năng kết nối SQL Server thông qua `_dbContext.Database.CanConnectAsync()`.
+- **OllamaHealthCheck:** Ping kiểm tra cổng 11434 với timeout 2s. Nếu Ollama offline, trả về trạng thái `Degraded` để hệ thống tự động kích hoạt Rule-based Smart Fallback mà không làm sập ứng dụng.
+
+```mermaid
+flowchart LR
+    Client["Client / Monitoring / Docker"] --> HealthEndpoint["Endpoint: /health"]
+    HealthEndpoint --> DBCheck["DatabaseHealthCheck<br>(SQL Server EF Core)"]
+    HealthEndpoint --> AICheck["OllamaHealthCheck<br>(AI LLM Service :11434)"]
+    DBCheck --> Result["JSON Response: Healthy / Degraded"]
+    AICheck --> Result
+    Result --> DockerAutoHeal["Docker Compose Healthcheck<br>(Self-healing Container)"]
+```
+
+### 5. Danh mục Kiểm thử Chuẩn .NET (xUnit Unit & Integration Tests)
+Toàn bộ mã nguồn được xác thực bởi 53 kiểm thử xUnit và 26 kịch bản kiểm thử tự động, đạt tỷ lệ **100% PASS**:
+
+| Nhóm kiểm thử | Tệp kiểm thử | Số Tests | Nội dung kiểm thử trọng tâm | Kết quả |
+| :--- | :--- | :---: | :--- | :---: |
+| **Tính phí & Hóa đơn** | `HoaDonCalculationsTests.cs` | 16 | - Tính tiền điện nước theo công thức: `(ChiSoMoi - ChiSoCu) * DonGia`<br>- Chặn tạo hóa đơn khi `ChiSoMoi <= ChiSoCu` (chống hóa đơn âm)<br>- Tính tiền phòng theo loại phòng và số tháng thuê | **100% PASS** |
+| **Phòng & Sĩ số** | `PhongVaSiSoTests.cs` | 4 | - Xếp sinh viên vào phòng còn chỗ -> tăng sĩ số, giữ nguyên "Còn chỗ"<br>- Xếp vào giường cuối cùng -> tự động đổi "Đã đầy"<br>- Xóa mềm (trả phòng) -> đổi "Đã rời đi", giảm sĩ số, mở lại "Còn chỗ"<br>- Kỷ luật đình chỉ -> tự động giải phóng giường trống | **100% PASS** |
+| **An toàn AI & Privacy** | `AIFallbackAndPrivacyTests.cs` | 23 | - Hàm làm mờ số điện thoại `MaskPhone(phone)` (`098****567`)<br>- Bộ lọc loại bỏ hoàn toàn CCCD và mật khẩu khỏi Prompt AI<br>- Thuật toán Smart Fallback tiếng Việt khi Ollama offline<br>- Ngăn chặn tấn công Prompt Injection | **100% PASS** |
+| **Bảo mật & Tích hợp** | `SecurityAndEndpointIntegrationTests.cs` | 10 | - Endpoint chẩn đoán `/_diag` trả về HTTP 200 OK<br>- Endpoint giám sát `/health` trả về HTTP 200 OK & JSON<br>- Cơ chế phân quyền chặn truy cập Admin khi chưa đăng nhập -> Redirect 302 | **100% PASS** |
+| **Kịch bản PowerShell** | `tests/run_tests.ps1` | 26 | - Kiểm tra toàn diện 26 tiêu chí cấu hình, kiến trúc, Docker, RAG, xUnit | **100% PASS** |

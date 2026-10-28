@@ -205,6 +205,7 @@ namespace QLKTX
             // Đồng bộ chuẩn xác trạng thái "Đã đầy" / "Còn chỗ" cho toàn bộ phòng
             var svDangOByPhong = context.SinhViens
                 .Where(s => s.TinhTrangLuuTru == "Đang ở" && s.MaPhong != null)
+                .ToList()
                 .GroupBy(s => s.MaPhong!)
                 .ToDictionary(g => g.Key, g => g.Count());
 

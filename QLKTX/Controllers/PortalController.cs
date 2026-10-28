@@ -989,7 +989,7 @@ namespace QLKTX.Controllers
                         using var doc = System.Text.Json.JsonDocument.Parse(json);
                         string? aiResponse = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
                         if (!string.IsNullOrWhiteSpace(aiResponse))
-                            return Json(new { success = true, summary = aiResponse });
+                            return Json(new { success = true, summary = SafetyGuardrails.SanitizeHallucinations(SafetyGuardrails.ScrubPII(aiResponse)) });
                     }
                 }
                 catch { }

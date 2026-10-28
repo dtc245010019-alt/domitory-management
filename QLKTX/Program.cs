@@ -33,6 +33,11 @@ builder.Services.AddHttpClient("Ollama", client =>
     client.Timeout = TimeSpan.FromSeconds(20);
 });
 
+// 4.1. Đăng ký dịch vụ Giám sát & Vận hành (Health Checks & Observability)
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database_sqlserver")
+    .AddCheck<OllamaHealthCheck>("ai_ollama_service");
+
 var app = builder.Build();
 
 // 5. Khởi tạo dữ liệu mẫu (Seed Data)
@@ -76,11 +81,31 @@ app.UseAuthorization();
 // Endpoint kiểm tra
 app.MapGet("/_diag", () => Results.Text("OK - server running", "text/plain"));
 
-// Route mặc định (Trỏ về Controller DN - Action Dangnhap)
+// Endpoint giám sát sức khỏe hệ thống (Health Check Endpoint)
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = HealthCheckResponseWriter.WriteDetailedJsonResponse
+});
+
+// Route cho trang chủ và đăng nhập
+app.MapControllerRoute(
+    name: "dn_login",
+    pattern: "DN",
+    defaults: new { controller = "DN", action = "Dangnhap" });
+
+app.MapControllerRoute(
+    name: "root",
+    pattern: "",
+    defaults: new { controller = "DN", action = "Dangnhap" });
+
+// Route chuẩn cho các Controller với Action mặc định là Index
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=DN}/{action=Dangnhap}/{id?}");
+    pattern: "{controller=DN}/{action=Index}/{id?}");
 
 app.MapRazorPages();
 
 app.Run();
+
+// Hỗ trợ WebApplicationFactory trong Unit/Integration Tests
+public partial class Program { }

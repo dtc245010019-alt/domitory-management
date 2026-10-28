@@ -197,6 +197,10 @@ namespace QLKTX.Controllers
         [HttpPost]
         public async Task<IActionResult> GoiYXepPhongAI([FromBody] GoiYPhongRequest req)
         {
+            if (SafetyGuardrails.IsPromptInjection(req?.LoaiPhong, out _) || SafetyGuardrails.IsPromptInjection(req?.TangOrToa, out _))
+            {
+                return Json(new { success = false, suggestion = "Yêu cầu xếp phòng vi phạm rào chắn an toàn hệ thống (Safety Guardrails)." });
+            }
             try
             {
                 var phongs = await _context.Phongs
@@ -303,7 +307,7 @@ namespace QLKTX.Controllers
                             return Json(new
                             {
                                 success = true,
-                                suggestion = aiText,
+                                suggestion = SafetyGuardrails.SanitizeHallucinations(SafetyGuardrails.ScrubPII(aiText)),
                                 recommendedMaPhong = topPhongs.First().MaPhong,
                                 recommendedRooms = recommendedList
                             });

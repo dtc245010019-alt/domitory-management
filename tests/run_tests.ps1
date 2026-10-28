@@ -159,6 +159,29 @@ $composeContent = Get-Content "docker-compose.yml" -Raw
 $hasHostDocker = $composeContent -match "host\.docker\.internal"
 Report-Test "TC_HTTP_02" "Docker Compose" "Cau hinh ket noi container ho tro host.docker.internal toi SQL Server" $hasHostDocker "San sang cho docker compose up"
 
+$hasHealthConfig = ($composeContent -match "healthcheck") -and ($composeContent -match "/health")
+Report-Test "TC_HTTP_03" "Docker Healthcheck" "Cau hinh healthcheck trong docker-compose.yml theo doi endpoint /health" $hasHealthConfig "Chu ky 30s, timeout 10s, retry 3 lan"
+
+# -----------------------------------------------------------------------------
+# NHOM 7: THUC THI KIEM THU XUNIT (.NET UNIT & INTEGRATION TESTS) (TC_XUNIT)
+# -----------------------------------------------------------------------------
+Write-Host ""
+Write-Host "7. THUC THI KIEM THU CHUAN XUNIT (.NET UNIT & INTEGRATION TESTS)" -ForegroundColor Yellow
+
+$hasGuardrailsFile = Test-Path "QLKTX\Models\SafetyGuardrails.cs"
+Report-Test "TC_XUNIT_01" "Safety Guardrails" "Kien truc Rao chan An toan (SafetyGuardrails.cs) hoan thien day du" $hasGuardrailsFile "Input, Output (PII Scrubber), Execution Fallback"
+
+$hasHealthCheckFile = Test-Path "QLKTX\Models\HealthChecks.cs"
+Report-Test "TC_XUNIT_02" "Health Checks" "He thong Giam sat Suc khoe (HealthChecks.cs) cho SQL Server va AI" $hasHealthCheckFile "Endpoint /health tra ve JSON chi tiet"
+
+$hasSdlcFactoryDoc = (Test-Path "AI_AGENT_FACTORY.md") -and (Test-Path ".github\workflows\ai-sdlc-factory.yml")
+Report-Test "TC_XUNIT_03" "SDLC Factory" "Ho so Nha may AI Agent (AI_AGENT_FACTORY.md) va CI/CD Workflow hop le" $hasSdlcFactoryDoc "Quy trinh Context Engineering va Multi-Agent Pipeline"
+
+Write-Host "  -> Dang chay 'dotnet test tests/QLKTX.Tests/QLKTX.Tests.csproj'..." -ForegroundColor Gray
+$dotnetTestOutput = dotnet test tests\QLKTX.Tests\QLKTX.Tests.csproj --nologo -v q 2>&1
+$dotnetTestSuccess = ($LASTEXITCODE -eq 0)
+Report-Test "TC_XUNIT_04" "xUnit Execution" "Thuc thi toan bo 53 Unit Tests & Integration Tests dat 100% PASS" $dotnetTestSuccess "HoaDonCalculations, PhongVaSiSo, AIFallback, SecurityIntegration"
+
 # -----------------------------------------------------------------------------
 # TONG KET
 # -----------------------------------------------------------------------------

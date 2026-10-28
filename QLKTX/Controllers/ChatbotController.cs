@@ -483,6 +483,11 @@ namespace QLKTX.Controllers
                 return Json(new { response = "Bạn cần hỗ trợ thông tin gì hoặc thực hiện tác vụ nào về KTX?" });
 
             string rawMsg = request.Message.Trim();
+            if (!SafetyGuardrails.ValidateInput(rawMsg, out var sanitizedMsg, out var validationError))
+            {
+                return Json(new { response = validationError, source = "Rào chắn an toàn (Safety Guardrails)" });
+            }
+            rawMsg = sanitizedMsg;
             string msgLower = rawMsg.ToLower();
             string mode = (request.Mode ?? "").Trim().ToUpper(); // "ACTION" hoặc "QA"
             string sessionMaSV = HttpContext.Session.GetString("MaSV_DangNhap") ?? "";
@@ -2398,20 +2403,14 @@ Câu hỏi: ""{rawMsg}""";
         /// </summary>
         private static string MaskPhone(string? phone)
         {
-            if (string.IsNullOrWhiteSpace(phone)) return "";
-            string p = phone.Trim();
-            if (p.Length <= 6) return new string('*', p.Length);
-            return p.Substring(0, 3) + new string('*', p.Length - 6) + p.Substring(p.Length - 3);
+            return SafetyGuardrails.MaskPhone(phone);
         }
 
         private string? CleanAiOutput(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return text;
-            // Loại bỏ các placeholder markdown link giả định do LLM sinh ra như: [Báo cáo sự cố](link đến mục...)
-            string cleaned = Regex.Replace(text, @"\[([^\]]+)\]\((?:link[^)]*|#[^)]*|http://example[^)]*)\)", "'$1'", RegexOptions.IgnoreCase);
-            return cleaned;
+            return SafetyGuardrails.SanitizeHallucinations(SafetyGuardrails.ScrubPII(text));
         }
-
         private string ExtractJsonString(string input)
         {
             if (string.IsNullOrWhiteSpace(input)) return "{}";
