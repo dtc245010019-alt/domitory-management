@@ -169,36 +169,48 @@ namespace QLKTX.Controllers
                 }
                 else
                 {
-                    if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru == "Đang ở")
+                    using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                    try
                     {
-                        var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
-                        if (phong != null)
+                        if (!string.IsNullOrEmpty(sv.MaPhong) && sv.TinhTrangLuuTru == "Đang ở")
                         {
-                            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở");
-                            if (soDangO >= phong.SoLuongGiuong)
+                            var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == sv.MaPhong);
+                            if (phong != null)
                             {
-                                ModelState.AddModelError("MaPhong", $"Phòng P.{phong.MaPhong} đã đầy ({soDangO}/{phong.SoLuongGiuong} giường), vui lòng chọn phòng khác!");
-                                ViewBag.Phongs = BuildPhongSelectList(sv.MaPhong);
-                                return View(sv);
+                                int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == sv.MaPhong && s.TinhTrangLuuTru == "Đang ở");
+                                if (soDangO >= phong.SoLuongGiuong)
+                                {
+                                    await transaction.RollbackAsync();
+                                    ModelState.AddModelError("MaPhong", $"Phòng P.{phong.MaPhong} đã đầy ({soDangO}/{phong.SoLuongGiuong} giường), vui lòng chọn phòng khác!");
+                                    ViewBag.Phongs = BuildPhongSelectList(sv.MaPhong);
+                                    return View(sv);
+                                }
                             }
                         }
-                    }
 
-                    _context.Add(sv);
-                    if (!_context.TaiKhoans.Any(t => t.TenDangNhap == sv.MaSV))
-                    {
-                        _context.TaiKhoans.Add(new TaiKhoan
+                        _context.Add(sv);
+                        if (!_context.TaiKhoans.Any(t => t.TenDangNhap == sv.MaSV))
                         {
-                            TenDangNhap = sv.MaSV,
-                            MatKhau = "123",
-                            Quyen = "SinhVien",
-                            MaSV = sv.MaSV
-                        });
+                            _context.TaiKhoans.Add(new TaiKhoan
+                            {
+                                TenDangNhap = sv.MaSV,
+                                MatKhau = PasswordHelper.HashPassword("123"),
+                                Quyen = "SinhVien",
+                                MaSV = sv.MaSV
+                            });
+                        }
+                        await _context.SaveChangesAsync();
+                        await DongBoTrangThaiPhongAsync(sv.MaPhong);
+                        await transaction.CommitAsync();
+
+                        TempData["SuccessMessage"] = $"Đã tiếp nhận sinh viên {sv.HoTen} ({sv.MaSV}) thành công!";
+                        return RedirectToAction(nameof(Index));
                     }
-                    await _context.SaveChangesAsync();
-                    await DongBoTrangThaiPhongAsync(sv.MaPhong);
-                    TempData["SuccessMessage"] = $"Đã tiếp nhận sinh viên {sv.HoTen} ({sv.MaSV}) thành công!";
-                    return RedirectToAction(nameof(Index));
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
                 }
             }
             ViewBag.Phongs = BuildPhongSelectList(sv.MaPhong);
@@ -318,9 +330,20 @@ namespace QLKTX.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: SinhVien/TaoDuLieuMau
+        // GET: SinhVien/TaoDuLieuMau - Chặn xóa CSDL qua GET
+        [HttpGet]
         [AdminAuthorize(OnlyAdmin = true)]
         public IActionResult TaoDuLieuMau()
+        {
+            TempData["ErrorMessage"] = "Cảnh báo bảo mật: Thao tác tạo dữ liệu mẫu bắt buộc phải thực thi qua phương thức POST để bảo vệ CSDL!";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: SinhVien/TaoDuLieuMau
+        [HttpPost, ActionName("TaoDuLieuMau")]
+        [ValidateAntiForgeryToken]
+        [AdminAuthorize(OnlyAdmin = true)]
+        public IActionResult TaoDuLieuMauConfirmed()
         {
             try
             {

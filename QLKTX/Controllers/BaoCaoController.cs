@@ -27,6 +27,7 @@ namespace QLKTX.Controllers
             var tongPhong = await _context.Phongs.CountAsync();
             var phongConCho = await _context.Phongs.CountAsync(p => p.TinhTrang == "Còn chỗ");
             var phongDaDay = await _context.Phongs.CountAsync(p => p.TinhTrang == "Đã đầy");
+            var phongBaoTri = await _context.Phongs.CountAsync(p => p.TinhTrang == "Bảo trì" || p.TinhTrang == "Đang sửa chữa");
 
             // 3. Thống kê Doanh thu & Công nợ
             var tongDoanhThuCoc = await _context.HopDongs
@@ -67,9 +68,17 @@ namespace QLKTX.Controllers
             ViewBag.SuCoDangXuLy = suCoDangXuLy;
             ViewBag.SuCoDaXuLy = suCoDaXuLy;
 
-            // Dữ liệu cho Biểu đồ Tròn: Tỉ lệ phòng
-            ViewBag.ChartPhongLabels = new[] { "Còn chỗ", "Đã đầy" };
-            ViewBag.ChartPhongData = new[] { phongConCho, phongDaDay };
+            // Dữ liệu cho Biểu đồ Tròn: Tỉ lệ phòng (bao gồm cả phòng đang bảo trì)
+            if (phongBaoTri > 0)
+            {
+                ViewBag.ChartPhongLabels = new[] { "Còn chỗ", "Đã đầy", "Bảo trì" };
+                ViewBag.ChartPhongData = new[] { phongConCho, phongDaDay, phongBaoTri };
+            }
+            else
+            {
+                ViewBag.ChartPhongLabels = new[] { "Còn chỗ", "Đã đầy" };
+                ViewBag.ChartPhongData = new[] { phongConCho, phongDaDay };
+            }
 
             // Dữ liệu cho Biểu đồ Cột: Sinh viên theo Loại phòng
             var svTheoLoaiPhong = await _context.SinhViens

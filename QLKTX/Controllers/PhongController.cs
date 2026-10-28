@@ -31,8 +31,8 @@ namespace QLKTX.Controllers
             // Giữ lại từ khóa trên ô tìm kiếm sau khi enter
             ViewData["CurrentFilter"] = searchString;
 
-            // Khởi tạo câu truy vấn
-            var query = _context.Phongs.Include(p => p.SinhViens).AsQueryable();
+            // Khởi tạo câu truy vấn (AsNoTracking tối ưu hóa hiệu năng nạp danh sách)
+            var query = _context.Phongs.AsNoTracking().Include(p => p.SinhViens).AsQueryable();
 
             // Nếu có gõ từ khóa thì tiến hành lọc (chuẩn hóa tiền tố P. và dấu gạch ngang theo Luật 4)
             if (!string.IsNullOrEmpty(searchString))

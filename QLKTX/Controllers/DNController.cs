@@ -22,6 +22,7 @@ namespace QLKTX.Controllers
 
         // POST: /DN/Dangnhap
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Dangnhap(string Username, string Password)
         {
             Username = Username?.Trim();
@@ -34,14 +35,20 @@ namespace QLKTX.Controllers
             }
 
             var account = await _context.TaiKhoans
-                .FirstOrDefaultAsync(a => 
-                    (a.TenDangNhap == Username || a.MaSV == Username) 
-                    && a.MatKhau == Password);
+                .FirstOrDefaultAsync(a => a.TenDangNhap == Username || a.MaSV == Username);
 
-            if (account != null)
+            if (account != null && PasswordHelper.VerifyPassword(account.MatKhau, Password))
             {
                 if (!string.IsNullOrEmpty(account.MaSV))
                 {
+                    // KIỂM SOÁT TRUY CẬP: Ngăn chặn sinh viên đã rời đi hoặc bị đình chỉ truy cập
+                    var sv = await _context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == account.MaSV);
+                    if (sv != null && (sv.TinhTrangLuuTru == "Đã rời đi" || sv.TinhTrangLuuTru == "Đình chỉ"))
+                    {
+                        ModelState.AddModelError(string.Empty, $"Tài khoản không thể truy cập do hồ sơ sinh viên ở trạng thái '{sv.TinhTrangLuuTru}'. Vui lòng liên hệ Ban Quản lý KTX!");
+                        return View();
+                    }
+
                     HttpContext.Session.SetString("MaSV_DangNhap", account.MaSV);
                     HttpContext.Session.SetString("VaiTro", "SinhVien");
                     return RedirectToAction("Index", "Portal");
@@ -93,6 +100,7 @@ namespace QLKTX.Controllers
 
         // POST: /DN/ContactAdmin
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult ContactAdmin(ContactViewModel model)
         {
             TempData["Success"] = true;
