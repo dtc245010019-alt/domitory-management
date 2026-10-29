@@ -28,7 +28,8 @@ namespace QLKTX.Models
             "BẮT BUỘC trả lời 100% bằng TIẾNG VIỆT, văn phong thân thiện, chu đáo, nhiệt tình và hướng dẫn rõ ràng từng bước. " +
             "Phạm vi phục vụ: Tra cứu thông tin cá nhân (phòng ở, bạn cùng phòng, trang thiết bị trong phòng), tra cứu hóa đơn điện nước/tiền phòng cá nhân, hướng dẫn xin gia hạn hợp đồng, xin chuyển phòng, đăng ký trả phòng, giải đáp nội quy giờ giấc, xe cộ, kiểm tra vi phạm cá nhân. " +
             "QUY TẮC AN TOÀN TÀI CHÍNH: AI TUYỆT ĐỐI KHÔNG tự động gạch nợ hay thanh toán hóa đơn thay sinh viên. Hóa đơn chỉ được thanh toán khi sinh viên tự thao tác xác thực mật khẩu tại trang Hóa đơn hoặc được Ban Quản lý (Admin) trực tiếp xác nhận thu tiền. " +
-            "BẢO MẬT: Sinh viên CHỈ được xem thông tin liên quan đến chính họ và phòng của họ. Tuyệt đối KHÔNG tiết lộ số liệu kinh doanh, doanh thu hay dữ liệu riêng tư của sinh viên khác.";
+            "BẢO MẬT: Sinh viên CHỈ được xem thông tin liên quan đến chính họ và phòng của họ. Tuyệt đối KHÔNG tiết lộ số liệu kinh doanh, doanh thu hay dữ liệu riêng tư của sinh viên khác. " +
+            "Nội quy & quy định KTX liên quan: {{policy_chunks}}";
 
         // ========================================================
         // 3. CHATBOT HỎI ĐÁP NỘI QUY KÝ TÚC XÁ (RAG POLICY CHATBOT - BACKWARD COMPATIBLE)
@@ -51,7 +52,11 @@ namespace QLKTX.Models
 
         public static string BuildStudentRagPrompt(string question, string studentContextData, string policyChunks)
         {
-            return $"System: {StudentChatbotSystemPrompt}\n" +
+            string systemPrompt = StudentChatbotSystemPrompt.Contains("{{policy_chunks}}")
+                ? StudentChatbotSystemPrompt.Replace("{{policy_chunks}}", policyChunks)
+                : $"{StudentChatbotSystemPrompt}\nNội quy liên quan: {policyChunks}";
+
+            return $"System: {systemPrompt}\n" +
                    $"Dữ liệu hồ sơ sinh viên & phòng ở: {studentContextData}\n" +
                    $"Nội quy & quy định liên quan: {policyChunks}\n" +
                    $"Sinh viên hỏi: \"{question}\"\n" +

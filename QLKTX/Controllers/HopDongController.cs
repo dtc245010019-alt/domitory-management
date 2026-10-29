@@ -23,7 +23,7 @@ namespace QLKTX.Controllers
                 .ToList()
                 .Select(p =>
                 {
-                    int soDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru == "Đang ở") ?? 0;
+                    int soDangO = p.SinhViens?.Count(s => s.TinhTrangLuuTru != "Đã rời đi") ?? 0;
                     int conTrong = Math.Max(0, p.SoLuongGiuong - soDangO);
                     return new
                     {
@@ -143,7 +143,7 @@ namespace QLKTX.Controllers
                             var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == hopDong.MaPhong);
                             if (phong != null)
                             {
-                                int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == hopDong.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != hopDong.MaSV);
+                                int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == hopDong.MaPhong && s.TinhTrangLuuTru != "Đã rời đi" && s.MaSV != hopDong.MaSV);
                                 if (soDangO >= phong.SoLuongGiuong)
                                 {
                                     await transaction.RollbackAsync();
@@ -252,8 +252,10 @@ namespace QLKTX.Controllers
             var hopDong = await _context.HopDongs.FindAsync(id);
             if (hopDong != null)
             {
+                string? maPhong = hopDong.MaPhong;
                 _context.HopDongs.Remove(hopDong);
                 await _context.SaveChangesAsync();
+                await DongBoTrangThaiPhongAsync(maPhong);
             }
             return RedirectToAction(nameof(Index));
         }

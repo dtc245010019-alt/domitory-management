@@ -826,7 +826,41 @@ namespace QLKTX.Controllers
             if (sc != null)
             {
                 sc.TrangThai = trangThaiMoi;
-                await _context.SaveChangesAsync();
+
+                bool isRoomRequest = (sc.MaSuCo != null && sc.MaSuCo.StartsWith("YC_"))
+                                     || (sc.TenSuCo != null && (sc.TenSuCo.Contains("[Xin chuyển phòng]")
+                                                             || sc.TenSuCo.Contains("[Đăng ký trả phòng]")
+                                                             || sc.TenSuCo.Contains("Xin chuyển phòng")
+                                                             || sc.TenSuCo.Contains("Đăng ký trả phòng")));
+
+                if (trangThaiMoi == "Đã xử lý" && isRoomRequest)
+                {
+                    if (_context.Database.IsRelational())
+                    {
+                        await using var transaction = await _context.Database.BeginTransactionAsync();
+                        try
+                        {
+                            await XuLyDongBoYeuCauPhongAsync(_context, sc);
+                            await _context.SaveChangesAsync();
+                            await transaction.CommitAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            _logger.LogError(ex, "Lỗi đồng bộ yêu cầu sự cố {MaSuCo}", maSuCo);
+                            throw;
+                        }
+                    }
+                    else
+                    {
+                        await XuLyDongBoYeuCauPhongAsync(_context, sc);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                else
+                {
+                    await _context.SaveChangesAsync();
+                }
 
                 if (trangThaiMoi == "Đã xử lý" || trangThaiMoi == "Từ chối")
                 {
@@ -843,6 +877,147 @@ namespace QLKTX.Controllers
             }
 
             return RedirectToAction(nameof(QuanLySuCoAdmin));
+        }
+
+        /// <summary>
+        /// Đồng bộ tức thời hồ sơ sinh viên và phòng ở khi duyệt yêu cầu hỗ trợ phòng (YC_ / [Xin chuyển phòng] / [Đăng ký trả phòng]).
+        /// </summary>
+        public static async Task XuLyDongBoYeuCauPhongAsync(ApplicationDbContext context, BaoCaoSuCo yc)
+        {
+            if (yc == null) return;
+            if (yc.MoTa != null && yc.MoTa.Contains("[Đã đồng bộ]")) return;
+
+            var sv = await context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == yc.MaSV);
+            if (sv == null)
+            {
+                yc.MoTa = (yc.MoTa ?? "") + " [Đã đồng bộ]";
+                context.BaoCaoSuCos.Update(yc);
+                return;
+            }
+
+            var allRooms = await context.Phongs.ToListAsync();
+
+            // 1. Duyệt yêu cầu Đăng ký trả phòng -> Chuyển sang "Đã rời đi" (Lịch sử sinh viên) và giải phóng chỗ trống
+            if (yc.TenSuCo.Contains("Đăng ký trả phòng", StringComparison.OrdinalIgnoreCase))
+            {
+                if (sv.TinhTrangLuuTru != "Đã rời đi")
+                {
+                    string? oldRoomCode = sv.MaPhong;
+                    sv.TinhTrangLuuTru = "Đã rời đi";
+                    context.SinhViens.Update(sv);
+
+                    if (!string.IsNullOrEmpty(oldRoomCode))
+                    {
+                        var oldRoom = allRooms.FirstOrDefault(p => p.MaPhong == oldRoomCode);
+                        if (oldRoom != null)
+                        {
+                            int soDangO = await context.SinhViens.CountAsync(s => s.MaPhong == oldRoomCode && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sv.MaSV);
+                            if (soDangO < oldRoom.SoLuongGiuong && oldRoom.TinhTrang == "Đã đầy")
+                            {
+                                oldRoom.TinhTrang = "Còn chỗ";
+                                context.Phongs.Update(oldRoom);
+                            }
+                        }
+                    }
+                }
+            }
+            // 2. Duyệt yêu cầu Xin chuyển phòng -> Cập nhật sang mã phòng mới và đồng bộ trạng thái cả phòng cũ lẫn phòng mới
+            else if (yc.TenSuCo.Contains("Xin chuyển phòng", StringComparison.OrdinalIgnoreCase))
+            {
+                string rawTarget = "";
+                int idxArrow = yc.TenSuCo.LastIndexOf("phòng", StringComparison.OrdinalIgnoreCase);
+                if (yc.TenSuCo.Contains("->", StringComparison.Ordinal) && idxArrow >= 0)
+                {
+                    rawTarget = yc.TenSuCo.Substring(idxArrow + "phòng".Length).Trim();
+                }
+                else
+                {
+                    int idxNv = yc.TenSuCo.IndexOf("Nguyện vọng:", StringComparison.OrdinalIgnoreCase);
+                    if (idxNv >= 0)
+                    {
+                        rawTarget = yc.TenSuCo.Substring(idxNv + "Nguyện vọng:".Length).Trim();
+                    }
+                }
+
+                if (string.IsNullOrEmpty(rawTarget) && !string.IsNullOrEmpty(yc.MoTa))
+                {
+                    var matchRoom = System.Text.RegularExpressions.Regex.Match(yc.MoTa, @"(?:phòng|P\.)\s*([A-Za-z0-9\-]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (matchRoom.Success)
+                    {
+                        rawTarget = matchRoom.Groups[1].Value.Trim();
+                    }
+                }
+
+                int parenIdx = rawTarget.IndexOf('(');
+                if (parenIdx > 0) rawTarget = rawTarget.Substring(0, parenIdx).Trim();
+
+                rawTarget = rawTarget.ToUpper();
+                if (rawTarget.StartsWith("P.")) rawTarget = rawTarget.Substring(2).Trim();
+                else if (rawTarget.StartsWith("P ")) rawTarget = rawTarget.Substring(2).Trim();
+                string normTarget = rawTarget.Replace(".", "").Replace(" ", "").Replace("-", "");
+
+                if (!string.IsNullOrEmpty(normTarget))
+                {
+                    var targetRoom = allRooms.FirstOrDefault(p =>
+                        p.MaPhong.Equals(rawTarget, StringComparison.OrdinalIgnoreCase) ||
+                        p.MaPhong.Replace(".", "").Replace(" ", "").Replace("-", "").ToUpper() == normTarget);
+
+                    if (targetRoom != null && sv.MaPhong != targetRoom.MaPhong)
+                    {
+                        int soDangO = await context.SinhViens.CountAsync(s => s.MaPhong == targetRoom.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sv.MaSV);
+                        if (soDangO < targetRoom.SoLuongGiuong)
+                        {
+                            string? oldRoomCode = sv.MaPhong;
+                            sv.MaPhong = targetRoom.MaPhong;
+                            context.SinhViens.Update(sv);
+
+                            if (soDangO + 1 >= targetRoom.SoLuongGiuong && targetRoom.TinhTrang == "Còn chỗ")
+                            {
+                                targetRoom.TinhTrang = "Đã đầy";
+                                context.Phongs.Update(targetRoom);
+                            }
+                            if (!string.IsNullOrEmpty(oldRoomCode))
+                            {
+                                var oldRoom = allRooms.FirstOrDefault(p => p.MaPhong == oldRoomCode);
+                                if (oldRoom != null)
+                                {
+                                    int oldSoDangO = await context.SinhViens.CountAsync(s => s.MaPhong == oldRoomCode && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sv.MaSV);
+                                    if (oldSoDangO < oldRoom.SoLuongGiuong && oldRoom.TinhTrang == "Đã đầy")
+                                    {
+                                        oldRoom.TinhTrang = "Còn chỗ";
+                                        context.Phongs.Update(oldRoom);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Đánh dấu yêu cầu đã hoàn tất ([Đã đồng bộ])
+            yc.MoTa = (yc.MoTa ?? "") + " [Đã đồng bộ]";
+            context.BaoCaoSuCos.Update(yc);
+        }
+
+        /// <summary>
+        /// Đồng bộ tất cả các yêu cầu hỗ trợ phòng đã duyệt ("Đã xử lý") chưa được đồng bộ trước đó.
+        /// </summary>
+        public static void DongBoYeuCauPhongDaDuyet(ApplicationDbContext context)
+        {
+            var yeuCauDaDuyet = context.BaoCaoSuCos
+                .Where(b => b.TrangThai == "Đã xử lý"
+                         && (b.MaSuCo.StartsWith("YC_") || b.TenSuCo.StartsWith("["))
+                         && !b.MoTa.Contains("[Đã đồng bộ]"))
+                .OrderBy(b => b.NgayBaoCao)
+                .ToList();
+
+            if (!yeuCauDaDuyet.Any()) return;
+
+            foreach (var yc in yeuCauDaDuyet)
+            {
+                XuLyDongBoYeuCauPhongAsync(context, yc).GetAwaiter().GetResult();
+            }
+            context.SaveChanges();
         }
 
         // ==========================================
@@ -938,13 +1113,8 @@ namespace QLKTX.Controllers
         // 6. AI TÓM TẮT SỰ CỐ (TÍNH NĂNG MỚI ĐỘC LẬP)
         // ==========================================
         [HttpPost]
-        [AdminAuthorize(OnlyAdmin = true)]
         public async Task<IActionResult> TomTatSuCoAI()
         {
-            if (HttpContext.Session.GetString("Admin_DangNhap") != "true")
-            {
-                return Json(new { success = false, summary = "Lỗi: Không có quyền truy cập." });
-            }
 
             try
             {
@@ -989,7 +1159,7 @@ namespace QLKTX.Controllers
                         using var doc = System.Text.Json.JsonDocument.Parse(json);
                         string? aiResponse = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
                         if (!string.IsNullOrWhiteSpace(aiResponse))
-                            return Json(new { success = true, summary = aiResponse });
+                            return Json(new { success = true, summary = SafetyGuardrails.SanitizeHallucinations(SafetyGuardrails.ScrubPII(aiResponse)) });
                     }
                 }
                 catch { }

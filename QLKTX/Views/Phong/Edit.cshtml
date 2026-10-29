@@ -61,6 +61,35 @@
                         <span asp-validation-for="LoaiPhong" class="text-danger small mt-1 d-block"></span>
                     </div>
 
+                    <!-- Tòa / Khu -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="Toa" class="form-label">Tòa / Khu <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-building text-muted"></i></span>
+                            <input asp-for="Toa" class="form-control" placeholder="Ví dụ: Tòa chính, Tòa A1, Tòa B1, Tòa C1" required list="toaOptions" />
+                            <datalist id="toaOptions">
+                                <option value="Tòa chính" />
+                                <option value="Tòa A1" />
+                                <option value="Tòa B1" />
+                                <option value="Tòa C1" />
+                                <option value="Khu A" />
+                                <option value="Khu B" />
+                                <option value="Khu C" />
+                            </datalist>
+                        </div>
+                        <span asp-validation-for="Toa" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
+                    <!-- Tầng -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="Tang" class="form-label">Tầng <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-layers text-muted"></i></span>
+                            <input asp-for="Tang" type="number" min="1" max="20" class="form-control" required />
+                        </div>
+                        <span asp-validation-for="Tang" class="text-danger small mt-1 d-block"></span>
+                    </div>
+
                     <!-- Số Giường -->
                     <div class="col-12 col-md-6">
                         <label asp-for="SoLuongGiuong" class="form-label">Số Lượng Giường <span class="text-danger">*</span></label>

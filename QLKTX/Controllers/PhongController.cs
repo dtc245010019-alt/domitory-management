@@ -26,10 +26,11 @@ namespace QLKTX.Controllers
         }
 
         // GET: Phong/Index
-        public async Task<IActionResult> Index(string searchString)
+        public async Task<IActionResult> Index(string? searchString, string? toa, int? tang)
         {
-            // Giữ lại từ khóa trên ô tìm kiếm sau khi enter
             ViewData["CurrentFilter"] = searchString;
+            ViewData["CurrentToa"] = toa;
+            ViewData["CurrentTang"] = tang;
 
             // Khởi tạo câu truy vấn (AsNoTracking tối ưu hóa hiệu năng nạp danh sách)
             var query = _context.Phongs.AsNoTracking().Include(p => p.SinhViens).AsQueryable();
@@ -45,8 +46,25 @@ namespace QLKTX.Controllers
                 query = query.Where(p => p.MaPhong.Contains(searchString)
                                       || p.MaPhong.Replace(".", "").Replace(" ", "").Replace("-", "").ToUpper().Contains(phongSearch)
                                       || p.LoaiPhong.Contains(searchString)
-                                      || p.TinhTrang.Contains(searchString));
+                                      || p.TinhTrang.Contains(searchString)
+                                      || p.Toa.Contains(searchString));
             }
+
+            // Lọc theo Tòa
+            if (!string.IsNullOrEmpty(toa))
+            {
+                query = query.Where(p => p.Toa == toa);
+            }
+
+            // Lọc theo Tầng
+            if (tang.HasValue && tang.Value > 0)
+            {
+                query = query.Where(p => p.Tang == tang.Value);
+            }
+
+            // Lấy danh sách Tòa và Tầng cho bộ lọc dropdown
+            ViewBag.ToaList = await _context.Phongs.Select(p => p.Toa).Distinct().OrderBy(t => t).ToListAsync();
+            ViewBag.TangList = await _context.Phongs.Select(p => p.Tang).Distinct().OrderBy(t => t).ToListAsync();
 
             // Lấy dữ liệu đã lọc ra View
             var danhSachPhong = await query.ToListAsync();
@@ -195,8 +213,13 @@ namespace QLKTX.Controllers
 
         // POST: Phong/GoiYXepPhongAI
         [HttpPost]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> GoiYXepPhongAI([FromBody] GoiYPhongRequest req)
         {
+            if (SafetyGuardrails.IsPromptInjection(req?.LoaiPhong, out _) || SafetyGuardrails.IsPromptInjection(req?.TangOrToa, out _))
+            {
+                return Json(new { success = false, suggestion = "Yêu cầu xếp phòng vi phạm rào chắn an toàn hệ thống (Safety Guardrails)." });
+            }
             try
             {
                 var phongs = await _context.Phongs
@@ -213,6 +236,8 @@ namespace QLKTX.Controllers
                             p.MaPhong,
                             p.LoaiPhong,
                             p.SoLuongGiuong,
+                            p.Toa,
+                            p.Tang,
                             SoDangO = soDangO,
                             GiuongTrong = p.SoLuongGiuong - soDangO,
                             p.GiaPhong,
@@ -229,11 +254,35 @@ namespace QLKTX.Controllers
                         .ToList();
                 }
 
-                if (!string.IsNullOrWhiteSpace(req?.TangOrToa))
+                // Lọc chính xác theo trường Toa và Tang
+                if (!string.IsNullOrWhiteSpace(req?.Toa))
                 {
                     danhSachConCho = danhSachConCho
-                        .Where(p => p.MaPhong.StartsWith(req.TangOrToa, StringComparison.OrdinalIgnoreCase))
+                        .Where(p => string.Equals(p.Toa, req.Toa, StringComparison.OrdinalIgnoreCase) || p.Toa.Contains(req.Toa, StringComparison.OrdinalIgnoreCase))
                         .ToList();
+                }
+
+                if (req?.Tang > 0)
+                {
+                    danhSachConCho = danhSachConCho
+                        .Where(p => p.Tang == req.Tang.Value)
+                        .ToList();
+                }
+
+                if (!string.IsNullOrWhiteSpace(req?.TangOrToa))
+                {
+                    if (int.TryParse(req.TangOrToa, out int tVal))
+                    {
+                        danhSachConCho = danhSachConCho
+                            .Where(p => p.Tang == tVal)
+                            .ToList();
+                    }
+                    else
+                    {
+                        danhSachConCho = danhSachConCho
+                            .Where(p => p.Toa.Contains(req.TangOrToa, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                    }
                 }
 
                 if (req?.SoGiuongCan > 0)
@@ -272,6 +321,8 @@ namespace QLKTX.Controllers
                 {
                     maPhong = p.MaPhong,
                     loaiPhong = p.LoaiPhong,
+                    toa = p.Toa,
+                    tang = p.Tang,
                     giuongTrong = p.GiuongTrong,
                     soLuongGiuong = p.SoLuongGiuong,
                     giaPhong = p.GiaPhong
@@ -303,7 +354,7 @@ namespace QLKTX.Controllers
                             return Json(new
                             {
                                 success = true,
-                                suggestion = aiText,
+                                suggestion = SafetyGuardrails.SanitizeHallucinations(SafetyGuardrails.ScrubPII(aiText)),
                                 recommendedMaPhong = topPhongs.First().MaPhong,
                                 recommendedRooms = recommendedList
                             });
@@ -344,6 +395,8 @@ namespace QLKTX.Controllers
     {
         public string? LoaiPhong { get; set; }
         public string? TangOrToa { get; set; }
+        public string? Toa { get; set; }
+        public int? Tang { get; set; }
         public int SoGiuongCan { get; set; } = 1;
     }
 }

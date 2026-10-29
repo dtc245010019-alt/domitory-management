@@ -15,6 +15,8 @@ namespace QLKTX.Controllers
         }
 
         // GET: /DN/Dangnhap
+        public IActionResult Index() => RedirectToAction(nameof(Dangnhap));
+
         public IActionResult Dangnhap()
         {
             return View();
