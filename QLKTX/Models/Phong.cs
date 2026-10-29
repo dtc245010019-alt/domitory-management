@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace QLKTX.Models
 {
-
-
-
     public class Phong
     {
         [Key]
@@ -15,6 +12,14 @@ namespace QLKTX.Models
         [Required]
         [StringLength(50)]
         public string LoaiPhong { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string Toa { get; set; } = "Khu A";
+
+        [Required]
+        [Range(1, 20)]
+        public int Tang { get; set; } = 1;
 
         [Required]
         public int SoLuongGiuong { get; set; }
@@ -32,6 +37,5 @@ namespace QLKTX.Models
 
         // Navigation property: Mối quan hệ 1-N (1 Phòng có nhiều Sinh viên)
         public ICollection<SinhVien>? SinhViens { get; set; }
-
     }
 }

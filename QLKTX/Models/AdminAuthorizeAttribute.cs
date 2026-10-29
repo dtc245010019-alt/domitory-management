@@ -18,6 +18,12 @@ namespace QLKTX.Models
 
         public override void OnActionExecuting(ActionExecutingContext context)
         {
+            if (context.ActionDescriptor.EndpointMetadata.OfType<Microsoft.AspNetCore.Authorization.IAllowAnonymous>().Any())
+            {
+                base.OnActionExecuting(context);
+                return;
+            }
+
             var session = context.HttpContext.Session;
             var adminSession = session.GetString("Admin_DangNhap");
             if (adminSession != "true")

@@ -964,7 +964,11 @@ namespace QLKTX.Controllers
             }
 
             // I. NỘI QUY & QUY CHẾ VẬN HÀNH KTX (AI PROMPT RAG DÀNH CHO ADMIN)
-            string matchedFacts = GetFactsByIntent(intent);
+            string matchedFacts = RetrieveSemanticKnowledgeChunks(rawMsg, topK: 3, threshold: 0.05);
+            if (string.IsNullOrWhiteSpace(matchedFacts))
+            {
+                matchedFacts = GetFactsByIntent(intent);
+            }
             string adminPrompt = AIPrompts.BuildAdminRagPrompt(rawMsg, matchedFacts);
             string? aiResponse = CleanAiOutput(await CallOllamaOrNullAsync(adminPrompt));
 
@@ -1563,17 +1567,23 @@ Câu hỏi: ""{rawMsg}""";
             }
 
             // ---------------------------------------------------------------------
-            // 9. TRA CỨU NỘI QUY & TRI THỨC CHUNG (GIỜ GIẤC, GỬI XE, TIẾP KHÁCH, TRẢ PHÒNG)
+            // 9. TRA CỨU NỘI QUY & TRI THỨC CHUNG (SEMANTIC SIMILARITY RETRIEVAL / RAG)
             // ---------------------------------------------------------------------
-            string matchedFacts = GetFactsByIntent(intent);
+            string matchedFacts = RetrieveSemanticKnowledgeChunks(rawMsg, topK: 3, threshold: 0.05);
+            if (string.IsNullOrWhiteSpace(matchedFacts))
+            {
+                matchedFacts = GetFactsByIntent(intent);
+            }
+
             string finalPrompt = AIPrompts.BuildStudentRagPrompt(rawMsg, svTag, matchedFacts);
-            string? aiResponse = CleanAiOutput(await CallOllamaOrNullAsync(finalPrompt));
+            string studentSysPrompt = AIPrompts.StudentChatbotSystemPrompt.Replace("{{policy_chunks}}", matchedFacts);
+            string? aiResponse = CleanAiOutput(await CallOllamaOrNullAsync(finalPrompt, studentSysPrompt));
 
             object? quickActionHint = null;
-            if (intent == "DANG_KY_TRA_PHONG")
+            if (intent == "DANG_KY_TRA_PHONG" || rawMsg.Contains("trả phòng", StringComparison.OrdinalIgnoreCase))
                 quickActionHint = new { label = "⚡ Nhờ AI đăng ký trả phòng hộ tôi", prompt = "Đăng ký trả phòng cho tôi", mode = "ACTION" };
 
-            return Json(new { response = aiResponse ?? matchedFacts, source = "Hỏi đáp - Cơ sở tri thức KTX", quickAction = quickActionHint });
+            return Json(new { response = aiResponse ?? matchedFacts, source = "Hỏi đáp - Cơ sở tri thức KTX (Semantic RAG)", quickAction = quickActionHint });
         }
 
         private string ClassifyQaIntent(string msgLower)
@@ -2418,6 +2428,133 @@ Câu hỏi: ""{rawMsg}""";
             return match.Success ? match.Value : input;
         }
 
+        /// <summary>
+        /// Bộ trích xuất tri thức ngữ nghĩa thông minh (Semantic Knowledge Retriever) sử dụng TF-IDF Vector Space & Cosine Similarity.
+        /// Đọc toàn bộ các facts trong knowledge_base.json và trích xuất Top 2-3 facts có điểm số tương đồng cao nhất với câu hỏi.
+        /// </summary>
+        public string RetrieveSemanticKnowledgeChunks(string question, int topK = 3, double threshold = 0.05)
+        {
+            try
+            {
+                string jsonPath = System.IO.Path.Combine(_env.WebRootPath, "data", "knowledge_base.json");
+                if (!System.IO.File.Exists(jsonPath)) return string.Empty;
+
+                var jsonContent = System.IO.File.ReadAllText(jsonPath);
+                using var doc = JsonDocument.Parse(jsonContent);
+
+                var allFacts = new List<string>();
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    if (element.TryGetProperty("facts", out var factsEl) && factsEl.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var f in factsEl.EnumerateArray())
+                        {
+                            var str = f.GetString();
+                            if (!string.IsNullOrWhiteSpace(str)) allFacts.Add(str.Trim());
+                        }
+                    }
+                }
+
+                if (!allFacts.Any()) return string.Empty;
+
+                // Hàm tách từ (unigrams + bigrams)
+                List<string> Tokenize(string text)
+                {
+                    string cleaned = Regex.Replace(text.ToLower(), @"[^\w\s]", " ");
+                    var words = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+                    var tokens = new List<string>(words);
+                    for (int i = 0; i < words.Count - 1; i++)
+                    {
+                        tokens.Add($"{words[i]}_{words[i + 1]}");
+                    }
+                    return tokens;
+                }
+
+                var docTokens = allFacts.Select(Tokenize).ToList();
+                int n = allFacts.Count;
+
+                var dfs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (var tokens in docTokens)
+                {
+                    foreach (var t in tokens.Distinct(StringComparer.OrdinalIgnoreCase))
+                    {
+                        dfs[t] = dfs.GetValueOrDefault(t, 0) + 1;
+                    }
+                }
+
+                double GetIdf(string term)
+                {
+                    int df = dfs.GetValueOrDefault(term, 0);
+                    return Math.Log(1.0 + (double)n / (1.0 + df)) + 1.0;
+                }
+
+                var qTokens = Tokenize(question);
+                if (!qTokens.Any()) return string.Empty;
+
+                var qTf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (var t in qTokens) qTf[t] = qTf.GetValueOrDefault(t, 0) + 1;
+
+                var qVec = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kvp in qTf)
+                {
+                    qVec[kvp.Key] = ((double)kvp.Value / qTokens.Count) * GetIdf(kvp.Key);
+                }
+                double qNorm = Math.Sqrt(qVec.Values.Sum(v => v * v));
+                if (qNorm <= 0) return string.Empty;
+
+                var scoredList = new List<(double Score, string Fact)>();
+
+                for (int i = 0; i < allFacts.Count; i++)
+                {
+                    var dTokens = docTokens[i];
+                    if (!dTokens.Any()) continue;
+
+                    var dTf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var t in dTokens) dTf[t] = dTf.GetValueOrDefault(t, 0) + 1;
+
+                    var dVec = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kvp in dTf)
+                    {
+                        dVec[kvp.Key] = ((double)kvp.Value / dTokens.Count) * GetIdf(kvp.Key);
+                    }
+                    double dNorm = Math.Sqrt(dVec.Values.Sum(v => v * v));
+                    if (dNorm <= 0) continue;
+
+                    double dot = 0.0;
+                    foreach (var kvp in qVec)
+                    {
+                        if (dVec.TryGetValue(kvp.Key, out double dVal))
+                        {
+                            dot += kvp.Value * dVal;
+                        }
+                    }
+
+                    double sim = dot / (qNorm * dNorm);
+                    if (sim >= threshold)
+                    {
+                        scoredList.Add((sim, allFacts[i]));
+                    }
+                }
+
+                var topResults = scoredList
+                    .OrderByDescending(x => x.Score)
+                    .Take(topK)
+                    .Select(x => x.Fact)
+                    .ToList();
+
+                if (topResults.Any())
+                {
+                    return "• " + string.Join("\n• ", topResults);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Lỗi trích xuất Semantic Retrieval từ knowledge_base.json");
+            }
+
+            return string.Empty;
+        }
+
         private string GetFactsByIntent(string intent)
         {
             try
@@ -2442,7 +2579,7 @@ Câu hỏi: ""{rawMsg}""";
             return "Xin lỗi, mình chưa tìm thấy thông tin phù hợp. Bạn có thể hỏi về: 'giá phòng', 'phòng trống', 'giờ giới nghiêm', 'báo sự cố', 'điện nước', 'gửi xe', 'trả phòng', 'hợp đồng', 'kỷ luật', 'thống kê' hoặc nhờ mình thực hiện trực tiếp các thao tác nhé!";
         }
 
-        private async Task<string?> CallOllamaOrNullAsync(string prompt)
+        private async Task<string?> CallOllamaOrNullAsync(string prompt, string? systemPrompt = null)
         {
             string baseUrl = _configuration["Ollama:BaseUrl"] ?? "http://localhost:11434/api/chat";
             string modelName = _configuration["Ollama:Model"] ?? "llama3";
@@ -2452,7 +2589,7 @@ Câu hỏi: ""{rawMsg}""";
                 model = modelName,
                 messages = new[]
                 {
-                    new { role = "system", content = AIPrompts.ChatbotSystemPrompt },
+                    new { role = "system", content = systemPrompt ?? AIPrompts.ChatbotSystemPrompt },
                     new { role = "user", content = prompt }
                 },
                 stream = false

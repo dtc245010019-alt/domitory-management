@@ -142,30 +142,44 @@
                         </div>
                     </div>
 
-                    <!-- Bộ lọc theo Tòa nhà / Tầng & Trạng thái -->
+                    <!-- Bộ lọc theo Tòa nhà, Tầng & Trạng thái -->
                     <div class="col-12 col-md-7 col-lg-8">
                         <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
                             
-                            <!-- Lọc nhanh Tòa nhà / Tầng -->
+                            <!-- Lọc theo Tòa -->
                             <div class="d-flex align-items-center gap-1">
-                                <label class="form-label mb-0 small text-muted d-none d-sm-inline">Tòa / Tầng:</label>
-                                <select id="buildingFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
-                                    <option value="">Tất cả Tòa / Tầng</option>
-                                    <option value="1">Tầng 1</option>
-                                    <option value="2">Tầng 2</option>
-                                    <option value="3">Tầng 3</option>
-                                    <option value="4">Tầng 4</option>
-                                    <option value="5">Tầng 5</option>
-                                    <option value="A">Khu Tòa A</option>
-                                    <option value="B">Khu Tòa B</option>
-                                    <option value="C">Khu Tòa C</option>
+                                <label class="form-label mb-0 small text-muted d-none d-sm-inline">Tòa:</label>
+                                <select name="toa" id="toaFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 125px;" onchange="this.form.submit()">
+                                    <option value="">Tất cả Tòa</option>
+                                    @{
+                                        var toas = ViewBag.ToaList as List<string> ?? new List<string> { "Tòa chính", "Tòa A1", "Tòa B1", "Tòa C1" };
+                                        foreach (var t in toas)
+                                        {
+                                            <option value="@t" selected="@(ViewData["CurrentToa"]?.ToString() == t ? "selected" : null)">@t</option>
+                                        }
+                                    }
                                 </select>
                             </div>
 
-                            <!-- Lọc nhanh Trạng thái -->
+                            <!-- Lọc theo Tầng -->
+                            <div class="d-flex align-items-center gap-1">
+                                <label class="form-label mb-0 small text-muted d-none d-sm-inline">Tầng:</label>
+                                <select name="tang" id="tangFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 105px;" onchange="this.form.submit()">
+                                    <option value="">Tất cả Tầng</option>
+                                    @{
+                                        var tangs = ViewBag.TangList as List<int> ?? new List<int> { 1, 2, 3, 4, 5 };
+                                        foreach (var tg in tangs)
+                                        {
+                                            <option value="@tg" selected="@(ViewData["CurrentTang"]?.ToString() == tg.ToString() ? "selected" : null)">Tầng @tg</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Lọc nhanh Trạng thái (Client-side) -->
                             <div class="d-flex align-items-center gap-1">
                                 <label class="form-label mb-0 small text-muted d-none d-sm-inline">Trạng thái:</label>
-                                <select id="statusFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
+                                <select id="statusFilterSelect" class="form-select form-select-sm" style="width: auto; min-width: 130px;">
                                     <option value="">Tất cả trạng thái</option>
                                     <option value="Còn chỗ">Còn chỗ</option>
                                     <option value="Đã đầy">Đã đầy</option>
@@ -174,7 +188,7 @@
                             </div>
 
                             <!-- Nút Xóa bộ lọc truy vấn -->
-                            @if (!string.IsNullOrEmpty(ViewData["CurrentFilter"]?.ToString()))
+                            @if (!string.IsNullOrEmpty(ViewData["CurrentFilter"]?.ToString()) || !string.IsNullOrEmpty(ViewData["CurrentToa"]?.ToString()) || !string.IsNullOrEmpty(ViewData["CurrentTang"]?.ToString()))
                             {
                                 <a asp-action="Index" class="btn btn-outline-danger btn-sm" title="Xóa bộ lọc">
                                     <i class="bi bi-x-circle me-1"></i> Xóa lọc
@@ -211,8 +225,7 @@
                         {
                             @foreach (var item in Model)
                             {
-                                var buildingCode = !string.IsNullOrEmpty(item.MaPhong) ? item.MaPhong.Substring(0, 1) : "";
-                                var areaLabel = (!string.IsNullOrEmpty(buildingCode) && char.IsDigit(buildingCode[0])) ? $"Tòa A - Tầng {buildingCode}" : $"Khu Tòa {buildingCode}";
+                                var areaLabel = $"{item.Toa} • Tầng {item.Tang}";
                                 <tr data-room="@item.MaPhong" data-status="@item.TinhTrang">
                                     <!-- Mã Phòng -->
                                     <td class="ps-4 py-3">

@@ -11,7 +11,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 // 2. Đăng ký MVC & Razor Pages
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews().AddSessionStateTempDataProvider();
 builder.Services.AddRazorPages();
 
 // 3. Cấu hình Session & HttpContextAccessor

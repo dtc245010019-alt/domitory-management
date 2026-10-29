@@ -47,7 +47,7 @@ namespace QLKTX.Controllers
             var phong = await _context.Phongs.FirstOrDefaultAsync(p => p.MaPhong == maPhong);
             if (phong == null) return;
 
-            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == maPhong && s.TinhTrangLuuTru != "Đã rời đi");
+            int soDangO = await _context.SinhViens.CountAsync(s => s.MaPhong == maPhong && s.TinhTrangLuuTru == "Đang ở");
             if (soDangO >= phong.SoLuongGiuong && phong.TinhTrang == "Còn chỗ")
             {
                 phong.TinhTrang = "Đã đầy";
@@ -252,8 +252,10 @@ namespace QLKTX.Controllers
             var hopDong = await _context.HopDongs.FindAsync(id);
             if (hopDong != null)
             {
+                string? maPhong = hopDong.MaPhong;
                 _context.HopDongs.Remove(hopDong);
                 await _context.SaveChangesAsync();
+                await DongBoTrangThaiPhongAsync(maPhong);
             }
             return RedirectToAction(nameof(Index));
         }

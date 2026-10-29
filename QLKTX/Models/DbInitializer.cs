@@ -39,6 +39,8 @@ namespace QLKTX
                     {
                         MaPhong = maPhong,
                         LoaiPhong = loaiPhong,
+                        Toa = "Tòa chính",
+                        Tang = tang,
                         SoLuongGiuong = soGiuong,
                         GiaPhong = giaPhong,
                         TinhTrang = (i == 12 && tang >= 4) ? "Bảo trì" : "Còn chỗ",
@@ -66,6 +68,8 @@ namespace QLKTX
                     {
                         MaPhong = maPhong,
                         LoaiPhong = loaiPhong,
+                        Toa = $"Tòa {toa}",
+                        Tang = 1,
                         SoLuongGiuong = soGiuong,
                         GiaPhong = giaPhong,
                         TinhTrang = "Còn chỗ",
@@ -112,6 +116,19 @@ namespace QLKTX
                     p.GiaPhong = standardPrice;
                     p.SoLuongGiuong = standardGiuong;
                     hasPhongPriceFix = true;
+                }
+
+                if (string.IsNullOrEmpty(p.Toa) || p.Toa == "Khu A")
+                {
+                    if (p.MaPhong.StartsWith("A1-", StringComparison.OrdinalIgnoreCase)) { p.Toa = "Tòa A1"; p.Tang = 1; hasPhongPriceFix = true; }
+                    else if (p.MaPhong.StartsWith("B1-", StringComparison.OrdinalIgnoreCase)) { p.Toa = "Tòa B1"; p.Tang = 1; hasPhongPriceFix = true; }
+                    else if (p.MaPhong.StartsWith("C1-", StringComparison.OrdinalIgnoreCase)) { p.Toa = "Tòa C1"; p.Tang = 1; hasPhongPriceFix = true; }
+                    else if (p.MaPhong.Length >= 3 && char.IsDigit(p.MaPhong[0]))
+                    {
+                        p.Toa = "Tòa chính";
+                        if (int.TryParse(p.MaPhong[0].ToString(), out int t)) p.Tang = t;
+                        hasPhongPriceFix = true;
+                    }
                 }
             }
             if (hasPhongPriceFix)
@@ -227,19 +244,19 @@ namespace QLKTX
 
             if (!existingUsernames.Contains("admin"))
             {
-                newTaiKhoans.Add(new TaiKhoan { TenDangNhap = "admin", MatKhau = "123", Quyen = "Admin", MaSV = null });
+                newTaiKhoans.Add(new TaiKhoan { TenDangNhap = "admin", MatKhau = PasswordHelper.HashPassword("123"), Quyen = "Admin", MaSV = null });
                 existingUsernames.Add("admin");
             }
             if (!existingUsernames.Contains("ketoan"))
             {
-                newTaiKhoans.Add(new TaiKhoan { TenDangNhap = "ketoan", MatKhau = "123", Quyen = "KeToan", MaSV = null });
+                newTaiKhoans.Add(new TaiKhoan { TenDangNhap = "ketoan", MatKhau = PasswordHelper.HashPassword("123"), Quyen = "KeToan", MaSV = null });
                 existingUsernames.Add("ketoan");
             }
             foreach (var sv in allSinhViens)
             {
                 if (!existingUsernames.Contains(sv.MaSV))
                 {
-                    newTaiKhoans.Add(new TaiKhoan { TenDangNhap = sv.MaSV, MatKhau = "123", Quyen = "SinhVien", MaSV = sv.MaSV });
+                    newTaiKhoans.Add(new TaiKhoan { TenDangNhap = sv.MaSV, MatKhau = PasswordHelper.HashPassword("123"), Quyen = "SinhVien", MaSV = sv.MaSV });
                     existingUsernames.Add(sv.MaSV);
                 }
             }
@@ -527,120 +544,12 @@ namespace QLKTX
             DongBoYeuCauPhongDaDuyet(context);
         }
 
-        /// <summary>
-        /// Đồng bộ tự động các yêu cầu hỗ trợ phòng (YC_) đã được Admin duyệt ("Đã xử lý"):
-        /// - Nếu là "Đăng ký trả phòng" -> chuyển SinhVien.TinhTrangLuuTru = "Đã rời đi" (sang Lịch sử sinh viên) và mở lại chỗ trống phòng.
-        /// - Nếu là "Xin chuyển phòng" -> tự động chuyển SinhVien.MaPhong sang phòng mới (nếu còn chỗ) và đồng bộ trạng thái phòng.
+                /// <summary>
+        /// Đồng bộ tự động các yêu cầu hỗ trợ phòng (YC_) đã được Admin duyệt ("Đã xử lý") thông qua PortalController.
         /// </summary>
         public static void DongBoYeuCauPhongDaDuyet(ApplicationDbContext context)
         {
-            var yeuCauDaDuyet = context.BaoCaoSuCos
-                .Where(b => b.TrangThai == "Đã xử lý"
-                         && (b.MaSuCo.StartsWith("YC_") || b.TenSuCo.StartsWith("["))
-                         && !b.MoTa.Contains("[Đã đồng bộ]"))
-                .OrderBy(b => b.NgayBaoCao)
-                .ToList();
-
-            if (!yeuCauDaDuyet.Any()) return;
-
-            bool hasChanges = false;
-            var allRooms = context.Phongs.ToList();
-
-            foreach (var yc in yeuCauDaDuyet)
-            {
-                var sv = context.SinhViens.FirstOrDefault(s => s.MaSV == yc.MaSV);
-                if (sv == null) continue;
-
-                // Đánh dấu yêu cầu này đã được đồng bộ 1 lần duy nhất để không ghi đè khi Admin sửa tay hồ sơ SV về sau
-                yc.MoTa = (yc.MoTa ?? "") + " [Đã đồng bộ]";
-                context.BaoCaoSuCos.Update(yc);
-                hasChanges = true;
-
-                // 1. Duyệt yêu cầu Đăng ký trả phòng -> Chuyển sang "Đã rời đi" (Lịch sử sinh viên)
-                if (yc.TenSuCo.Contains("Đăng ký trả phòng", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (sv.TinhTrangLuuTru != "Đã rời đi")
-                    {
-                        string? oldRoomCode = sv.MaPhong;
-                        sv.TinhTrangLuuTru = "Đã rời đi";
-                        context.SinhViens.Update(sv);
-
-                        if (!string.IsNullOrEmpty(oldRoomCode))
-                        {
-                            var oldRoom = allRooms.FirstOrDefault(p => p.MaPhong == oldRoomCode);
-                            if (oldRoom != null && oldRoom.TinhTrang == "Đã đầy")
-                            {
-                                oldRoom.TinhTrang = "Còn chỗ";
-                                context.Phongs.Update(oldRoom);
-                            }
-                        }
-                    }
-                }
-                // 2. Duyệt yêu cầu Xin chuyển phòng -> Cập nhật sang mã phòng mới
-                else if (yc.TenSuCo.Contains("Xin chuyển phòng", StringComparison.OrdinalIgnoreCase))
-                {
-                    string rawTarget = "";
-                    int idxArrow = yc.TenSuCo.LastIndexOf("phòng", StringComparison.OrdinalIgnoreCase);
-                    if (yc.TenSuCo.Contains("->", StringComparison.Ordinal) && idxArrow >= 0)
-                    {
-                        rawTarget = yc.TenSuCo.Substring(idxArrow + "phòng".Length).Trim();
-                    }
-                    else
-                    {
-                        int idxNv = yc.TenSuCo.IndexOf("Nguyện vọng:", StringComparison.OrdinalIgnoreCase);
-                        if (idxNv >= 0)
-                        {
-                            rawTarget = yc.TenSuCo.Substring(idxNv + "Nguyện vọng:".Length).Trim();
-                        }
-                    }
-
-                    int parenIdx = rawTarget.IndexOf('(');
-                    if (parenIdx > 0) rawTarget = rawTarget.Substring(0, parenIdx).Trim();
-
-                    rawTarget = rawTarget.ToUpper();
-                    if (rawTarget.StartsWith("P.")) rawTarget = rawTarget.Substring(2).Trim();
-                    else if (rawTarget.StartsWith("P ")) rawTarget = rawTarget.Substring(2).Trim();
-                    string normTarget = rawTarget.Replace(".", "").Replace(" ", "").Replace("-", "");
-
-                    if (!string.IsNullOrEmpty(normTarget))
-                    {
-                        var targetRoom = allRooms.FirstOrDefault(p =>
-                            p.MaPhong.Equals(rawTarget, StringComparison.OrdinalIgnoreCase) ||
-                            p.MaPhong.Replace(".", "").Replace(" ", "").Replace("-", "").ToUpper() == normTarget);
-
-                        if (targetRoom != null && sv.MaPhong != targetRoom.MaPhong)
-                        {
-                            int soDangO = context.SinhViens.Count(s => s.MaPhong == targetRoom.MaPhong && s.TinhTrangLuuTru == "Đang ở" && s.MaSV != sv.MaSV);
-                            if (soDangO < targetRoom.SoLuongGiuong)
-                            {
-                                string? oldRoomCode = sv.MaPhong;
-                                sv.MaPhong = targetRoom.MaPhong;
-                                context.SinhViens.Update(sv);
-
-                                if (soDangO + 1 >= targetRoom.SoLuongGiuong && targetRoom.TinhTrang == "Còn chỗ")
-                                {
-                                    targetRoom.TinhTrang = "Đã đầy";
-                                    context.Phongs.Update(targetRoom);
-                                }
-                                if (!string.IsNullOrEmpty(oldRoomCode))
-                                {
-                                    var oldRoom = allRooms.FirstOrDefault(p => p.MaPhong == oldRoomCode);
-                                    if (oldRoom != null && oldRoom.TinhTrang == "Đã đầy")
-                                    {
-                                        oldRoom.TinhTrang = "Còn chỗ";
-                                        context.Phongs.Update(oldRoom);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (hasChanges)
-            {
-                context.SaveChanges();
-            }
+            QLKTX.Controllers.PortalController.DongBoYeuCauPhongDaDuyet(context);
         }
     }
 }

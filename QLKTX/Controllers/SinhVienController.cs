@@ -598,7 +598,7 @@ namespace QLKTX.Controllers
                                 var tk = new TaiKhoan
                                 {
                                     TenDangNhap = maSV,
-                                    MatKhau = "123",
+                                    MatKhau = PasswordHelper.HashPassword("123"),
                                     Quyen = "SinhVien",
                                     MaSV = maSV
                                 };
