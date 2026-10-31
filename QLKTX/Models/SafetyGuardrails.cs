@@ -171,7 +171,8 @@ namespace QLKTX.Models
             result = Regex.Replace(result, @"\b(0\d{2})\d{3,4}(\d{3})\b", "$1****$2");
 
             // 3. Quét và che mật khẩu tài khoản
-            result = Regex.Replace(result, @"(?i)(mật khẩu|matkhau|password)[\s:=]+([^\s,;]+)", "$1: [ĐÃ_BẢO_MẬT]");
+            // Chỉ che khi có dấu hiệu gán giá trị (":", "=", "là"), tránh che nhầm câu như "xác thực mật khẩu cá nhân"
+            result = Regex.Replace(result, @"(?i)(mật khẩu|matkhau|password)(\s*[:=]\s*|\s+là\s+)([^\s,;]+)", "$1: [ĐÃ_BẢO_MẬT]");
 
             return result;
         }

@@ -331,7 +331,7 @@ namespace QLKTX.Controllers
                 try
                 {
                     var httpClient = _httpClientFactory.CreateClient("Ollama");
-                    httpClient.Timeout = TimeSpan.FromSeconds(8);
+                    httpClient.Timeout = TimeSpan.FromSeconds(45); // llama3 cần nhiều thời gian hơn để phân tích danh sách phòng
                     var payload = new
                     {
                         model = modelName,

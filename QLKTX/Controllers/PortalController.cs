@@ -1120,7 +1120,8 @@ namespace QLKTX.Controllers
             {
                 var suCos = await _context.BaoCaoSuCos
                     .Include(b => b.Phong)
-                    .Where(b => b.TrangThai == "Chờ xử lý")
+                    // Bỏ các yêu cầu chuyển/trả/gia hạn phòng (cùng lưu trong bảng BaoCaoSuCos) vì không phải sự cố kỹ thuật
+                    .Where(b => b.TrangThai == "Chờ xử lý" && !b.MaSuCo.StartsWith("YC_") && !b.TenSuCo.StartsWith("["))
                     .Select(b => new { b.MaSuCo, b.Phong.MaPhong, b.TenSuCo, b.MoTa, b.NgayBaoCao })
                     .ToListAsync();
 
@@ -1148,7 +1149,7 @@ namespace QLKTX.Controllers
                 {
                     string baseUrl = _configuration["Ollama:BaseUrl"] ?? "http://localhost:11434/api/chat";
                     var httpClient = _httpClientFactory.CreateClient("Ollama");
-                    httpClient.Timeout = TimeSpan.FromSeconds(8);
+                    httpClient.Timeout = TimeSpan.FromSeconds(45); // llama3 cần nhiều thời gian hơn để tóm tắt danh sách sự cố
 
                     var content = new System.Net.Http.StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
                     var res = await httpClient.PostAsync(baseUrl, content);
@@ -1158,15 +1159,22 @@ namespace QLKTX.Controllers
                         var json = await res.Content.ReadAsStringAsync();
                         using var doc = System.Text.Json.JsonDocument.Parse(json);
                         string? aiResponse = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
-                        if (!string.IsNullOrWhiteSpace(aiResponse))
+                        // Nếu AI nhắc tới mã sự cố không có trong danh sách gửi đi thì coi là tự bịa -> dùng bản tóm tắt dự phòng
+                        var maHopLe = suCos.Select(s => s.MaSuCo).ToHashSet();
+                        bool coMaBia = !string.IsNullOrWhiteSpace(aiResponse) &&
+                                       System.Text.RegularExpressions.Regex.Matches(aiResponse, @"\bSC_[0-9_]+")
+                                           .Any(m => !maHopLe.Contains(m.Value.TrimEnd('_')));
+                        if (!string.IsNullOrWhiteSpace(aiResponse) && !coMaBia)
                             return Json(new { success = true, summary = SafetyGuardrails.SanitizeHallucinations(SafetyGuardrails.ScrubPII(aiResponse)) });
+                        if (coMaBia)
+                            _logger.LogWarning("AI tóm tắt sự cố nhắc tới mã sự cố không có trong dữ liệu -> dùng bản tóm tắt dự phòng.");
                     }
                 }
                 catch { }
 
                 // Fallback tổng hợp thông minh khi dịch vụ Ollama cục bộ chưa bật
                 var nhomDien = suCos.Where(s => s.TenSuCo.Contains("điện", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("đèn", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("quạt", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("điều hòa", StringComparison.OrdinalIgnoreCase)).ToList();
-                var nhomNuoc = suCos.Where(s => s.TenSuCo.Contains("nước", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("vòi", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("ống", StringComparison.OrdinalIgnoreCase)).ToList();
+                var nhomNuoc = suCos.Except(nhomDien).Where(s => s.TenSuCo.Contains("nước", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("vòi", StringComparison.OrdinalIgnoreCase) || s.TenSuCo.Contains("ống", StringComparison.OrdinalIgnoreCase)).ToList();
                 var nhomKhac = suCos.Except(nhomDien).Except(nhomNuoc).ToList();
 
                 var sb = new System.Text.StringBuilder();

@@ -30,7 +30,7 @@ builder.Services.AddHttpContextAccessor();
 // 4. Đăng ký HttpClient cho Chatbot
 builder.Services.AddHttpClient("Ollama", client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(20);
+    client.Timeout = TimeSpan.FromSeconds(60);
 });
 
 // 4.1. Đăng ký dịch vụ Giám sát & Vận hành (Health Checks & Observability)

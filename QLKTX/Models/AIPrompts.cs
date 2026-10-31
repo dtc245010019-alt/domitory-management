@@ -47,7 +47,8 @@ namespace QLKTX.Models
             return $"System: {AdminChatbotSystemPrompt}\n" +
                    $"Dữ liệu quản trị hiện tại từ hệ thống: {systemContextData}\n" +
                    $"Admin hỏi: \"{question}\"\n" +
-                   $"Yêu cầu: Trả lời ngắn gọn, có cấu trúc bullet point rõ ràng, làm nổi bật các con số thống kê hoặc các mục khẩn cấp cần BQL chú ý.";
+                   $"Yêu cầu: Trả lời ngắn gọn, có cấu trúc bullet point rõ ràng, làm nổi bật các con số thống kê hoặc các mục khẩn cấp cần BQL chú ý. " +
+                   $"Chỉ trả lời đúng những ý người dùng hỏi, không liệt kê thêm mục nào khác. Nếu câu hỏi có nhiều ý, trả lời lần lượt từng ý; ý nào không có trong dữ liệu thì nói ngắn gọn là chưa có thông tin. Không thêm chi tiết không có trong dữ liệu.";
         }
 
         public static string BuildStudentRagPrompt(string question, string studentContextData, string policyChunks)
@@ -60,7 +61,8 @@ namespace QLKTX.Models
                    $"Dữ liệu hồ sơ sinh viên & phòng ở: {studentContextData}\n" +
                    $"Nội quy & quy định liên quan: {policyChunks}\n" +
                    $"Sinh viên hỏi: \"{question}\"\n" +
-                   $"Yêu cầu: Trả lời thân thiện, rõ ràng, hướng dẫn sinh viên thao tác hoặc giải đáp đúng thắc mắc.";
+                   $"Yêu cầu: Trả lời thân thiện, rõ ràng, hướng dẫn sinh viên thao tác hoặc giải đáp đúng thắc mắc. " +
+                   $"Chỉ trả lời đúng những ý người dùng hỏi, không liệt kê thêm mục nào khác. Nếu câu hỏi có nhiều ý, trả lời lần lượt từng ý; ý nào không có trong dữ liệu thì nói ngắn gọn là chưa có thông tin. Không thêm chi tiết không có trong dữ liệu.";
         }
 
         public static string BuildPolicyRagPrompt(string question, string policyChunks)
