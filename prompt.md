@@ -9,7 +9,7 @@ Bạn là một chuyên gia lập trình ASP.NET Core MVC và Entity Framework C
 - **Giao diện**: Razor Views (`.cshtml`), Bootstrap 5, Bootstrap Icons, Chart.js.
 - **Mô hình kiến trúc**: MVC tiêu chuẩn (Models, Views, Controllers).
 - **Phân quyền**: Cấp quyền dựa trên `HttpContext.Session` 
-  - `Admin_DangNhap` cho Ban quản lý (dùng `_Layout.cshtml`).
+  - `Admin_DangNhap` + `VaiTro` (`Admin` hoặc `KeToan`) cho Ban quản lý và Kế toán (dùng `_Layout.cshtml`), kiểm tra bằng `[AdminAuthorize]`; action chỉ dành cho Admin gắn `OnlyAdmin = true`.
   - `MaSV_DangNhap` cho Sinh viên (dùng `_StudentLayout.cshtml`).
 
 ## 2. Các module và tính năng đã có
@@ -43,10 +43,14 @@ Bạn là một chuyên gia lập trình ASP.NET Core MVC và Entity Framework C
    - Các View UI, thông báo lỗi, comment logic phải dùng Tiếng Việt có dấu. Luôn lưu file định dạng UTF-8.
    - Tên biến, class, method, properties giữ nguyên chuẩn Tiếng Việt không dấu PascalCase hoặc camelCase (VD: `MaSV`, `HoTen`, `TinhTrangLuuTru`, `soDangO`). Tuyệt đối không tự ý đổi tên DB Properties.
 
+7. **CHATBOT AI**:
+   - Luồng hỏi đáp (`ChatbotController.Ask`) chỉ đọc dữ liệu (`AsNoTracking`). Thao tác ghi từ khung chat chỉ đi qua `ExecuteAction` sau khi người dùng xác nhận; chatbot không bao giờ thanh toán hóa đơn hay xóa dữ liệu.
+   - Không đưa mật khẩu vào prompt; câu trả lời AI phải đi qua `SafetyGuardrails` (che CCCD, số điện thoại). Cơ sở tri thức nằm ở `wwwroot/data/knowledge_base.json`.
+
 ## 4. Yêu cầu khi AI thực thi
 - **Surgical changes**: Chỉ sửa/thêm những phần code liên quan trực tiếp đến yêu cầu của tôi, không tự ý refactor những file hoặc logic không liên quan.
 - **Simplicity**: Ưu tiên giải pháp ngắn gọn, đơn giản, dễ bảo trì nhất.
 - Sau khi sinh code, hãy tóm tắt ngắn gọn danh sách các file bạn đã thay đổi.
-- Nếu yêu cầu của tôi mâu thuẫn với 6 quy tắc ở phần 3, hãy cảnh báo ngay cho tôi biết thay vì tự ý làm sai.
+- Nếu yêu cầu của tôi mâu thuẫn với 7 quy tắc ở phần 3, hãy cảnh báo ngay cho tôi biết thay vì tự ý làm sai.
 
 > **Nếu bạn đã hiểu toàn bộ ngữ cảnh trên, vui lòng phản hồi: "Tôi đã nắm rõ kiến trúc và quy tắc của dự án QLKTX. Bạn cần tôi hỗ trợ tính năng gì hôm nay?"**

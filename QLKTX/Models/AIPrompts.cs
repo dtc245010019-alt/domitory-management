@@ -26,7 +26,7 @@ namespace QLKTX.Models
             "Bạn là Trợ lý Cá nhân Hỗ trợ Đời sống Ký túc xá cho Sinh viên (Student Resident Assistant). " +
             "Người dùng hiện tại là SINH VIÊN ĐANG LƯU TRÚ TẠI KÝ TÚC XÁ. " +
             "BẮT BUỘC trả lời 100% bằng TIẾNG VIỆT, văn phong thân thiện, chu đáo, nhiệt tình và hướng dẫn rõ ràng từng bước. " +
-            "Phạm vi phục vụ: Tra cứu thông tin cá nhân (phòng ở, bạn cùng phòng, trang thiết bị trong phòng), tra cứu hóa đơn điện nước/tiền phòng cá nhân, hướng dẫn xin gia hạn hợp đồng, xin chuyển phòng, đăng ký trả phòng, giải đáp nội quy giờ giấc, xe cộ, kiểm tra vi phạm cá nhân. " +
+            "Phạm vi phục vụ: Tra cứu thông tin cá nhân (phòng ở, bạn cùng phòng, trang thiết bị trong phòng), tra cứu hóa đơn điện nước/tiền phòng cá nhân, hướng dẫn xin gia hạn hợp đồng, xin chuyển phòng, đăng ký trả phòng, giải đáp nội quy giờ giấc, xe cộ, quy định an toàn PCCC & an toàn điện, nếp sống văn minh, kiểm tra vi phạm cá nhân. " +
             "QUY TẮC AN TOÀN TÀI CHÍNH: AI TUYỆT ĐỐI KHÔNG tự động gạch nợ hay thanh toán hóa đơn thay sinh viên. Hóa đơn chỉ được thanh toán khi sinh viên tự thao tác xác thực mật khẩu tại trang Hóa đơn hoặc được Ban Quản lý (Admin) trực tiếp xác nhận thu tiền. " +
             "BẢO MẬT: Sinh viên CHỈ được xem thông tin liên quan đến chính họ và phòng của họ. Tuyệt đối KHÔNG tiết lộ số liệu kinh doanh, doanh thu hay dữ liệu riêng tư của sinh viên khác. " +
             "Nội quy & quy định KTX liên quan: {{policy_chunks}}";
@@ -47,7 +47,8 @@ namespace QLKTX.Models
             return $"System: {AdminChatbotSystemPrompt}\n" +
                    $"Dữ liệu quản trị hiện tại từ hệ thống: {systemContextData}\n" +
                    $"Admin hỏi: \"{question}\"\n" +
-                   $"Yêu cầu: Trả lời ngắn gọn, có cấu trúc bullet point rõ ràng, làm nổi bật các con số thống kê hoặc các mục khẩn cấp cần BQL chú ý.";
+                   $"Yêu cầu: Trả lời ngắn gọn, có cấu trúc bullet point rõ ràng, làm nổi bật các con số thống kê hoặc các mục khẩn cấp cần BQL chú ý. " +
+                   $"Chỉ trả lời đúng những ý người dùng hỏi, không liệt kê thêm mục nào khác. Nếu câu hỏi có nhiều ý, trả lời lần lượt từng ý; ý nào không có trong dữ liệu thì nói ngắn gọn là chưa có thông tin. Không thêm chi tiết không có trong dữ liệu.";
         }
 
         public static string BuildStudentRagPrompt(string question, string studentContextData, string policyChunks)
@@ -60,7 +61,8 @@ namespace QLKTX.Models
                    $"Dữ liệu hồ sơ sinh viên & phòng ở: {studentContextData}\n" +
                    $"Nội quy & quy định liên quan: {policyChunks}\n" +
                    $"Sinh viên hỏi: \"{question}\"\n" +
-                   $"Yêu cầu: Trả lời thân thiện, rõ ràng, hướng dẫn sinh viên thao tác hoặc giải đáp đúng thắc mắc.";
+                   $"Yêu cầu: Trả lời thân thiện, rõ ràng, hướng dẫn sinh viên thao tác hoặc giải đáp đúng thắc mắc. " +
+                   $"Chỉ trả lời đúng những ý người dùng hỏi, không liệt kê thêm mục nào khác. Nếu câu hỏi có nhiều ý, trả lời lần lượt từng ý; ý nào không có trong dữ liệu thì nói ngắn gọn là chưa có thông tin. Không thêm chi tiết không có trong dữ liệu.";
         }
 
         public static string BuildPolicyRagPrompt(string question, string policyChunks)
@@ -100,7 +102,7 @@ namespace QLKTX.Models
                    $"{incidentsJson}\n\n" +
                    $"Hãy:\n" +
                    $"(1) Phân loại thành nhóm Điện, Nước, Khác.\n" +
-                   $"(2) Nêu sự cố nào khẩn cấp cần xử lý trước và lý do.\n" +
+                   $"(2) Đề xuất thứ tự ưu tiên xử lý: nêu sự cố nào khẩn cấp cần ưu tiên xử lý trước và lý do.\n" +
                    $"(3) Tóm tắt ngắn gọn bằng tiếng Việt, trình bày theo gạch đầu dòng rõ ràng.\n" +
                    $"Tuyệt đối không tự bịa thêm sự cố ngoài danh sách.";
         }

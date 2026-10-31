@@ -120,6 +120,26 @@ namespace QLKTX.Tests
             Assert.False(string.IsNullOrWhiteSpace(reason));
         }
 
+        [Theory]
+        [InlineData("Mật khẩu: abc123", "abc123")]
+        [InlineData("password=Secret99", "Secret99")]
+        [InlineData("mật khẩu là 123456", "123456")]
+        public void ScrubPII_CoGiaTriMatKhau_CheMatKhau(string input, string secret)
+        {
+            string result = SafetyGuardrails.ScrubPII(input);
+
+            Assert.DoesNotContain(secret, result);
+            Assert.Contains("[ĐÃ_BẢO_MẬT]", result);
+        }
+
+        [Fact]
+        public void ScrubPII_CauNhacToiMatKhau_KhongCheNham()
+        {
+            string input = "Bạn cần xác thực mật khẩu cá nhân trên Student Portal.";
+
+            Assert.Equal(input, SafetyGuardrails.ScrubPII(input));
+        }
+
         [Fact]
         public void ValidateInput_CauHoiBinhThuong_XacThucThanhCong()
         {

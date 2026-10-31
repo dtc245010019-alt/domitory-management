@@ -429,14 +429,8 @@ namespace QLKTX.Controllers
                 currentSv = await _context.SinhViens.FirstOrDefaultAsync(s => s.MaSV == sessionMaSV);
             }
 
-            // 3. Nếu tin nhắn có nhắc tới mã phòng cụ thể
+            // 3. Mã phòng đang xét
             string activeMaPhong = mentionedRooms.FirstOrDefault() ?? currentSv?.MaPhong ?? "";
-            if (currentSv == null && !string.IsNullOrWhiteSpace(activeMaPhong))
-            {
-                currentSv = await _context.SinhViens
-                    .FirstOrDefaultAsync(s => s.MaPhong == activeMaPhong && s.TinhTrangLuuTru == "Đang ở")
-                    ?? await _context.SinhViens.FirstOrDefaultAsync(s => s.MaPhong == activeMaPhong);
-            }
 
             // 4. Nếu đang mở ở giao diện Admin/Khách chưa có MaSV_DangNhap -> Giữ cố định 1 SV đại diện trong phiên để đồng nhất giữa Hỏi đáp & Làm hộ
             if (currentSv == null)
@@ -512,14 +506,28 @@ namespace QLKTX.Controllers
             // BẢO MẬT: Quyền Admin CHỈ được xác định từ Session phía máy chủ, không tin tham số "role" do client gửi lên
             bool isAdmin = !isStudentRole && sessionIsAdmin;
 
-            if (isAdmin)
+            // 0. TỪ CHỐI CÁC CÂU HỎI NGOÀI LỀ KHÔNG LIÊN QUAN ĐẾN KÝ TÚC XÁ NGAY TỪ ĐẦU (Áp dụng cho cả Admin và Sinh viên)
+            if (IsOutOfDomain(msgLower))
             {
-                return await HandleAdminFlowAsync(rawMsg, msgLower, mode);
+                string oodResponse = isAdmin
+                    ? "💡 **Trợ lý Điều hành & Quản trị Ký túc xá (Admin Copilot):**\n" +
+                      "Xin lỗi Admin, mình chưa tìm thấy thông tin phù hợp trong phạm vi Ký túc xá. Hệ thống Trợ lý Điều hành **chỉ hỗ trợ các thông tin và nghiệp vụ quản trị Ký túc xá** " +
+                      "(thống kê sinh viên, quản lý phòng ở, cơ sở vật chất, hóa đơn điện nước, xử lý sự cố, hợp đồng lưu trú và kỷ luật).\n" +
+                      "Câu hỏi này nằm ngoài phạm vi quản lý KTX nên hệ thống xin phép từ chối phản hồi."
+                    : "💡 **Trợ lý Ký túc xá (QLKTX):**\n" +
+                      "Xin lỗi bạn, mình chưa tìm thấy thông tin phù hợp trong phạm vi Ký túc xá. Mình là Trợ lý AI Ký túc xá và **chỉ trả lời các nội dung liên quan đến Ký túc xá** " +
+                      "(nội quy, giá phòng, dịch vụ điện nước, gửi xe, tiếp khách, báo hỏng thiết bị, thủ tục chuyển phòng / trả phòng).\n" +
+                      "Câu hỏi của bạn không thuộc phạm vi KTX nên mình xin phép không trả lời. Bạn vui lòng đặt câu hỏi về Ký túc xá nhé!";
+
+                return Json(new { response = oodResponse, source = "Phạm vi phục vụ Trợ lý KTX" });
             }
-            else
-            {
-                return await HandleStudentFlowAsync(rawMsg, msgLower, mode);
-            }
+
+            IActionResult result = isAdmin
+                ? await HandleAdminFlowAsync(rawMsg, msgLower, mode)
+                : await HandleStudentFlowAsync(rawMsg, msgLower, mode);
+
+            // Câu hỏi vừa tra dữ liệu vừa hỏi nội quy: bổ sung phần nội quy mà nhánh dữ liệu chưa trả lời
+            return AppendRelatedPolicy(result, rawMsg, msgLower);
         }
 
         // =========================================================================
@@ -530,12 +538,13 @@ namespace QLKTX.Controllers
             var allRooms = await _context.Phongs.AsNoTracking().ToListAsync();
             var mentionedRooms = ExtractRoomsFromMessage(rawMsg, allRooms);
             var matchSv = Regex.Match(rawMsg.ToUpper(), @"DTC\d+");
+            bool policyOnly = IsPolicyOnlyQuestion(msgLower, mentionedRooms.Any() || matchSv.Success);
 
             // 1. Chặn và nhắc nhở nếu Admin đặt các câu hỏi thuộc ngữ cảnh cá nhân của sinh viên
             bool isStudentPersonalOnly = (msgLower.Contains("của tôi") || msgLower.Contains("của mình") ||
                                           msgLower.Contains("phòng tôi") || msgLower.Contains("cho tôi") ||
                                           msgLower.Contains("bạn cùng phòng") || msgLower.Contains("ở cùng tôi"))
-                                         && !mentionedRooms.Any() && !matchSv.Success;
+                                         && !mentionedRooms.Any() && !matchSv.Success && !policyOnly;
 
             if (isStudentPersonalOnly)
             {
@@ -653,8 +662,12 @@ namespace QLKTX.Controllers
             // 3. XỬ LÝ CHẾ ĐỘ HỎI ĐÁP QUẢN TRỊ (ADMIN QA MODE)
             string intent = ClassifyQaIntent(msgLower);
 
+            // Câu hỏi thuần về nội quy/biểu phí (VD: "giờ đóng cửa và giá điện nước") -> trả lời từ cơ sở tri thức, không tra số liệu
+            if (policyOnly)
+                return await AnswerAdminFromKnowledgeAsync(rawMsg, msgLower, intent);
+
             // A. THỐNG KÊ TỔNG QUAN KTX
-            if (intent == "THONG_KE" || msgLower.Contains("tổng quan") || msgLower.Contains("báo cáo"))
+            if (intent == "THONG_KE" || msgLower.Contains("tổng quan") || (msgLower.Contains("báo cáo") && intent == "KHAC"))
             {
                 var tongSV = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đang ở");
                 var svDaRoi = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đã rời đi");
@@ -664,7 +677,7 @@ namespace QLKTX.Controllers
                 var hdChuaThu = await _context.HoaDons.CountAsync(h => h.TrangThai != "Đã thanh toán");
                 var tongCongNo = await _context.HoaDons.Where(h => h.TrangThai != "Đã thanh toán").SumAsync(h => h.TongTien);
                 var tongDaThu = await _context.HoaDons.Where(h => h.TrangThai == "Đã thanh toán").SumAsync(h => h.TongTien);
-                var suCoChoXuLy = await _context.BaoCaoSuCos.CountAsync(b => b.TrangThai != "Đã xử lý");
+                var suCoChoXuLy = await _context.BaoCaoSuCos.CountAsync(b => b.TrangThai != "Đã xử lý" && !b.MaSuCo.StartsWith("YC_") && !b.TenSuCo.StartsWith("["));
                 var tongViPham = await _context.ViPhams.CountAsync();
 
                 string statsMsg = $"📊 **BÁO CÁO TỔNG QUAN TÌNH HÌNH QUẢN TRỊ KÝ TÚC XÁ:**\n\n" +
@@ -679,7 +692,7 @@ namespace QLKTX.Controllers
                                   $"• Hóa đơn đã thu: **{tongDaThu:N0} VNĐ**\n" +
                                   $"• Công nợ chưa thanh toán: **{tongCongNo:N0} VNĐ** ({hdChuaThu} hóa đơn tồn đọng)\n\n" +
                                   $"🛠 **Vận hành & Kỷ luật:**\n" +
-                                  $"• Sự cố kỹ thuật đang chờ xử lý: **{suCoChoXuLy} sự cố**\n" +
+                                  $"• Sự cố kỹ thuật chưa xử lý xong: **{suCoChoXuLy} sự cố**\n" +
                                   $"• Tổng số biên bản kỷ luật đã lập: **{tongViPham} trường hợp**";
 
                 return Json(new
@@ -818,10 +831,19 @@ namespace QLKTX.Controllers
             // D. QUẢN LÝ HỢP ĐỒNG (HỢP ĐỒNG HẾT HẠN / CÒN HIỆU LỰC)
             if (intent == "HOP_DONG")
             {
-                var now = DateTime.Now;
-                var nearExpire = await _context.HopDongs
-                    .Include(h => h.SinhVien)
-                    .Where(h => h.TrangThai == "Còn hiệu lực" && h.NgayKetThuc <= now.AddDays(30))
+                var today = DateTime.Now.Date;
+                var activeQuery = _context.HopDongs.Include(h => h.SinhVien).Where(h => h.TrangThai == "Còn hiệu lực");
+
+                // Tách riêng: hợp đồng sắp hết hạn (0..30 ngày tới) và hợp đồng đã quá hạn nhưng chưa thanh lý
+                int nearExpireCount = await activeQuery.CountAsync(h => h.NgayKetThuc >= today && h.NgayKetThuc <= today.AddDays(30));
+                var nearExpire = await activeQuery
+                    .Where(h => h.NgayKetThuc >= today && h.NgayKetThuc <= today.AddDays(30))
+                    .OrderBy(h => h.NgayKetThuc)
+                    .Take(8)
+                    .ToListAsync();
+                int overdueCount = await activeQuery.CountAsync(h => h.NgayKetThuc < today);
+                var overdue = await activeQuery
+                    .Where(h => h.NgayKetThuc < today)
                     .OrderBy(h => h.NgayKetThuc)
                     .Take(8)
                     .ToListAsync();
@@ -831,22 +853,30 @@ namespace QLKTX.Controllers
 
                 var sbHd = new StringBuilder();
                 sbHd.AppendLine($"📄 **BÁO CÁO HỢP ĐỒNG LƯU TRÚ KTX:**\n");
-                sbHd.AppendLine($"• Tổng hợp đồng còn hiệu lực: **{totalActive}** | Đã thanh lý/hết hạn: **{totalExpired}**");
-                sbHd.AppendLine($"• Hợp đồng sắp hết hạn trong 30 ngày tới: **{nearExpire.Count}** hợp đồng\n");
+                sbHd.AppendLine($"• Hợp đồng đang ở trạng thái \"Còn hiệu lực\": **{totalActive}** | Đã thanh lý/hết hiệu lực: **{totalExpired}**");
+                sbHd.AppendLine($"• Sắp hết hạn trong 30 ngày tới: **{nearExpireCount}** hợp đồng");
+                sbHd.AppendLine($"• Đã quá ngày kết thúc nhưng chưa thanh lý/gia hạn: **{overdueCount}** hợp đồng\n");
 
                 if (nearExpire.Any())
                 {
-                    sbHd.AppendLine("⚠️ **Danh sách hợp đồng cần rà soát gia hạn / thanh lý:**");
+                    sbHd.AppendLine($"⏳ **Sắp hết hạn (hiển thị {nearExpire.Count}/{nearExpireCount}):**");
                     foreach (var h in nearExpire)
                     {
-                        int daysLeft = (h.NgayKetThuc.Date - now.Date).Days;
-                        string dayText = daysLeft >= 0 ? $"còn {daysLeft} ngày" : $"quá hạn {-daysLeft} ngày";
-                        sbHd.AppendLine($"• **{h.MaHopDong}** — SV: {h.SinhVien?.HoTen ?? h.MaSV} (P.{h.MaPhong}): Hết hạn {h.NgayKetThuc:dd/MM/yyyy} (*{dayText}*)");
+                        sbHd.AppendLine($"• **{h.MaHopDong}** — SV: {h.SinhVien?.HoTen ?? h.MaSV} (P.{h.MaPhong}): Hết hạn {h.NgayKetThuc:dd/MM/yyyy} (*còn {(h.NgayKetThuc.Date - today).Days} ngày*)");
                     }
                 }
                 else
                 {
-                    sbHd.AppendLine("✅ Hiện không có hợp đồng nào hết hạn trong 30 ngày tới.");
+                    sbHd.AppendLine("✅ Không có hợp đồng nào hết hạn trong 30 ngày tới.");
+                }
+
+                if (overdue.Any())
+                {
+                    sbHd.AppendLine($"\n⚠️ **Đã quá hạn, cần gia hạn hoặc thanh lý (hiển thị {overdue.Count}/{overdueCount}):**");
+                    foreach (var h in overdue)
+                    {
+                        sbHd.AppendLine($"• **{h.MaHopDong}** — SV: {h.SinhVien?.HoTen ?? h.MaSV} (P.{h.MaPhong}): Hết hạn {h.NgayKetThuc:dd/MM/yyyy} (*quá hạn {(today - h.NgayKetThuc.Date).Days} ngày*)");
+                    }
                 }
 
                 return Json(new
@@ -859,14 +889,17 @@ namespace QLKTX.Controllers
             // E. QUẢN LÝ SỰ CỐ & TIẾN ĐỘ SỬA CHỮA
             if (intent == "SU_CO")
             {
-                var incidents = await _context.BaoCaoSuCos
-                    .Where(s => s.TrangThai != "Đã xử lý")
+                // Bảng BaoCaoSuCos chứa cả yêu cầu chuyển/trả/gia hạn phòng (MaSuCo "YC_..." hoặc TenSuCo "[...]") -> loại ra khỏi sự cố kỹ thuật
+                var pendingQuery = _context.BaoCaoSuCos
+                    .Where(s => s.TrangThai != "Đã xử lý" && !s.MaSuCo.StartsWith("YC_") && !s.TenSuCo.StartsWith("["));
+                int totalPending = await pendingQuery.CountAsync();
+                var incidents = await pendingQuery
                     .OrderByDescending(s => s.NgayBaoCao)
                     .Take(8)
                     .ToListAsync();
 
                 var sbSc = new StringBuilder();
-                sbSc.AppendLine($"🚨 **TỔNG HỢP SỰ CỐ KỸ THUẬT CẦN XỬ LÝ ({incidents.Count} sự cố tồn đọng):**\n");
+                sbSc.AppendLine($"🚨 **SỰ CỐ KỸ THUẬT CHƯA XỬ LÝ XONG: {totalPending} sự cố** (Chờ xử lý + Đang xử lý; hiển thị {incidents.Count} sự cố mới nhất):\n");
                 if (incidents.Any())
                 {
                     foreach (var sc in incidents)
@@ -964,9 +997,17 @@ namespace QLKTX.Controllers
             }
 
             // I. NỘI QUY & QUY CHẾ VẬN HÀNH KTX (AI PROMPT RAG DÀNH CHO ADMIN)
-            string matchedFacts = RetrieveSemanticKnowledgeChunks(rawMsg, topK: 3, threshold: 0.05);
+            return await AnswerAdminFromKnowledgeAsync(rawMsg, msgLower, intent);
+        }
+
+        private async Task<IActionResult> AnswerAdminFromKnowledgeAsync(string rawMsg, string msgLower, string intent)
+        {
+            string matchedFacts = RetrievePolicyFacts(rawMsg, msgLower);
             if (string.IsNullOrWhiteSpace(matchedFacts))
             {
+                // Không có nội quy nào liên quan (câu ngoài phạm vi KTX) -> không gửi cho LLM để tránh tự bịa
+                if (!GetFactListByIntent(intent).Any())
+                    return Json(new { response = GetFactsByIntent(intent), source = "Quản trị KTX - Cơ sở tri thức & Quy chế" });
                 matchedFacts = GetFactsByIntent(intent);
             }
             string adminPrompt = AIPrompts.BuildAdminRagPrompt(rawMsg, matchedFacts);
@@ -985,13 +1026,21 @@ namespace QLKTX.Controllers
         private async Task<IActionResult> HandleStudentFlowAsync(string rawMsg, string msgLower, string mode)
         {
             // 1. Kiểm tra và chặn sinh viên truy cập số liệu quản trị nội bộ
-            bool isUnauthorized = msgLower.Contains("doanh thu") ||
-                                  msgLower.Contains("tổng số tiền thu") ||
-                                  msgLower.Contains("danh sách nợ toàn trường") ||
-                                  msgLower.Contains("toàn bộ sinh viên nợ") ||
-                                  msgLower.Contains("danh sách tất cả sinh viên vi phạm") ||
-                                  msgLower.Contains("toàn bộ vi phạm") ||
-                                  msgLower.Contains("thống kê toàn ktx");
+            bool isOwnData = msgLower.Contains("của tôi") || msgLower.Contains("của mình") || msgLower.Contains("phòng tôi") || msgLower.Contains("tôi có") || msgLower.Contains("mình có");
+            bool isUnauthorized = !isOwnData && (
+                msgLower.Contains("doanh thu") ||
+                msgLower.Contains("tổng số tiền thu") ||
+                msgLower.Contains("danh sách nợ") ||
+                msgLower.Contains("toàn bộ sinh viên nợ") ||
+                msgLower.Contains("sinh viên nợ") ||
+                msgLower.Contains("công nợ") ||
+                msgLower.Contains("danh sách tất cả sinh viên vi phạm") ||
+                msgLower.Contains("toàn bộ vi phạm") ||
+                msgLower.Contains("danh sách vi phạm") ||
+                msgLower.Contains("thống kê") ||
+                msgLower.Contains("báo cáo hệ thống") ||
+                msgLower.Contains("báo cáo ktx")
+            );
 
             if (isUnauthorized)
             {
@@ -1039,6 +1088,10 @@ namespace QLKTX.Controllers
             // Xác định chủ đề Hỏi đáp ưu tiên theo từ khóa ngữ nghĩa
             string intent = ClassifyQaIntent(msgLower);
 
+            // Câu hỏi thuần về nội quy/biểu phí -> trả lời từ cơ sở tri thức, không tra hóa đơn/hợp đồng cá nhân
+            if (IsPolicyOnlyQuestion(msgLower, mentionedRooms.Any()))
+                return await AnswerStudentFromKnowledgeAsync(rawMsg, msgLower, intent, svTag);
+
             // Nếu chưa rõ từ khóa, gọi Ollama phân tích bổ trợ (nếu có)
             if (intent == "KHAC")
             {
@@ -1059,6 +1112,11 @@ Câu hỏi: ""{rawMsg}""";
                     }
                     catch { }
                 }
+
+                // Câu không có từ khóa nào và cũng không nhắc tới dữ liệu cá nhân (VD: "wifi có mất phí không"):
+                // dù LLM đoán chủ đề gì cũng trả lời từ nội quy, tránh trả về hóa đơn/hợp đồng của sinh viên
+                if (!HasDataReference(msgLower, mentionedRooms.Any()))
+                    return await AnswerStudentFromKnowledgeAsync(rawMsg, msgLower, intent, svTag);
             }
 
             // ---------------------------------------------------------------------
@@ -1263,16 +1321,23 @@ Câu hỏi: ""{rawMsg}""";
                             sbRoom.AppendLine($"• Sức chứa: **{roommates.Count}/{roomObj.SoLuongGiuong} sinh viên** (Còn trống **{giuongTrong} giường**) — Trạng thái: **{roomObj.TinhTrang}**");
                             sbRoom.AppendLine($"• Tình trạng thiết bị: {roomObj.TrangThaiThietBi ?? "Bình thường"}\n");
 
+                            bool isMyOwnRoom = currentSv != null && !string.IsNullOrWhiteSpace(currentSv.MaPhong) && string.Equals(roomObj.MaPhong, currentSv.MaPhong, StringComparison.OrdinalIgnoreCase);
                             if (roommates.Any())
                             {
-                                sbRoom.AppendLine($"👥 **Danh sách {roommates.Count} sinh viên đang ở tại Phòng P.{roomObj.MaPhong}:**");
-                                int i = 1;
-                                foreach (var rm in roommates)
+                                if (isMyOwnRoom)
                                 {
-                                    string meBadge = (currentSv != null && rm.MaSV == currentSv.MaSV) ? " *(Bạn)*" : "";
-                                    string sdtHienThi = (currentSv != null && rm.MaSV == currentSv.MaSV) ? rm.SoDienThoai : MaskPhone(rm.SoDienThoai);
-                                    sbRoom.AppendLine($"{i}. **{rm.HoTen}**{meBadge} — Mã SV: **{rm.MaSV}** | Lớp: {rm.Lop} | SĐT: {sdtHienThi}");
-                                    i++;
+                                    sbRoom.AppendLine($"👥 **Danh sách {roommates.Count} sinh viên đang ở tại Phòng P.{roomObj.MaPhong} (Cùng phòng bạn):**");
+                                    int i = 1;
+                                    foreach (var rm in roommates)
+                                    {
+                                        string meBadge = (currentSv != null && rm.MaSV == currentSv.MaSV) ? " *(Bạn)*" : "";
+                                        sbRoom.AppendLine($"{i}. **{rm.HoTen}**{meBadge} — Mã SV: **{rm.MaSV}** | Lớp: {rm.Lop}");
+                                        i++;
+                                    }
+                                }
+                                else
+                                {
+                                    sbRoom.AppendLine("👥 **Thành viên phòng:** Vì chính sách bảo mật thông tin cá nhân (PII), danh sách chi tiết các sinh viên đang lưu trú tại phòng khác không được công khai.");
                                 }
                             }
                             else
@@ -1488,15 +1553,12 @@ Câu hỏi: ""{rawMsg}""";
                         });
                     }
 
-                    var allVp = await _context.ViPhams.Include(v => v.SinhVien).OrderByDescending(v => v.NgayViPham).Take(8).AsNoTracking().ToListAsync();
-                    int totalVp = await _context.ViPhams.CountAsync();
-                    var sbAllVp = new StringBuilder();
-                    sbAllVp.AppendLine($"⚠️ **Thống kê Kỷ luật KTX (Tổng cộng: {totalVp} trường hợp vi phạm):**\n");
-                    foreach (var v in allVp)
+                    // BẢO MẬT: Không công khai danh sách hồ sơ kỷ luật cá nhân của sinh viên khác
+                    return Json(new
                     {
-                        sbAllVp.AppendLine($"• **{v.MaSV} - {v.SinhVien?.HoTen}** ({v.NgayViPham:dd/MM/yyyy}): {v.NoiDungViPham} — Xử lý: **{v.HinhThucXuLy}**");
-                    }
-                    return Json(new { response = sbAllVp.ToString().Trim(), source = "Hỏi đáp - Quản lý Kỷ luật" });
+                        response = "⚖️ **Quy định Xử lý Kỷ luật & Vi phạm Nội quy KTX:**\n" + GetFactsByIntent("KY_LUAT"),
+                        source = "Hỏi đáp - Quy định Kỷ luật KTX"
+                    });
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi tra cứu Kỷ luật"); }
             }
@@ -1529,11 +1591,12 @@ Câu hỏi: ""{rawMsg}""";
                         });
                     }
 
-                    var tongDangO = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đang ở");
-                    var sampleSvs = await _context.SinhViens.Where(s => s.TinhTrangLuuTru == "Đang ở").Take(6).AsNoTracking().ToListAsync();
-                    string listSv = $"👨‍🎓 **Hiện KTX có {tongDangO} sinh viên đang lưu trú.**\nDanh sách sinh viên tiêu biểu:\n" +
-                                    string.Join("\n", sampleSvs.Select(s => $"• **{s.MaSV} - {s.HoTen}** (Lớp: {s.Lop} — Phòng: **P.{s.MaPhong}**)"));
-                    return Json(new { response = listSv, source = "Hỏi đáp - Quản lý Sinh viên" });
+                    // BẢO MẬT: Không công khai danh sách sinh viên nội trú của KTX ra ngoài
+                    return Json(new
+                    {
+                        response = "🔒 **Thông báo quyền riêng tư:** Danh sách sinh viên lưu trú thuộc dữ liệu quản trị nội bộ của Ban Quản lý KTX. Bạn có thể tra cứu thông tin phòng ở cá nhân tại mục 'Thông tin cá nhân' trên Student Portal.",
+                        source = "Cổng thông tin Sinh viên KTX"
+                    });
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Lỗi tra cứu Sinh viên"); }
             }
@@ -1543,35 +1606,27 @@ Câu hỏi: ""{rawMsg}""";
             // ---------------------------------------------------------------------
             if (intent == "THONG_KE")
             {
-                try
+                return Json(new
                 {
-                    var tongSV = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đang ở");
-                    var svDaRoi = await _context.SinhViens.CountAsync(s => s.TinhTrangLuuTru == "Đã rời đi");
-                    var tongPhong = await _context.Phongs.CountAsync();
-                    var phongConCho = await _context.Phongs.CountAsync(p => p.TinhTrang == "Còn chỗ");
-                    var tongHopDong = await _context.HopDongs.CountAsync(h => h.TrangThai == "Còn hiệu lực");
-                    var hdChuaThu = await _context.HoaDons.CountAsync(h => h.TrangThai != "Đã thanh toán");
-                    var tongThietBi = await _context.CoSoVatChats.CountAsync();
-                    var tongViPham = await _context.ViPhams.CountAsync();
-
-                    string fallback = $"📊 **Báo cáo Thống kê tổng quan hệ thống KTX:**\n" +
-                                      $"• **Sinh viên đang ở:** {tongSV} SV (Đã rời đi: {svDaRoi} SV)\n" +
-                                      $"• **Tổng số phòng:** {tongPhong} phòng (Còn chỗ: {phongConCho} phòng, Đã đầy/Bảo trì: {tongPhong - phongConCho} phòng)\n" +
-                                      $"• **Hợp đồng còn hiệu lực:** {tongHopDong} hợp đồng\n" +
-                                      $"• **Hóa đơn chờ thanh toán:** {hdChuaThu} hóa đơn\n" +
-                                      $"• **Thiết bị cơ sở vật chất:** {tongThietBi} hạng mục\n" +
-                                      $"• **Biên bản kỷ luật:** {tongViPham} trường hợp";
-                    return Json(new { response = fallback, source = "Hỏi đáp - Thống kê Hệ thống KTX" });
-                }
-                catch (Exception ex) { _logger.LogError(ex, "Lỗi Thống kê"); }
+                    response = "🔒 **Thông báo quyền hạn:** Số liệu thống kê và báo cáo tổng quan toàn hệ thống KTX chỉ dành riêng cho Ban Quản lý KTX. Bạn đang đăng nhập với tư cách **Sinh viên**, vui lòng theo dõi thông tin phòng ở và dịch vụ cá nhân tại Student Portal.",
+                    source = "Cổng thông tin Sinh viên KTX"
+                });
             }
 
             // ---------------------------------------------------------------------
             // 9. TRA CỨU NỘI QUY & TRI THỨC CHUNG (SEMANTIC SIMILARITY RETRIEVAL / RAG)
             // ---------------------------------------------------------------------
-            string matchedFacts = RetrieveSemanticKnowledgeChunks(rawMsg, topK: 3, threshold: 0.05);
+            return await AnswerStudentFromKnowledgeAsync(rawMsg, msgLower, intent, svTag);
+        }
+
+        private async Task<IActionResult> AnswerStudentFromKnowledgeAsync(string rawMsg, string msgLower, string intent, string svTag)
+        {
+            string matchedFacts = RetrievePolicyFacts(rawMsg, msgLower);
             if (string.IsNullOrWhiteSpace(matchedFacts))
             {
+                // Không có nội quy nào liên quan (câu ngoài phạm vi KTX) -> không gửi cho LLM để tránh tự bịa
+                if (!GetFactListByIntent(intent).Any())
+                    return Json(new { response = GetFactsByIntent(intent), source = "Hỏi đáp - Cơ sở tri thức KTX (Semantic RAG)" });
                 matchedFacts = GetFactsByIntent(intent);
             }
 
@@ -1603,9 +1658,19 @@ Câu hỏi: ""{rawMsg}""";
             if (msgLower.Contains("cơ sở vật chất") || msgLower.Contains("thiết bị") || msgLower.Contains("trang bị") ||
                 msgLower.Contains("bàn ghế") || msgLower.Contains("giường tủ"))
                 return "CO_SO_VAT_CHAT";
-            if (msgLower.Contains("sự cố") || msgLower.Contains("báo hỏng") || msgLower.Contains("báo cáo") ||
+            if (msgLower.Contains("sự cố") || msgLower.Contains("báo hỏng") ||
                 msgLower.Contains("sửa chữa") || msgLower.Contains("tiến độ") || msgLower.Contains("duyệt chưa"))
                 return "SU_CO";
+            if (msgLower.Contains("thống kê") || msgLower.Contains("tổng số") || msgLower.Contains("toàn ktx"))
+                return "THONG_KE";
+            if (msgLower.Contains("phòng") || msgLower.Contains("bạn cùng phòng") || msgLower.Contains("ở cùng") ||
+                msgLower.Contains("có những ai") || msgLower.Contains("chỗ trống"))
+                return "PHONG";
+            if (msgLower.Contains("sinh viên") || msgLower.Contains("hồ sơ") || msgLower.Contains("mã sv") || msgLower.Contains("dtc"))
+                return "SINH_VIEN";
+
+            // Các chủ đề nội quy xét sau cùng: câu vừa hỏi số liệu vừa hỏi nội quy (VD: "bao nhiêu phòng trống và giờ giới nghiêm")
+            // được trả số liệu trước, phần nội quy do AppendRelatedPolicy bổ sung
             if (msgLower.Contains("giờ") || msgLower.Contains("giới nghiêm") || msgLower.Contains("đóng cửa") ||
                 msgLower.Contains("mở cửa") || msgLower.Contains("nội quy"))
                 return "GIOGIAC_NOIQUY";
@@ -1615,15 +1680,98 @@ Câu hỏi: ""{rawMsg}""";
                 return "TIEP_KHACH_BAN_BE";
             if (msgLower.Contains("thủ tục trả phòng") || msgLower.Contains("quy định trả phòng"))
                 return "DANG_KY_TRA_PHONG";
-            if (msgLower.Contains("thống kê") || msgLower.Contains("tổng số") || msgLower.Contains("toàn ktx"))
-                return "THONG_KE";
-            if (msgLower.Contains("phòng") || msgLower.Contains("bạn cùng phòng") || msgLower.Contains("ở cùng") ||
-                msgLower.Contains("có những ai") || msgLower.Contains("chỗ trống"))
-                return "PHONG";
-            if (msgLower.Contains("sinh viên") || msgLower.Contains("hồ sơ") || msgLower.Contains("mã sv") || msgLower.Contains("dtc"))
-                return "SINH_VIEN";
 
             return "KHAC";
+        }
+
+        // =========================================================================
+        // PHÂN BIỆT CÂU HỎI NỘI QUY / BIỂU PHÍ VỚI CÂU HỎI TRA CỨU DỮ LIỆU
+        // =========================================================================
+        private static readonly string[] PolicyMarkers =
+        {
+            "giá điện", "giá nước", "đơn giá", "biểu phí", "bảng giá", "giá phòng", "giá thuê", "phí gửi xe", "giá gửi xe",
+            "nội quy", "quy định", "quy chế", "giờ đóng cửa", "giờ mở cửa", "giới nghiêm", "mấy giờ", "giờ giấc",
+            "thủ tục", "hướng dẫn", "như thế nào", "thế nào", "ra sao", "tìm hiểu", "là gì", "được phép", "có được",
+            "chốt số", "hạn thanh toán", "tiếp khách", "ngủ lại", "gửi xe", "đóng cửa", "mở cửa", "về muộn", "về trễ",
+            "mất phí", "miễn phí", "có phí", "tốn phí", "lệ phí", "wifi", "internet"
+        };
+
+        private static readonly string[] DataMarkers =
+        {
+            "của tôi", "của mình", "của em", "phòng tôi", "phòng mình", "phòng em", "tôi còn", "tôi đã", "tôi đang", "tôi nợ",
+            "mình còn", "em còn", "chưa thanh toán", "chưa đóng", "còn nợ", "công nợ", "nợ bao nhiêu", "danh sách",
+            "những ai", "có ai", "ai đang", "bao nhiêu sinh viên", "bao nhiêu phòng", "phòng trống", "còn trống", "còn chỗ",
+            "sắp hết hạn", "đang chờ", "chờ xử lý", "thống kê", "tổng quan", "tổng số", "hồ sơ", "bạn cùng phòng", "ở cùng"
+        };
+
+        // Chủ đề trong knowledge_base.json và từ khóa nhận biết từng chủ đề
+        private static readonly (string Topic, string[] Keywords)[] KnowledgeTopics =
+        {
+            ("GIOGIAC_NOIQUY", new[] { "giờ đóng", "giờ mở", "đóng cửa", "mở cửa", "giới nghiêm", "mấy giờ", "giờ giấc", "nội quy", "về muộn", "về trễ" }),
+            ("HOADON_DIEN_NUOC", new[] { "điện nước", "giá điện", "tiền điện", "giá nước", "tiền nước", "số điện", "khối nước", "kwh", "chốt số", "hạn thanh toán", "hóa đơn", "wifi", "internet", "miễn phí" }),
+            ("BANG_GIA_PHONG", new[] { "giá phòng", "tiền phòng", "biểu phí", "bảng giá", "giá thuê", "loại phòng" }),
+            ("GUI_XE_RA_VAO", new[] { "gửi xe", "bãi xe", "để xe", "xe máy", "xe đạp" }),
+            ("TIEP_KHACH_BAN_BE", new[] { "tiếp khách", "khách", "bạn bè", "người thân", "ngủ lại", "đến thăm" }),
+            ("DANG_KY_TRA_PHONG", new[] { "trả phòng", "rời ktx", "chấm dứt hợp đồng" }),
+            ("BAO_HONG_THIET_BI", new[] { "báo hỏng", "hỏng", "sự cố", "sửa chữa" })
+        };
+
+        // Các cách hỏi giá có từ chen giữa: "giá tiền điện nước", "giá 1 số điện", "tiền nước bao nhiêu một khối"...
+        private static readonly Regex PriceQuestionPattern = new Regex(
+            @"giá\s+(tiền\s+|của\s+|1\s+|một\s+)?(điện|nước|phòng|gửi xe|xe)|bao nhiêu\s+(tiền\s+)?(1|một)\s+(số|khối|kwh|m3)|(1|một)\s+(số điện|khối nước)",
+            RegexOptions.Compiled);
+
+        private static bool HasPolicyMarker(string msgLower) =>
+            PolicyMarkers.Any(msgLower.Contains) || PriceQuestionPattern.IsMatch(msgLower);
+
+        private static bool HasDataReference(string msgLower, bool mentionsEntity) =>
+            mentionsEntity || Regex.IsMatch(msgLower, @"dtc\d+") || DataMarkers.Any(msgLower.Contains);
+
+        private static bool IsPolicyOnlyQuestion(string msgLower, bool mentionsEntity) =>
+            HasPolicyMarker(msgLower) && !HasDataReference(msgLower, mentionsEntity);
+
+        private static string? TopicOfDataIntent(string intent) => intent switch
+        {
+            "HOADON_DIEN_NUOC" => "HOADON_DIEN_NUOC",
+            "PHONG" => "BANG_GIA_PHONG",
+            "SU_CO" or "CO_SO_VAT_CHAT" => "BAO_HONG_THIET_BI",
+            _ => null
+        };
+
+        /// <summary>
+        /// Lấy nội quy cho MỌI chủ đề được nhắc trong câu hỏi (câu hỏi gộp nhiều ý không bị mất ý nào);
+        /// không khớp chủ đề nào thì dùng truy xuất TF-IDF như trước.
+        /// </summary>
+        private string RetrievePolicyFacts(string rawMsg, string msgLower, string? excludeTopic = null, bool allowSemantic = true)
+        {
+            var facts = new List<string>();
+            foreach (var (topic, keywords) in KnowledgeTopics)
+            {
+                if (topic != excludeTopic && keywords.Any(msgLower.Contains))
+                    facts.AddRange(GetFactListByIntent(topic));
+            }
+
+            if (facts.Any())
+                return "• " + string.Join("\n• ", facts.Distinct());
+
+            // Ngưỡng 0.1: dưới mức này chủ yếu là khớp "ăn theo" vô nghĩa (VD "giá vàng" khớp đơn giá nước)
+            return allowSemantic ? RetrieveSemanticKnowledgeChunks(rawMsg, topK: 3, threshold: 0.1) : string.Empty;
+        }
+
+        private IActionResult AppendRelatedPolicy(IActionResult result, string rawMsg, string msgLower)
+        {
+            if (result is not JsonResult json || json.Value == null) return result;
+            if (!HasPolicyMarker(msgLower) || !HasDataReference(msgLower, false)) return result;
+
+            var node = JsonSerializer.SerializeToNode(json.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web)) as System.Text.Json.Nodes.JsonObject;
+            if (node == null || node.ContainsKey("actionCard") || node["response"] is not System.Text.Json.Nodes.JsonValue responseNode) return result;
+            if ((node["source"]?.ToString() ?? "").Contains("tri thức", StringComparison.OrdinalIgnoreCase)) return result;
+
+            string extra = RetrievePolicyFacts(rawMsg, msgLower, TopicOfDataIntent(ClassifyQaIntent(msgLower)), allowSemantic: false);
+            if (string.IsNullOrWhiteSpace(extra)) return result;
+
+            node["response"] = responseNode.ToString() + "\n\n📘 **Nội quy liên quan đến câu hỏi của bạn:**\n" + extra;
+            return Json(node);
         }
 
         // =========================================================================
@@ -1643,6 +1791,16 @@ Câu hỏi: ""{rawMsg}""";
                                          && !ContainsStrictDelegationKeyword(msgLower);
 
                 if (isInquiryQuestion)
+                    return null;
+
+                // Câu mang tính hỏi thông tin ("cho tôi hỏi giờ đóng cửa", "tìm hiểu thủ tục gia hạn")
+                // không được hiểu thành lệnh làm hộ, trừ khi có động từ thao tác rõ ràng
+                string[] infoMarkers = { "tìm hiểu", "cho tôi hỏi", "cho mình hỏi", "cho em hỏi", "hỏi về", "thông tin về",
+                                         "như thế nào", "thế nào", "ra sao", "là gì", "quy định", "nội quy", "thủ tục" };
+                string[] actionVerbs = { "làm hộ", "làm giúp", "báo hộ", "báo giúp", "gửi hộ", "gửi giúp", "tạo hộ", "tạo giúp",
+                                         "đăng ký hộ", "đăng ký giúp", "thanh toán hộ", "thanh toán giúp", "gia hạn hộ",
+                                         "làm đơn", "xin trả phòng", "xin chuyển phòng" };
+                if (infoMarkers.Any(msgLower.Contains) && !actionVerbs.Any(msgLower.Contains))
                     return null;
             }
 
@@ -2445,6 +2603,9 @@ Câu hỏi: ""{rawMsg}""";
                 var allFacts = new List<string>();
                 foreach (var element in doc.RootElement.EnumerateArray())
                 {
+                    // Lời chào không phải nội quy, bỏ qua để câu ngoài phạm vi không khớp nhầm vào đây
+                    if (element.TryGetProperty("intent", out var intentEl) && intentEl.GetString() == "XIN_CHAO")
+                        continue;
                     if (element.TryGetProperty("facts", out var factsEl) && factsEl.ValueKind == JsonValueKind.Array)
                     {
                         foreach (var f in factsEl.EnumerateArray())
@@ -2555,12 +2716,12 @@ Câu hỏi: ""{rawMsg}""";
             return string.Empty;
         }
 
-        private string GetFactsByIntent(string intent)
+        private List<string> GetFactListByIntent(string intent)
         {
             try
             {
                 string jsonPath = System.IO.Path.Combine(_env.WebRootPath, "data", "knowledge_base.json");
-                if (!System.IO.File.Exists(jsonPath)) return "Chưa có dữ liệu.";
+                if (!System.IO.File.Exists(jsonPath)) return new List<string>();
 
                 var jsonContent = System.IO.File.ReadAllText(jsonPath);
                 using var doc = JsonDocument.Parse(jsonContent);
@@ -2569,12 +2730,24 @@ Câu hỏi: ""{rawMsg}""";
                 {
                     if (element.GetProperty("intent").GetString() == intent)
                     {
-                        var factsList = element.GetProperty("facts").EnumerateArray();
-                        return "• " + string.Join("\n• ", factsList.Select(f => f.GetString()));
+                        return element.GetProperty("facts").EnumerateArray()
+                            .Select(f => f.GetString())
+                            .Where(f => !string.IsNullOrWhiteSpace(f))
+                            .Select(f => f!.Trim())
+                            .ToList();
                     }
                 }
             }
             catch { }
+
+            return new List<string>();
+        }
+
+        private string GetFactsByIntent(string intent)
+        {
+            var facts = GetFactListByIntent(intent);
+            if (facts.Any())
+                return "• " + string.Join("\n• ", facts);
 
             return "Xin lỗi, mình chưa tìm thấy thông tin phù hợp. Bạn có thể hỏi về: 'giá phòng', 'phòng trống', 'giờ giới nghiêm', 'báo sự cố', 'điện nước', 'gửi xe', 'trả phòng', 'hợp đồng', 'kỷ luật', 'thống kê' hoặc nhờ mình thực hiện trực tiếp các thao tác nhé!";
         }
@@ -2597,7 +2770,8 @@ Câu hỏi: ""{rawMsg}""";
 
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                // llama3 (8B) chạy trên máy cá nhân thường mất 5-20 giây, lần gọi đầu còn phải nạp model
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 var httpClient = _httpClientFactory.CreateClient("Ollama");
                 var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
                 var res = await httpClient.PostAsync(baseUrl, content, cts.Token);
@@ -2607,14 +2781,21 @@ Câu hỏi: ""{rawMsg}""";
                     using var doc = JsonDocument.Parse(json);
                     return doc.RootElement.GetProperty("message").GetProperty("content").GetString();
                 }
+                _logger.LogWarning("Ollama trả về mã {Status} cho model '{Model}' (kiểm tra đã chạy 'ollama pull {Model}' chưa) -> Sử dụng Fallback nội bộ.", (int)res.StatusCode, modelName, modelName);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Ollama ({Model}) không phản hồi trong 30 giây -> Sử dụng Fallback nội bộ.", modelName);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("Ollama chưa khởi chạy tại localhost:11434 ({Msg}) -> Sử dụng Fallback nội bộ.", ex.Message);
+                _logger.LogWarning("Không kết nối được Ollama tại {Url} ({Msg}) -> Sử dụng Fallback nội bộ.", baseUrl, ex.Message);
             }
 
             return null;
         }
+        private static bool IsOutOfDomain(string? input) => SafetyGuardrails.IsOutOfDomain(input);
+
     }
 
     public class ChatRequest

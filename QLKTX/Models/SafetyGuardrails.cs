@@ -121,6 +121,332 @@ namespace QLKTX.Models
         #region 2. OUTPUT GUARDRAILS & PRIVACY
 
         /// <summary>
+
+
+        /// Phát hiện các câu hỏi ngoài lề (Out-of-domain) không thuộc phạm vi KTX:
+
+
+        /// Công thức nấu ăn/ẩm thực, thời tiết, lập trình/code, giải toán/học tập, thơ ca/game, tài chính/coin, sức khỏe ngoài lề...
+
+
+        /// </summary>
+
+
+        public static bool IsOutOfDomain(string? input)
+
+
+        {
+
+
+            if (string.IsNullOrWhiteSpace(input)) return false;
+
+
+
+
+
+            string msgLower = input.Trim().ToLowerInvariant();
+
+
+
+
+
+            // Nếu câu hỏi gắn liền với KTX/ký túc xá và liên quan đến phòng ở, nội quy... thì không chặn
+
+
+            bool hasKtxContext = msgLower.Contains("ktx") || msgLower.Contains("ký túc xá") || msgLower.Contains("kí túc xá") ||
+
+
+                                 msgLower.Contains("nội quy") || msgLower.Contains("phòng ở") || msgLower.Contains("tiền phòng");
+
+
+
+
+
+            // 1. Ẩm thực & Nấu ăn ngoài lề (công thức nấu ăn, cách nấu, dạy nấu, món ăn, thực đơn, sườn, phở, trà sữa, gà rán...)
+
+
+            bool isCookingOutOfDomain = (msgLower.Contains("công thức") && (msgLower.Contains("nấu") || msgLower.Contains("món") || msgLower.Contains("ăn") || msgLower.Contains("bánh")))
+
+
+                                        || msgLower.Contains("cách nấu")
+
+
+                                        || msgLower.Contains("dạy nấu")
+
+
+                                        || msgLower.Contains("hướng dẫn nấu")
+
+
+                                        || msgLower.Contains("cách làm món")
+
+
+                                        || msgLower.Contains("món ăn")
+
+
+                                        || msgLower.Contains("hôm nay ăn gì")
+
+
+                                        || msgLower.Contains("thực đơn")
+
+
+                                        || msgLower.Contains("sườn xào")
+
+
+                                        || msgLower.Contains("nấu phở")
+
+
+                                        || msgLower.Contains("pha trà sữa")
+
+
+                                        || msgLower.Contains("gà rán")
+
+
+                                        || msgLower.Contains("cơm chiên")
+
+
+                                        || msgLower.Contains("luộc gà")
+
+
+                                        || msgLower.Contains("nướng bánh")
+
+
+                                        || msgLower.Contains("làm bánh")
+
+
+                                        || msgLower.Contains("bánh bông lan");
+
+
+
+
+
+            if (isCookingOutOfDomain && !hasKtxContext) return true;
+
+
+
+
+
+            // 2. Thời tiết, khí hậu
+
+
+            bool isWeather = msgLower.Contains("thời tiết") || msgLower.Contains("dự báo thời tiết") ||
+
+
+                             msgLower.Contains("nhiệt độ hôm nay") || msgLower.Contains("hôm nay mưa") ||
+
+
+                             msgLower.Contains("trời có mưa") || msgLower.Contains("nắng không") ||
+
+
+                             msgLower.Contains("trời có rét") || msgLower.Contains("áp thấp nhiệt đới") ||
+
+
+                             msgLower.Contains("bão số");
+
+
+
+
+
+            if (isWeather) return true;
+
+
+
+
+
+            // 3. Công nghệ, lập trình, tin học văn phòng
+
+
+            bool isCoding = msgLower.Contains("viết code") || msgLower.Contains("lập trình") ||
+
+
+                            msgLower.Contains("python") || msgLower.Contains("c++") ||
+
+
+                            msgLower.Contains("react") || msgLower.Contains("nodejs") ||
+
+
+                            msgLower.Contains("quicksort") || msgLower.Contains("fibonacci") ||
+
+
+                            msgLower.Contains("màn hình xanh") || msgLower.Contains("vlookup") ||
+
+
+                            msgLower.Contains("cài win") || msgLower.Contains("hệ điều hành ubuntu") ||
+
+
+                            msgLower.Contains("prompt engineering") || msgLower.Contains("truy vấn sql");
+
+
+
+
+
+            if (isCoding) return true;
+
+
+
+
+
+            // 4. Học tập, toán học, khoa học, văn thơ
+
+
+            bool isAcademic = msgLower.Contains("giải phương trình") || msgLower.Contains("phương trình bậc") ||
+
+
+                              msgLower.Contains("thể tích hình") || msgLower.Contains("diện tích hình") ||
+
+
+                              msgLower.Contains("định luật") || msgLower.Contains("nguyên tử khối") ||
+
+
+                              msgLower.Contains("bài tập hóa") || msgLower.Contains("bài tập về nhà") ||
+
+
+                              msgLower.Contains("giải toán") || msgLower.Contains("nghị luận") ||
+
+
+                              msgLower.Contains("dịch sang tiếng anh") || msgLower.Contains("dịch câu này") ||
+
+
+                              msgLower.Contains("điện biên phủ");
+
+
+
+
+
+            if (isAcademic) return true;
+
+
+
+
+
+            // 5. Giải trí tổng hợp, làm thơ, kể chuyện, game, âm nhạc
+
+
+            bool isEntertainment = msgLower.Contains("làm thơ") || msgLower.Contains("bài thơ") ||
+
+
+                                   msgLower.Contains("kể chuyện cười") || msgLower.Contains("chuyện cười") ||
+
+
+                                   msgLower.Contains("đố vui") || msgLower.Contains("chơi game") ||
+
+
+                                   msgLower.Contains("liên quân") || msgLower.Contains("fifa online") ||
+
+
+                                   msgLower.Contains("genshin") || msgLower.Contains("hát một bài") ||
+
+
+                                   msgLower.Contains("hát tặng") || msgLower.Contains("bài hát hot") ||
+
+
+                                   msgLower.Contains("phim chiếu rạp") || msgLower.Contains("tiktok");
+
+
+
+
+
+            if (isEntertainment) return true;
+
+
+
+
+
+            // 6. Tin tức thị trường, giá vàng, chứng khoán, tiền tệ
+
+
+            bool isMarket = msgLower.Contains("giá vàng") || msgLower.Contains("chứng khoán") ||
+
+
+                            msgLower.Contains("tỷ giá") || msgLower.Contains("usd sang vnd") ||
+
+
+                            msgLower.Contains("tiền ảo") || msgLower.Contains("bitcoin") || msgLower.Contains("crypto") ||
+
+
+                            msgLower.Contains("đầu tư cổ phiếu") || msgLower.Contains("vn-index");
+
+
+
+
+
+            if (isMarket) return true;
+
+
+
+
+
+            // 7. Y tế, sức khỏe, thể thao, làm đẹp ngoài lề
+
+
+            bool isHealthSport = msgLower.Contains("giảm cân") || msgLower.Contains("giảm béo") ||
+
+
+                                 (msgLower.Contains("giảm") && (msgLower.Contains("kg") || msgLower.Contains("ký") || msgLower.Contains("mỡ") || msgLower.Contains("cân"))) ||
+
+
+                                 msgLower.Contains("đau dạ dày") || msgLower.Contains("cảm cúm") || msgLower.Contains("uống thuốc") ||
+
+
+                                 msgLower.Contains("ngoại hạng anh") || msgLower.Contains("chăm sóc da") ||
+
+
+                                 msgLower.Contains("uống bao nhiêu lít nước") || msgLower.Contains("vô địch") ||
+
+
+                                 msgLower.Contains("tập gym") || msgLower.Contains("world cup");
+
+
+
+
+
+            if (isHealthSport) return true;
+
+
+
+
+
+            // 8. Tán gẫu cá nhân không liên quan KTX
+
+
+            bool isSmallTalk = msgLower.Contains("bạn có người yêu") || msgLower.Contains("yêu tôi không") ||
+
+
+                               msgLower.Contains("ai tạo ra bạn") || msgLower.Contains("tỏ tình") ||
+
+
+                               msgLower.Contains("tâm trạng tôi") || msgLower.Contains("ý nghĩa cuộc sống") ||
+
+
+                               msgLower.Contains("bạn bao nhiêu tuổi") || msgLower.Contains("bạn sinh năm");
+
+
+
+
+
+            if (isSmallTalk) return true;
+
+
+
+
+
+            return false;
+
+
+        }
+
+
+
+
+
+        #endregion
+
+
+
+
+
+        #region 2. OUTPUT GUARDRAILS & PRIVACY
+
+        /// <summary>
         /// Che mờ số điện thoại để bảo vệ quyền riêng tư cá nhân theo chuẩn:
         /// Giữ lại 3 số đầu và 3 số cuối, che 4 số giữa bằng **** (Ví dụ: 0981234567 -> 098****567).
         /// </summary>
@@ -171,7 +497,8 @@ namespace QLKTX.Models
             result = Regex.Replace(result, @"\b(0\d{2})\d{3,4}(\d{3})\b", "$1****$2");
 
             // 3. Quét và che mật khẩu tài khoản
-            result = Regex.Replace(result, @"(?i)(mật khẩu|matkhau|password)[\s:=]+([^\s,;]+)", "$1: [ĐÃ_BẢO_MẬT]");
+            // Chỉ che khi có dấu hiệu gán giá trị (":", "=", "là"), tránh che nhầm câu như "xác thực mật khẩu cá nhân"
+            result = Regex.Replace(result, @"(?i)(mật khẩu|matkhau|password)(\s*[:=]\s*|\s+là\s+)([^\s,;]+)", "$1: [ĐÃ_BẢO_MẬT]");
 
             return result;
         }
