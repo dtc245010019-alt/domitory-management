@@ -7,12 +7,12 @@
 
 ## 1. TỔNG QUAN VỀ MÔ HÌNH NHÀ MÁY PHÁT TRIỂN PHẦN MỀM (AI AGENT FACTORY)
 
-Trong kỷ nguyên Agentic AI và Kỹ nghệ phần mềm hiện đại, quy trình phát triển phần mềm (SDLC) truyền thống được nâng cấp thành mô hình **SDLC AI Agent Factory** - Một "nhà máy" phần mềm tự động hóa cao độ, nơi các AI Agent chuyên biệt (Specialized Subagents) phối hợp nhịp nhàng theo chu trình khép kín, được định hướng bởi kỹ thuật **Context Engineering** và kiểm soát bởi **Safety Guardrails Framework**.
+Tài liệu này mô tả cách nhóm tổ chức việc dùng trợ lý AI trong quy trình phát triển phần mềm (SDLC) của dự án. Nhóm gọi mô hình này là **SDLC AI Agent Factory**: công việc được chia thành các vai trò (phân tích, kiến trúc, lập trình, kiểm thử, an toàn, triển khai), mỗi vai trò có ngữ cảnh và prompt riêng (**Context Engineering**) và mọi đầu ra đều phải qua kiểm tra của **Safety Guardrails** cùng bộ test tự động. Các "Agent" ở đây là vai trò giao việc cho trợ lý AI, không phải các chương trình chạy độc lập; thành viên nhóm là người chuyển kết quả giữa các bước và duyệt lại.
 
 Mục tiêu cốt lõi của SDLC AI Agent Factory:
-- **Tối đa hóa tốc độ và chất lượng:** Tự động hóa từ phân tích đặc tả, thiết kế kiến trúc, sinh mã nguồn, sinh test cases kiểm thử tự động đến đóng gói và vận hành sản phẩm.
+- **Tăng tốc có kiểm soát:** dùng AI hỗ trợ từ phân tích đặc tả, thiết kế, sinh mã, sinh test case đến đóng gói; mỗi bước đều có người kiểm tra lại.
 - **Bảo toàn các luật bất biến nghiệp vụ (Business Invariants):** Đảm bảo mã nguồn được sinh ra không bao giờ vi phạm các quy tắc nghiệp vụ cốt lõi (Bảo toàn Soft Delete, Đồng bộ Sĩ số X/Y, Bảo mật tài chính, Rào chắn đạo đức AI).
-- **Kiểm thử tự động hóa 100%:** Mọi thay đổi đều được xác thực qua Unit Tests và Integration Tests trước khi triển khai.
+- **Kiểm thử tự động:** mọi thay đổi được chạy lại bộ Unit Tests và Integration Tests (hiện 64 test) trước khi gộp vào nhánh chính.
 
 ---
 
@@ -33,7 +33,7 @@ flowchart TD
     subgraph T2["TẦNG 2: CƠ SỞ TRI THỨC VÀ NỘI QUY KTX (Domain Knowledge RAG)"]
         direction TB
         RAG1["knowledge_base.json: Biểu phí phòng, đơn giá điện nước chuẩn 2.500đ/kWh"]
-        RAG2["Nội quy giờ giấc 23:00 - 05:30, quy định gửi xe, tiếp khách, báo cáo sự cố"]
+        RAG2["Nội quy giờ giấc: đóng cửa 23:00, mở cửa 05:00, quy định gửi xe, tiếp khách, báo cáo sự cố"]
     end
 
     subgraph T3["TẦNG 3: TRẠNG THÁI HỆ THỐNG ĐỘNG (Dynamic Database State)"]
@@ -46,7 +46,7 @@ flowchart TD
         direction TB
         G1["Input Guardrails: Chặn Prompt Injection, làm sạch ký tự điều khiển"]
         G2["Output Guardrails: PII Scrubber (CCCD, SĐT), chống Hallucination"]
-        G3["Execution Guardrails: Timeout 8s, kích hoạt Rule-based Smart Fallback"]
+        G3["Execution Guardrails: Timeout 30s/45s, kích hoạt Rule-based Smart Fallback"]
     end
 
     T1 --> T2 --> T3 --> T4
@@ -55,14 +55,14 @@ flowchart TD
 ### Chi tiết các tầng ngữ cảnh:
 1. **Tầng 1 - Core Invariants (Bất biến cốt lõi):** Được nạp cố định vào System Prompt cấp cao nhất của mọi Agent. Bất kỳ mã nguồn hoặc câu trả lời nào vi phạm các luật này đều bị loại bỏ ngay từ khâu thiết kế.
 2. **Tầng 2 - Domain Knowledge RAG (Tri thức chuyên ngành):** Cơ sở tri thức chuẩn định dạng JSON (`knowledge_base.json`) chứa các chính sách nội quy, biểu phí, quy chuẩn ký túc xá. Được truy xuất theo Intent của người dùng để làm giàu ngữ cảnh Prompt.
-3. **Tầng 3 - Dynamic State (Trạng thái CSDL thực):** Trích xuất tức thời từ SQL Server qua EF Core 8.0 (ví dụ: sĩ số thực tế của phòng, danh sách hóa đơn quá hạn, sự cố chưa xử lý). Dữ liệu này được làm sạch qua bộ lọc `SafetyGuardrails.FilterAiContext` trước khi chuyển giao.
-4. **Tầng 4 - Execution Guardrails (Rào chắn an toàn):** Kiểm tra và làm sạch toàn bộ đầu vào và đầu ra; khống chế thời gian phản hồi (Timeout 8s) và tự động chuyển hướng sang chế độ Fallback nội bộ khi API bên ngoài gặp sự cố.
+3. **Tầng 3 - Dynamic State (Trạng thái CSDL thực):** Trích xuất tức thời từ SQL Server qua EF Core 8.0 (ví dụ: sĩ số thực tế của phòng, danh sách hóa đơn quá hạn, sự cố chưa xử lý). Câu trả lời của AI được lọc qua `SafetyGuardrails.ScrubPII` (che CCCD); số điện thoại của sinh viên khác được che bằng `MaskPhone`. Hàm `FilterAiContext` (loại CCCD, mật khẩu khỏi dữ liệu) đã có và được kiểm thử nhưng chưa được gọi ở luồng chatbot.
+4. **Tầng 4 - Execution Guardrails (Rào chắn an toàn):** Kiểm tra và làm sạch toàn bộ đầu vào và đầu ra; khống chế thời gian chờ (30s với chatbot, 45s với gợi ý xếp phòng và tóm tắt sự cố) và tự động chuyển hướng sang chế độ Fallback nội bộ khi API bên ngoài gặp sự cố.
 
 ---
 
 ## 3. KIẾN TRÚC NHÀ MÁY ĐA TÁC NHÂN (MULTI-AGENT FACTORY ARCHITECTURE)
 
-Nhà máy AI Agent hoạt động theo cơ chế chuyên môn hóa sâu, gồm 6 Agent độc lập tương tác qua các hợp đồng dữ liệu chuẩn hóa:
+Quy trình gồm 6 vai trò. Sơ đồ dưới đây là thứ tự giao việc; mũi tên giữa các vai trò là bước thành viên nhóm chuyển kết quả và duyệt lại:
 
 ```mermaid
 sequenceDiagram
@@ -85,16 +85,16 @@ sequenceDiagram
     QA->>QA: Sinh xUnit Unit Tests & Integration Tests (Pass/Fail)
     alt Có lỗi kiểm thử
         QA-->>Coder: Trả về StackTrace và yêu cầu FixBug
-    else 100% Tests PASS
+    else Toàn bộ test PASS
         QA->>Sec: Chuyển giao gói kiểm thử thành công
         Sec->>Sec: Quét Prompt Injection, rà soát PII, kiểm tra Guardrails
         Sec->>DevOps: Xác nhận an toàn & bảo mật
         DevOps->>DevOps: Docker Build, Health Checks & CI/CD Pipeline
-        DevOps-->>Dev: Sản phẩm hoàn thiện sẵn sàng triển khai (Production Ready)
+        DevOps-->>Dev: Sản phẩm sẵn sàng triển khai
     end
 ```
 
-### Vai trò và nhiệm vụ chi tiết của 6 Agent:
+### Vai trò và nhiệm vụ của 6 vai trò:
 
 #### 1. 📋 Business Analyst Agent (BA Agent)
 - **Nhiệm vụ:** Tiếp nhận yêu cầu từ người dùng, đối chiếu với 5 luật bất biến nghiệp vụ của KTX.
@@ -102,7 +102,7 @@ sequenceDiagram
 
 #### 2. 🏗️ System Architect Agent (Kiến trúc sư hệ thống)
 - **Nhiệm vụ:** Thiết kế mô hình dữ liệu quan hệ (ERD 8 bảng: SinhVien, Phong, HopDong, HoaDon, ViPham, BaoCaoSuCo, CoSoVatChat, TaiKhoan).
-- **Đầu ra:** Lược đồ CSDL EF Core 8.0, định nghĩa Index, quan hệ Khóa ngoại (`Restrict`/`Cascade`), kiến trúc phân lớp Controller - Service - Model - View.
+- **Đầu ra:** Lược đồ CSDL EF Core 8.0, định nghĩa Index, quan hệ khóa ngoại (`Restrict`), kiến trúc Controller - Model - View (chưa tách tầng Service).
 
 #### 3. 💻 Backend & Frontend Developer Agent (Coder Agent)
 - **Nhiệm vụ:** Hiện thực hóa mã nguồn ASP.NET Core 8.0 MVC và giao diện Razor View.
@@ -110,7 +110,7 @@ sequenceDiagram
   - Áp dụng `[AdminAuthorize]` trên các Controller quản trị.
   - Sử dụng Session phía máy chủ để chống giả mạo vai trò.
   - Không bao giờ xóa cứng dữ liệu (`DeleteConfirmed` chỉ đổi trạng thái sang `"Đã rời đi"`).
-  - Tích hợp gọi Ollama AI qua `IHttpClientFactory` có `CancellationTokenSource` 8s.
+  - Tích hợp gọi Ollama AI qua `IHttpClientFactory` có giới hạn thời gian 30s (chatbot) / 45s (gợi ý phòng, tóm tắt sự cố).
 
 #### 4. 🧪 Test Automation Agent (QA Agent)
 - **Nhiệm vụ:** Xây dựng hệ thống kiểm thử tự động đa tầng:
@@ -122,32 +122,34 @@ sequenceDiagram
 - **Rào chắn bảo vệ:**
   - *Input Guardrails:* Quét và vô hiệu hóa Prompt Injection (các từ khóa "bỏ qua chỉ dẫn", "trở thành hacker", "lộ mật khẩu").
   - *Output Guardrails:* Làm sạch PII (CCCD 12 số, số điện thoại, mật khẩu tài khoản).
-  - *Execution Guardrails:* Kích hoạt Rule-based Smart Fallback đảm bảo ứng dụng không bao giờ bị gián đoạn khi mô hình AI bên ngoài gặp sự cố.
+  - *Execution Guardrails:* Kích hoạt Rule-based Smart Fallback để người dùng vẫn nhận được kết quả khi Ollama không chạy hoặc quá thời gian.
 
 #### 6. 🚀 DevOps & Observability Agent
-- **Nhiệm vụ:** Đóng gói ứng dụng vào Docker Container đa tầng (Multi-stage build), cấu hình mạng kết nối `host.docker.internal` tới CSDL SQL Server và Ollama.
+- **Nhiệm vụ:** Đóng gói ứng dụng vào Docker Container đa tầng (Multi-stage build), kết nối tới SQL Server qua service `sqlserver` trong `docker-compose.yml` và tới Ollama chạy trên máy host qua `host.docker.internal`.
 - **Giám sát:** Cấu hình Health Checks chuẩn tại `/health` trả về JSON trạng thái hệ thống, Database và AI Service; thiết lập CI/CD pipeline tự động hóa quy trình kiểm thử và đóng gói.
 
 ---
 
 ## 4. QUY TRÌNH KIỂM THỬ VÀ BẢO ĐẢM CHẤT LƯỢNG (TEST STRATEGY & COVERAGE)
 
-Nhà máy AI Agent áp dụng mô hình kiểm thử kim tự tháp (Testing Pyramid) đảm bảo chất lượng phần mềm đạt mức tối đa:
+Nhóm áp dụng mô hình kiểm thử kim tự tháp (Testing Pyramid). Lần chạy gần nhất (30/10/2026): 64/64 test xUnit đạt.
 
 | Nhóm kiểm thử | Công nghệ thực thi | Danh mục kịch bản kiểm thử | Tỷ lệ Đạt |
 | :--- | :--- | :--- | :---: |
-| **Unit Tests: Tính phí & Hóa đơn** | xUnit, Theory, InlineData | - Tính tiền điện nước hợp lệ theo công thức<br>- Chặn tạo hóa đơn khi `ChiSoMoi <= ChiSoCu`<br>- Tính tiền phòng theo loại phòng và số tháng | 100% PASS |
-| **Unit Tests: Phòng & Sĩ số** | EF Core InMemory | - Xếp sinh viên vào phòng còn chỗ -> tăng sĩ số<br>- Xếp vào giường cuối -> tự động đổi "Đã đầy"<br>- Xóa mềm -> chuyển "Đã rời đi", mở lại "Còn chỗ"<br>- Đình chỉ kỷ luật -> tự động giải phóng giường | 100% PASS |
-| **Unit Tests: An toàn AI & Privacy** | xUnit, Regex, PII Filter | - Làm mờ số điện thoại: `098****567`<br>- Loại bỏ hoàn toàn CCCD và Mật khẩu khỏi Prompt<br>- Thuật toán Smart Fallback tiếng Việt khi Ollama offline<br>- Ngăn chặn câu lệnh tấn công Prompt Injection | 100% PASS |
-| **Integration Tests** | WebApplicationFactory, .NET 8 TestHost | - Endpoint chẩn đoán `/_diag` trả về HTTP 200 OK<br>- Endpoint giám sát `/health` trả về HTTP 200 OK & JSON<br>- Cơ chế phân quyền chặn truy cập Admin -> Redirect 302 | 100% PASS |
-| **Script Automation Tests** | PowerShell Script (`run_tests.ps1`) | - Kiểm tra 21 tiêu chí kiến trúc, tệp cấu hình, Docker, RAG Knowledge Base, giao diện | 100% PASS |
+| **Unit Tests: Tính phí & Hóa đơn (20)** | xUnit, Theory, InlineData | - Tính tiền điện nước hợp lệ theo công thức<br>- Chặn tạo hóa đơn khi `ChiSoMoi <= ChiSoCu`<br>- Tính tiền phòng theo loại phòng và số tháng | Đạt |
+| **Unit Tests: Phòng & Sĩ số (4)** | EF Core InMemory | - Xếp sinh viên vào phòng còn chỗ -> tăng sĩ số<br>- Xếp vào giường cuối -> tự động đổi "Đã đầy"<br>- Xóa mềm -> chuyển "Đã rời đi", mở lại "Còn chỗ"<br>- Đình chỉ kỷ luật -> tự động giải phóng giường | Đạt |
+| **Unit Tests: An toàn AI & Privacy (19)** | xUnit, Regex, PII Filter | - Làm mờ số điện thoại: `098****567`<br>- Bộ lọc `FilterAiContext` loại CCCD và mật khẩu<br>- Thuật toán Smart Fallback tiếng Việt khi Ollama offline<br>- Ngăn chặn câu lệnh tấn công Prompt Injection | Đạt |
+| **Integration Tests (10)** | WebApplicationFactory, .NET 8 TestHost | - Endpoint chẩn đoán `/_diag` trả về HTTP 200 OK<br>- Endpoint giám sát `/health` trả về HTTP 200 OK & JSON<br>- Cơ chế phân quyền chặn truy cập Admin -> Redirect 302 | Đạt |
+| **Integration Tests: AI & Nghiệp vụ (3)** | WebApplicationFactory | - Gợi ý xếp phòng, tóm tắt sự cố trả đúng cấu trúc<br>- Thanh toán sai mật khẩu bị chặn | Đạt |
+| **Unit Tests: Định tuyến Chatbot (8)** | xUnit, Moq, Ollama tắt | - Câu hỏi nội quy không bị trả về công nợ<br>- Câu hỏi nhiều ý được trả lời đủ<br>- Câu vừa hỏi dữ liệu vừa hỏi nội quy | Đạt |
+| **Script Automation Tests** | PowerShell Script (`run_tests.ps1`) | - Kiểm tra 26 tiêu chí kiến trúc, tệp cấu hình, Docker, RAG Knowledge Base, giao diện | Đạt |
 
 ---
 
 ## 5. ĐÓNG GÓI DOCKER VÀ GIÁM SÁT SỨC KHỎE HỆ THỐNG (OBSERVABILITY)
 
 ### 5.1. Cấu hình Docker Healthcheck
-Service `qlktx-web` trong `docker-compose.yml` được cấu hình cơ chế tự phục hồi (Self-healing):
+Service `qlktx-web` trong `docker-compose.yml` có healthcheck gọi `/health` định kỳ (kết hợp `restart: unless-stopped`):
 ```yaml
 healthcheck:
   test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
@@ -192,9 +194,7 @@ healthcheck:
 ---
 
 ## 6. KẾT LUẬN & ĐÁNH GIÁ
-Mô hình **SDLC AI Agent Factory** kết hợp với **Context Engineering** và **Safety Guardrails Framework** đã xây dựng thành công dự án Quản lý Ký túc xá QLKTX:
-- Đảm bảo 100% các nguyên tắc nghiệp vụ bất khả xâm phạm.
-- Mã nguồn biên dịch đạt chuẩn `0 Errors`, `0 Warnings CS0162`.
-- Bộ kiểm thử chuẩn hóa đạt tỷ lệ **100% PASS** trên toàn bộ 53 Unit Tests, Integration Tests và 21 Test Cases tự động.
-- Sẵn sàng đóng gói triển khai môi trường Production và đáp ứng tối đa tiêu chí đánh giá của học phần AIA331.
-
+Cách chia việc theo vai trò giúp nhóm dùng AI có kiểm soát trong dự án QLKTX:
+- Các luật nghiệp vụ (xóa mềm, đồng bộ sĩ số, bảo mật thanh toán, che dữ liệu cá nhân) được đưa vào ngữ cảnh ngay từ đầu và có test kiểm tra.
+- Mã nguồn biên dịch không lỗi; 64/64 test xUnit và 26 kịch bản script đều đạt.
+- Hạn chế còn lại: chưa có rate limit cho lời gọi AI, `FilterAiContext` chưa được dùng ở luồng chatbot, Controller chưa tách tầng Service. Các lỗi do AI sinh ra (xóa cứng, đếm sai sĩ số, lộ dữ liệu cá nhân) đều được phát hiện nhờ người duyệt và test, nên bước kiểm tra của con người vẫn là bắt buộc.

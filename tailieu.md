@@ -3,7 +3,7 @@
 - **Trường:** Đại học Công Nghệ Thông Tin và Truyền Thông - Đại học Thái Nguyên
 - **Học phần:** Ứng dụng trí tuệ nhân tạo - AIA331
 - **Mã đề tài:** 80309 — Hệ thống quản lý ký túc xá có tích hợp AI
-- **Sinh viên thực hiện:** Nguyễn Khánh Duy
+- **Nhóm 06:** Nguyễn Khánh Duy, Vũ Văn Dũng, Dương Văn Chung
 
 ---
 
@@ -55,14 +55,14 @@ Trong công tác quản lý nội trú tại trường đại học, số lượ
    - Phân tách độc lập phiên làm việc (`Session`) giữa Ban Quản lý (`Admin_DangNhap`) và Sinh viên (`MaSV_DangNhap`).
    - Toàn bộ các Controller quản trị được bảo vệ bởi tầng kiểm soát `[AdminAuthorize]`, ngăn chặn truy cập trái phép qua URL.
    - Khi sinh viên thanh toán hóa đơn trên Portal, bắt buộc xác thực lại mật khẩu tài khoản.
-   - **Đạo đức & Quyền riêng tư AI:** Tự động lọc bỏ dữ liệu định danh nhạy cảm (`CCCD`, `SoDienThoai`) trước khi đóng gói JSON gửi sang mô hình ngôn ngữ lớn (LLM).
+   - **Đạo đức & Quyền riêng tư AI:** Câu trả lời của AI được lọc qua `SafetyGuardrails.ScrubPII` (che CCCD); số điện thoại của sinh viên khác hiển thị dạng `098****567` (`MaskPhone`); mật khẩu không bao giờ được đưa vào prompt.
 2. **Hiệu năng (Performance):**
    - Truy vấn CSDL tối ưu với `.AsNoTracking()` cho các tác vụ đọc thống kê và tra cứu AI; thời gian phản hồi trang quản lý `< 500ms`.
-   - Cấu hình `Timeout = 8 giây` cho các lời gọi AI để không làm treo luồng xử lý của Web Server.
+   - Giới hạn thời gian gọi AI: 30 giây với chatbot, 45 giây với gợi ý xếp phòng và tóm tắt sự cố (đủ cho llama3 chạy trên máy cá nhân), để không làm treo luồng xử lý của Web Server.
 3. **Tính khả dụng & Chịu lỗi (Availability & Fault Tolerance):**
-   - Cơ chế **Multi-layer Fallback**: Khi dịch vụ AI cục bộ (Ollama) chưa bật hoặc quá tải, cả 3 chức năng AI (Chatbot, Gợi ý xếp phòng, Tóm tắt sự cố) đều tự động chuyển sang thuật toán xử lý nội bộ, đảm bảo hệ thống hoạt động 100% không gián đoạn.
+   - Cơ chế **Multi-layer Fallback**: Khi dịch vụ AI cục bộ (Ollama) chưa bật hoặc quá tải, cả 3 chức năng AI (Chatbot, Gợi ý xếp phòng, Tóm tắt sự cố) đều chuyển sang kết quả tính bằng C# từ dữ liệu CSDL, người dùng vẫn nhận được câu trả lời thay vì trang lỗi.
 4. **Sao lưu & Toàn vẹn dữ liệu (Backup & Data Integrity):**
-   - Áp dụng cơ chế **Xóa mềm (Soft Delete)** đối với Sinh viên (`TinhTrangLuuTru = "Đã rời đi"`), bảo toàn 100% lịch sử hợp đồng, hóa đơn và kỷ luật.
+   - Áp dụng cơ chế **Xóa mềm (Soft Delete)** đối với Sinh viên (`TinhTrangLuuTru = "Đã rời đi"`), giữ nguyên lịch sử hợp đồng, hóa đơn và kỷ luật.
    - Hỗ trợ xuất toàn bộ hồ sơ ra file Excel (`.xlsx`) và tái tạo CSDL qua EF Core Migrations + `DbInitializer`.
 5. **Trải nghiệm người dùng (UI/UX):**
    - Thiết kế chuẩn **SaaS Dashboard** hiện đại với Bootstrap 5, bố cục tràn viền (`container-fluid`), hỗ trợ tìm kiếm thông minh không phân biệt chữ hoa/thường hay tiền tố `P.`.
@@ -290,7 +290,7 @@ flowchart TB
   2. Entity Framework Core hỗ trợ xử lý khóa ngoại, quan hệ 1-N phức tạp và cơ chế xóa mềm (Soft Delete) ổn định, tránh mất dữ liệu lịch sử lưu trú.
   3. Tích hợp sẵn Dependency Injection (`IHttpClientFactory`) quản lý kết nối HTTP Pooling tối ưu khi gọi mô hình ngôn ngữ lớn (LLM).
 - **Frontend:** HTML5, Razor Views (`.cshtml`), Bootstrap 5, Bootstrap Icons, Chart.js đảm bảo giao diện Responsive chuẩn SaaS Dashboard, hoạt động mượt mà trên cả trình duyệt máy tính và di động.
-- **AI Service:** Tích hợp mô hình cục bộ **Ollama (`llama3`)** qua chuẩn REST API JSON Payload, kết hợp cơ chế Retrieval-Augmented Generation (RAG) và Rule-based Smart Fallback, đáp ứng 100% mục tiêu của đề tài 80309.
+- **AI Service:** Tích hợp mô hình cục bộ **Ollama (`llama3`)** qua chuẩn REST API JSON Payload, kết hợp cơ chế Retrieval-Augmented Generation (RAG) và Rule-based Smart Fallback.
 
 ---
 
@@ -326,10 +326,10 @@ Toàn bộ Prompt được tách biệt khỏi Controller và quản lý tập t
 - **Đầu vào (Input):** JSON Payload gửi tới `http://localhost:11434/api/chat` gồm `model: "llama3"`, `stream: false`, và mảng `messages` (`system`, `user`).
 - **Đầu ra (Output):** JSON `{ "response": "...", "source": "Cơ sở tri thức KTX" }`.
 - **Ràng buộc & Giới hạn an toàn:**
-  1. Chỉ truy vấn CSDL ở chế độ **Read-Only** (`AsNoTracking()`).
-  2. Loại bỏ các cột nhạy cảm (`CCCD`, `SoDienThoai`, `MatKhau`) trước khi serialize sang JSON.
-  3. Giới hạn số bản ghi ngữ cảnh (`Take(10)` / `Take(20)`) để tránh tràn Context Window.
-  4. Thiết lập `Timeout = 8s` và cơ chế Fallback tự động khi Ollama không phản hồi.
+  1. Luồng hỏi đáp chỉ truy vấn CSDL ở chế độ **Read-Only** (`AsNoTracking()`); thao tác ghi từ khung chat chỉ đi qua `ExecuteAction` sau khi người dùng xác nhận.
+  2. Không đưa mật khẩu vào prompt; câu trả lời AI được che CCCD (`ScrubPII`), số điện thoại của sinh viên khác được che (`MaskPhone`).
+  3. Giới hạn số bản ghi ngữ cảnh (`Take(10)`) để tránh tràn Context Window.
+  4. Thời gian chờ 30s (chatbot) / 45s (gợi ý xếp phòng, tóm tắt sự cố) và phương án dự phòng khi Ollama không phản hồi.
 
 ---
 
@@ -337,10 +337,10 @@ Toàn bộ Prompt được tách biệt khỏi Controller và quản lý tập t
 
 | Giai đoạn | Mục tiêu trọng tâm | Sản phẩm bàn giao (Deliverables) | Trạng thái |
 | :--- | :--- | :--- | :---: |
-| **Giai đoạn 1 (KT1)** | Phân tích nghiệp vụ, thiết kế Use Case, ERD 8 bảng, kiến trúc MVC + RAG AI và thiết kế Prompt. | `tailieu.md`, `ApplicationDbContext.cs`, `knowledge_base.json`. | ✅ Hoàn thành 100% |
-| **Giai đoạn 2 (KT2)** | Xây dựng phân quyền Session, hoàn thiện CRUD 8 bảng, tìm kiếm chuẩn hóa, xuất/nhập Excel, Dashboard thống kê. | Toàn bộ Controllers, Models, Razor Views, `DbInitializer.cs`, `README.md`. | ✅ Hoàn thành 100% |
-| **Giai đoạn 3 (KT3)** | Tích hợp 3 tính năng AI (Chatbot RAG, Gợi ý xếp phòng, Tóm tắt sự cố), tách `AIPrompts.cs`, tối ưu Prompt 3 vòng, kiểm thử. | `ChatbotController.cs`, `AIPrompts.cs`, `NhatkysudungAI.md`, Bảng Test Cases. | ✅ Hoàn thành 100% |
-| **Giai đoạn 4 (Cuối kỳ)** | Rà soát bảo mật dữ liệu nhạy cảm AI, đóng gói `Dockerfile` & `docker-compose.yml`, hoàn thiện báo cáo tổng kết. | Bộ mã nguồn hoàn chỉnh, `Dockerfile`, Báo cáo kỹ thuật & Slide/Demo. | ✅ Hoàn thành 100% |
+| **Giai đoạn 1 (KT1)** | Phân tích nghiệp vụ, thiết kế Use Case, ERD 8 bảng, kiến trúc MVC + RAG AI và thiết kế Prompt. | `tailieu.md`, `ApplicationDbContext.cs`, `knowledge_base.json`. | ✅ Hoàn thành |
+| **Giai đoạn 2 (KT2)** | Xây dựng phân quyền Session, hoàn thiện CRUD 8 bảng, tìm kiếm chuẩn hóa, xuất/nhập Excel, Dashboard thống kê. | Toàn bộ Controllers, Models, Razor Views, `DbInitializer.cs`, `README.md`. | ✅ Hoàn thành |
+| **Giai đoạn 3 (KT3)** | Tích hợp 3 tính năng AI (Chatbot RAG, Gợi ý xếp phòng, Tóm tắt sự cố), tách `AIPrompts.cs`, tối ưu Prompt 3 vòng, kiểm thử. | `ChatbotController.cs`, `AIPrompts.cs`, `NhatkysudungAI.md`, Bảng Test Cases. | ✅ Hoàn thành |
+| **Giai đoạn 4 (Cuối kỳ)** | Rà soát bảo mật dữ liệu nhạy cảm AI, đóng gói `Dockerfile` & `docker-compose.yml`, hoàn thiện báo cáo tổng kết. | Bộ mã nguồn hoàn chỉnh, `Dockerfile`, Báo cáo kỹ thuật & Slide/Demo. | ✅ Hoàn thành |
 
 ---
 
@@ -401,9 +401,9 @@ Bảng dưới đây liệt kê các kịch bản kiểm thử (**Test Cases**) 
 | **Slide 4** | **Thiết kế CSDL (ERD 8 Bảng)** | Sơ đồ ERD 8 bảng (`TaiKhoan`, `Phong`, `SinhVien`, `HopDong`, `HoaDon`, `BaoCaoSuCo`, `ViPham`, `CoSoVatChat`) cùng cơ chế Xóa mềm (`Đã rời đi`) và tự động đồng bộ sĩ số phòng. |
 | **Slide 5** | **Kiến trúc Hệ thống & Tích hợp AI** | Mô hình 3 tầng ASP.NET Core 8.0 MVC + Entity Framework Core + Cơ chế RAG cục bộ (`knowledge_base.json`) kết nối Ollama LLM (`llama3`) kèm Smart Fallback. |
 | **Slide 6** | **3 Chức năng AI Trọng tâm** | 1️⃣ **Chatbot RAG hỏi đáp nội quy KTX 24/7** • 2️⃣ **Trợ lý AI Gợi ý xếp phòng tối ưu** • 3️⃣ **AI Tóm tắt & Phân loại sự cố kỹ thuật**. |
-| **Slide 7** | **Kỹ thuật Thiết kế Prompt & Bảo mật AI** | Minh họa tách biệt file `AIPrompts.cs`, cấu hình `appsettings.json`, bảng 3 vòng tối ưu Prompt và cơ chế ẩn dữ liệu nhạy cảm (`CCCD`, `SoDienThoai`) trước khi gửi lên LLM. |
+| **Slide 7** | **Kỹ thuật Thiết kế Prompt & Bảo mật AI** | Minh họa tách biệt file `AIPrompts.cs`, cấu hình `appsettings.json`, bảng 3 vòng tối ưu Prompt và cơ chế che dữ liệu nhạy cảm (`CCCD`, `SoDienThoai`) trong câu trả lời AI. |
 | **Slide 8** | **Minh chứng Sử dụng AI có Kiểm soát** | Tóm tắt Nhật ký AI (`NhatkysudungAI.md`): các lỗi thực tế do AI sinh ra (`SqlNullValueException`, lệch trạng thái phòng khi xóa mềm/đình chỉ) và cách sinh viên chủ động kiểm tra, sửa lỗi. |
-| **Slide 9** | **Kết quả Kiểm thử & Đóng gói Triển khai** | Kết quả 18 kịch bản kiểm thử (Đúng / Sai / Biên — đạt 100% PASS), đóng gói `Dockerfile` & `docker-compose.yml`. |
+| **Slide 9** | **Kết quả Kiểm thử & Đóng gói Triển khai** | Kết quả kiểm thử: 64/64 test xUnit đạt và các kịch bản theo tình huống (Đúng / Sai / Biên), đóng gói `Dockerfile` & `docker-compose.yml`. |
 | **Slide 10** | **Demo Trực tiếp & Tổng kết** | Chuyển sang màn hình trình duyệt chạy Demo thực tế 3 phân hệ và hướng phát triển tiếp theo. |
 
 ---
@@ -441,7 +441,7 @@ Bảng dưới đây liệt kê các kịch bản kiểm thử (**Test Cases**) 
      - Trong `SystemPrompt`, em thiết lập quy tắc nghiêm ngặt: chỉ được trả lời dựa trên ngữ cảnh được cung cấp; nếu câu hỏi nằm ngoài phạm vi Ký túc xá thì bắt buộc từ chối lịch sự.
 
 3. **Câu hỏi 3: Nếu máy chủ chạy ứng dụng bị mất kết nối với dịch vụ Ollama AI (`localhost:11434`), phần mềm có bị treo hay báo lỗi 500 không?**
-   - **Trả lời:** Hoàn toàn không. Toàn bộ các lời gọi `HttpClient` tới Ollama trong `ChatbotController`, `PhongController` và `PortalController` đều được đặt `Timeout = 8 giây` bên trong khối `try-catch`. Khi Ollama tắt hoặc quá thời gian chờ, hệ thống tự động chuyển sang **Cơ chế Fallback thông minh (Rule-based Smart Fallback)** truy vấn trực tiếp CSDL và trả về kết quả định dạng tiếng Việt ngay lập tức.
+   - **Trả lời:** Hoàn toàn không. Toàn bộ các lời gọi `HttpClient` tới Ollama trong `ChatbotController`, `PhongController` và `PortalController` đều có giới hạn thời gian (30 giây với chatbot, 45 giây với gợi ý phòng và tóm tắt sự cố) bên trong khối `try-catch`. Khi Ollama tắt, chưa tải model hoặc quá thời gian chờ, hệ thống chuyển sang **Rule-based Smart Fallback** truy vấn trực tiếp CSDL và trả về kết quả tiếng Việt.
 
 4. **Câu hỏi 4: Em đã xử lý vấn đề bảo mật và quyền riêng tư dữ liệu sinh viên khi tích hợp AI như thế nào?**
    - **Trả lời:** Trong `ChatbotController.cs`, trước khi tuần tự hóa (`JsonSerializer.Serialize`) dữ liệu sinh viên để ghép vào Prompt gửi sang mô hình ngôn ngữ lớn, em sử dụng LINQ `.Select()` để chỉ lấy `MaSV`, `HoTen`, `Lop`, `MaPhong`, `TinhTrangLuuTru` và **loại bỏ hoàn toàn cột `CCCD`, `SoDienThoai`, `MatKhau`**. Đồng thời kết nối CSDL của AI chỉ ở chế độ đọc (`AsNoTracking()`).
@@ -456,11 +456,11 @@ Bảng dưới đây liệt kê các kịch bản kiểm thử (**Test Cases**) 
 ## PHẦN IV: THIẾT KẾ AGENT AI CHO QUY TRÌNH SDLC (CONTEXT ENGINEERING, FACTORY, GUARDRAILS & KIỂM THỬ) — ĐÁP ỨNG TIÊU CHÍ 2 (4.0 ĐIỂM)
 
 ### 1. Kiến trúc Nhà máy Phần mềm AI (SDLC AI Agent Factory)
-Dự án được phát triển theo mô hình Nhà máy AI Agent khép kín với 6 Subagents chuyên trách:
+Nhóm tổ chức việc dùng trợ lý AI theo 6 vai trò. Mỗi vai trò là một cách giao việc (prompt + ngữ cảnh) cho trợ lý AI ở một giai đoạn, không phải một phần mềm chạy riêng; mọi đầu ra đều được thành viên nhóm kiểm tra lại:
 1. **📋 Business Analyst Agent:** Trích xuất yêu cầu KTX, xác định 5 luật nghiệp vụ bất biến.
 2. **🏗️ System Architect Agent:** Thiết kế Schema CSDL 8 bảng, định tuyến MVC, phân quyền bảo mật.
 3. **💻 Developer Agent:** Sinh mã nguồn ASP.NET Core 8.0, triển khai EF Core và Razor Views.
-4. **🧪 Test Automation Agent:** Sinh bộ kiểm thử xUnit và Integration Test tự động bao phủ 100%.
+4. **🧪 Test Automation Agent:** Gợi ý trường hợp biên và viết bộ kiểm thử xUnit, Integration Test.
 5. **🛡️ Safety & Guardrails Agent:** Quản trị an toàn Prompt Injection, PII Scrubber và Smart Fallback.
 6. **🚀 DevOps & Monitoring Agent:** Cấu hình Docker multi-stage, Health Checks và CI/CD GitHub Actions.
 
@@ -479,7 +479,7 @@ Hệ thống AI phân tách ngữ cảnh thành 4 tầng độc lập để tố
 - **Tầng 1 (Core Invariants):** Luật bất biến nghiệp vụ (Soft Delete, Đồng bộ sĩ số, Bảo mật hóa đơn).
 - **Tầng 2 (Domain Knowledge RAG):** Biểu phí, giờ giới nghiêm 23:00, quy định gửi xe từ `knowledge_base.json`.
 - **Tầng 3 (Dynamic Database State):** Truy vấn trạng thái thực từ SQL Server qua EF Core `AsNoTracking()`.
-- **Tầng 4 (Execution Guardrails):** Kiểm soát Timeout 8s, bộ lọc PII và Rule-based Smart Fallback.
+- **Tầng 4 (Execution Guardrails):** Thời gian chờ 30s (chatbot) / 45s (gợi ý phòng, tóm tắt sự cố), bộ lọc PII và Rule-based Smart Fallback.
 
 ### 3. Framework Rào chắn An toàn (Safety Guardrails Framework)
 Module `SafetyGuardrails.cs` bảo vệ đồng bộ 3 phân hệ AI (`ChatbotController`, `PhongController`, `PortalController`):
@@ -491,13 +491,13 @@ Module `SafetyGuardrails.cs` bảo vệ đồng bộ 3 phân hệ AI (`ChatbotCo
   - PII Scrubber: Tự động quét và che mờ CCCD 12 số (`\b\d{12}\b` $\rightarrow$ `[ĐÃ_ẨN_CCCD]`), số điện thoại (`MaskPhone`: `098****567`), mật khẩu tài khoản.
   - Chống Hallucination: Làm sạch markdown links giả mạo (`[text](http...)`) và từ chối nội dung ngoài KTX.
 - **Execution Guardrails:**
-  - Khống chế thời gian thực thi (Timeout 8s).
+  - Khống chế thời gian chờ Ollama: 30s với chatbot, 45s với gợi ý xếp phòng và tóm tắt sự cố.
   - Tự động kích hoạt Rule-based Smart Fallback đảm bảo tính liên tục của hệ thống khi Ollama offline.
 
 ### 4. Kiến trúc Giám sát và Theo dõi Sức khỏe Hệ thống (Health Checks & Observability)
 Hệ thống tích hợp ASP.NET Core Health Checks chuẩn tại endpoint `/health`:
 - **DatabaseHealthCheck:** Kiểm tra khả năng kết nối SQL Server thông qua `_dbContext.Database.CanConnectAsync()`.
-- **OllamaHealthCheck:** Ping kiểm tra cổng 11434 với timeout 2s. Nếu Ollama offline, trả về trạng thái `Degraded` để hệ thống tự động kích hoạt Rule-based Smart Fallback mà không làm sập ứng dụng.
+- **OllamaHealthCheck:** Ping kiểm tra cổng 11434 với timeout 5s. Nếu Ollama offline, trả về trạng thái `Degraded` để hệ thống tự động kích hoạt Rule-based Smart Fallback mà không làm sập ứng dụng.
 
 ```mermaid
 flowchart LR
@@ -510,12 +510,14 @@ flowchart LR
 ```
 
 ### 5. Danh mục Kiểm thử Chuẩn .NET (xUnit Unit & Integration Tests)
-Toàn bộ mã nguồn được xác thực bởi 53 kiểm thử xUnit và 26 kịch bản kiểm thử tự động, đạt tỷ lệ **100% PASS**:
+Lần chạy `dotnet test` gần nhất (30/10/2026): **64/64 test case xUnit đạt** (tính cả các bộ dữ liệu của `[Theory]`). Script `tests/run_tests.ps1` gồm 26 kịch bản, kết quả ghi trong `KET_QUA_KIEM_THU.txt`.
 
 | Nhóm kiểm thử | Tệp kiểm thử | Số Tests | Nội dung kiểm thử trọng tâm | Kết quả |
 | :--- | :--- | :---: | :--- | :---: |
-| **Tính phí & Hóa đơn** | `HoaDonCalculationsTests.cs` | 16 | - Tính tiền điện nước theo công thức: `(ChiSoMoi - ChiSoCu) * DonGia`<br>- Chặn tạo hóa đơn khi `ChiSoMoi <= ChiSoCu` (chống hóa đơn âm)<br>- Tính tiền phòng theo loại phòng và số tháng thuê | **100% PASS** |
-| **Phòng & Sĩ số** | `PhongVaSiSoTests.cs` | 4 | - Xếp sinh viên vào phòng còn chỗ -> tăng sĩ số, giữ nguyên "Còn chỗ"<br>- Xếp vào giường cuối cùng -> tự động đổi "Đã đầy"<br>- Xóa mềm (trả phòng) -> đổi "Đã rời đi", giảm sĩ số, mở lại "Còn chỗ"<br>- Kỷ luật đình chỉ -> tự động giải phóng giường trống | **100% PASS** |
-| **An toàn AI & Privacy** | `AIFallbackAndPrivacyTests.cs` | 23 | - Hàm làm mờ số điện thoại `MaskPhone(phone)` (`098****567`)<br>- Bộ lọc loại bỏ hoàn toàn CCCD và mật khẩu khỏi Prompt AI<br>- Thuật toán Smart Fallback tiếng Việt khi Ollama offline<br>- Ngăn chặn tấn công Prompt Injection | **100% PASS** |
-| **Bảo mật & Tích hợp** | `SecurityAndEndpointIntegrationTests.cs` | 10 | - Endpoint chẩn đoán `/_diag` trả về HTTP 200 OK<br>- Endpoint giám sát `/health` trả về HTTP 200 OK & JSON<br>- Cơ chế phân quyền chặn truy cập Admin khi chưa đăng nhập -> Redirect 302 | **100% PASS** |
-| **Kịch bản PowerShell** | `tests/run_tests.ps1` | 26 | - Kiểm tra toàn diện 26 tiêu chí cấu hình, kiến trúc, Docker, RAG, xUnit | **100% PASS** |
+| **Tính phí & Hóa đơn** | `HoaDonCalculationsTests.cs` | 20 | - Tính tiền điện nước theo công thức: `(ChiSoMoi - ChiSoCu) * DonGia`<br>- Chặn tạo hóa đơn khi `ChiSoMoi <= ChiSoCu` (chống hóa đơn âm)<br>- Tính tiền phòng theo loại phòng và số tháng thuê | **Đạt** |
+| **Phòng & Sĩ số** | `PhongVaSiSoTests.cs` | 4 | - Xếp sinh viên vào phòng còn chỗ -> tăng sĩ số, giữ nguyên "Còn chỗ"<br>- Xếp vào giường cuối cùng -> tự động đổi "Đã đầy"<br>- Xóa mềm (trả phòng) -> đổi "Đã rời đi", giảm sĩ số, mở lại "Còn chỗ"<br>- Kỷ luật đình chỉ -> tự động giải phóng giường trống | **Đạt** |
+| **An toàn AI & Privacy** | `AIFallbackAndPrivacyTests.cs` | 19 | - Hàm làm mờ số điện thoại `MaskPhone(phone)` (`098****567`)<br>- Bộ lọc `FilterAiContext` loại CCCD và mật khẩu khỏi dữ liệu<br>- Thuật toán Smart Fallback tiếng Việt khi Ollama offline<br>- Ngăn chặn tấn công Prompt Injection | **Đạt** |
+| **Bảo mật & Tích hợp** | `SecurityAndEndpointIntegrationTests.cs` | 10 | - Endpoint chẩn đoán `/_diag` trả về HTTP 200 OK<br>- Endpoint giám sát `/health` trả về HTTP 200 OK & JSON<br>- Cơ chế phân quyền chặn truy cập Admin khi chưa đăng nhập -> Redirect 302 | **Đạt** |
+| **Tích hợp AI & Nghiệp vụ** | `AIAndBusinessIntegrationTests.cs` | 3 | - Gợi ý xếp phòng trả HTTP 200 và danh sách phòng<br>- Tóm tắt sự cố trả đúng cấu trúc phân loại<br>- Thanh toán với mật khẩu sai bị chặn | **Đạt** |
+| **Định tuyến Chatbot** | `ChatbotRoutingTests.cs` | 8 | - Câu hỏi nội quy không bị trả về số liệu công nợ<br>- Câu hỏi nhiều ý được trả lời đủ<br>- Câu vừa hỏi dữ liệu vừa hỏi nội quy | **Đạt** |
+| **Kịch bản PowerShell** | `tests/run_tests.ps1` | 26 | - Kiểm tra toàn diện 26 tiêu chí cấu hình, kiến trúc, Docker, RAG, xUnit | **Đạt** |

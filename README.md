@@ -2,124 +2,122 @@
 
 - **Học phần:** Ứng dụng trí tuệ nhân tạo - AIA331 (Mã đề tài: **80309**)
 - **Trường:** Đại học Công Nghệ Thông Tin và Truyền Thông - Đại học Thái Nguyên
-- **Sinh viên thực hiện:** Nguyễn Khánh Duy
+- **Nhóm 06:** Nguyễn Khánh Duy, Vũ Văn Dũng, Dương Văn Chung
 
-Hệ thống Quản lý Ký túc xá (**QLKTX**) được phát triển trên nền tảng **ASP.NET Core 8.0 MVC**, kết hợp **Entity Framework Core 8.0** và cơ sở dữ liệu **SQL Server**. Hệ thống cung cấp giao diện quản trị chuẩn **SaaS Dashboard** dành cho Ban Quản lý & Kế toán, **Cổng thông tin Sinh viên (Student Portal)** và tích hợp **3 tính năng Trí tuệ Nhân tạo (AI)** sử dụng mô hình ngôn ngữ lớn **Ollama (`llama3`)** kết hợp cơ sở tri thức **RAG (`knowledge_base.json`)**.
+Hệ thống Quản lý Ký túc xá (**QLKTX**) viết trên **ASP.NET Core 8.0 MVC**, **Entity Framework Core 8.0** và **SQL Server**. Hệ thống có trang quản trị cho Ban Quản lý và Kế toán, **Cổng thông tin Sinh viên (Student Portal)** và **3 chức năng AI** dùng mô hình **`llama3` chạy cục bộ qua Ollama**, kết hợp cơ sở tri thức `knowledge_base.json`.
 
 ---
 
-## 📚 TÀI LIỆU KỸ THUẬT & MINH CHỨNG ĐÁNH GIÁ (KT1, KT2, KT3, CUỐI KỲ)
+## 📚 TÀI LIỆU KÈM THEO
 
-Toàn bộ hồ sơ phân tích thiết kế, sơ đồ Use Case, ERD, Kiến trúc hệ thống, kịch bản kiểm thử (Test Cases) và nhật ký sử dụng AI được trình bày chi tiết tại:
-1. 📄 **[Tài liệu Phân tích Thiết kế, Kiến trúc & Kịch bản Kiểm thử (`tailieu.md`)](tailieu.md)** *(Đáp ứng KT1, KT3 & Báo cáo kỹ thuật cuối kỳ)*
-2. 🤖 **[Nhật ký & Minh chứng Sử dụng AI, Tối ưu Prompt 3 vòng (`QLKTX/NhatkysudungAI.md`)](QLKTX/NhatkysudungAI.md)** *(Đáp ứng KT1, KT2, KT3)*
-3. 🗺️ **[Bản đồ Mã nguồn (`QLKTX/codebase_map.md`)](QLKTX/codebase_map.md)**
+1. 📄 **[Tài liệu phân tích thiết kế, kiến trúc & kịch bản kiểm thử (`tailieu.md`)](tailieu.md)**
+2. 🤖 **[Nhật ký sử dụng AI, tối ưu prompt 3 vòng (`NhatkysudungAI.md`)](NhatkysudungAI.md)**
+3. 🗺️ **[Bản đồ mã nguồn (`QLKTX/codebase_map.md`)](QLKTX/codebase_map.md)**
+4. 🧪 **[Kết quả kiểm thử (`KET_QUA_KIEM_THU.txt`)](KET_QUA_KIEM_THU.txt)**
 
 ---
 
 ## 🚀 1. CÔNG NGHỆ SỬ DỤNG
-- **Backend Framework:** ASP.NET Core 8.0 MVC (C#)
+- **Backend:** ASP.NET Core 8.0 MVC (C#)
 - **Database / ORM:** Entity Framework Core 8.0, SQL Server / LocalDB
-- **Frontend / UI:** HTML5, CSS3, Razor Views (`.cshtml`), Bootstrap 5, Bootstrap Icons, Chart.js
-- **Xử lý báo cáo Excel:** ClosedXML (`0.105.0` - Import/Export `.xlsx`)
-- **AI Engine:** Ollama Local LLM (`llama3`) + RAG Knowledge Base (`wwwroot/data/knowledge_base.json`) + Multi-layer Smart Fallback
-- **Đóng gói & Triển khai:** Docker (`Dockerfile` & `docker-compose.yml`)
+- **Frontend:** Razor Views (`.cshtml`), Bootstrap 5, Bootstrap Icons, Chart.js
+- **Excel:** ClosedXML `0.105.0` (nhập/xuất `.xlsx`)
+- **AI:** Ollama (`llama3`) + cơ sở tri thức `wwwroot/data/knowledge_base.json`; có phương án dự phòng khi Ollama không chạy
+- **Kiểm thử:** xUnit, Moq, EF Core InMemory
+- **Đóng gói:** Docker (`Dockerfile`, `docker-compose.yml`)
 
 ---
 
-## ✨ 2. CÁC CHỨC NĂNG CỐT LÕI
+## ✨ 2. CHỨC NĂNG
 
-### 2.1. Phân hệ Quản lý Ký túc xá (8 Nhóm chức năng)
-1. **Đăng nhập & Phân quyền (`DNController`, `AdminAuthorizeAttribute`):** Phân quyền 3 vai trò **Quản lý KTX (`Admin`)**, **Kế toán (`KeToan`)**, và **Sinh viên (`SinhVien`)** qua Session bảo mật.
-2. **Quản lý Tòa, Tầng, Phòng & Số giường (`PhongController`):** Theo dõi sức chứa, sĩ số thực tế `X/Y`, lọc nhanh theo Tòa/Tầng và trạng thái (`Còn chỗ`, `Đã đầy`, `Bảo trì`).
-3. **Quản lý Hồ sơ Sinh viên & Lịch sử ở (`SinhVienController`):** CRUD sinh viên, nhập/xuất Excel, xóa mềm chuyển vào Lịch sử rời KTX (`SinhVien/LichSu`).
-4. **Đăng ký ở, Xếp phòng, Chuyển phòng & Trả phòng (`HopDongController`, `PortalController`):** Quản lý hợp đồng nội trú, tự động đồng bộ chỗ trống khi trả phòng; sinh viên gửi yêu cầu đăng ký/chuyển phòng từ Portal.
-5. **Theo dõi Phí phòng, Điện nước & Công nợ (`PortalController`):** Tính hóa đơn điện nước theo chỉ số cũ/mới, lọc hóa đơn nợ và thanh toán trực tuyến trên Portal.
-6. **Quản lý Phản ánh/Sự cố & Vi phạm Nội quy (`PortalController`, `ViPhamController`):** Báo hỏng thiết bị kèm hình ảnh, lập biên bản kỷ luật (tự động giải phóng phòng khi đình chỉ).
-7. **Tra cứu Chỗ trống & Lịch sử Lưu trú:** Tìm kiếm thông minh không phân biệt hoa/thường hay ký tự phân cách.
-8. **Dashboard Thống kê Toàn diện (`BaoCaoController`):** Thống kê công suất phòng, tổng doanh thu, tổng công nợ chưa thu, số lượng phản ánh/sự cố và biểu đồ trực quan.
+### 2.1. Phân hệ quản lý ký túc xá
+1. **Đăng nhập & phân quyền (`DNController`, `AdminAuthorizeAttribute`):** 3 vai trò **Admin**, **Kế toán (`KeToan`)**, **Sinh viên (`SinhVien`)** qua Session; mật khẩu băm SHA-256 kèm salt (`PasswordHelper`).
+2. **Quản lý phòng (`PhongController`):** sĩ số thực tế `X/Y`, lọc theo tòa/tầng và trạng thái (`Còn chỗ`, `Đã đầy`, `Bảo trì`).
+3. **Hồ sơ sinh viên (`SinhVienController`):** thêm/sửa/tìm kiếm, nhập/xuất Excel; xóa mềm chuyển sinh viên sang trang Lịch sử (`SinhVien/LichSu`).
+4. **Hợp đồng & yêu cầu phòng (`HopDongController`, `PortalController`):** quản lý hợp đồng nội trú, kiểm tra giường trống khi lập hợp đồng; sinh viên gửi yêu cầu chuyển/gia hạn/trả phòng từ Portal.
+5. **Hóa đơn & công nợ (`PortalController`):** tính tiền điện nước theo chỉ số cũ/mới, lọc hóa đơn nợ, sinh viên thanh toán trên Portal (phải nhập lại mật khẩu).
+6. **Sự cố & vi phạm (`PortalController`, `ViPhamController`):** báo hỏng kèm ảnh, lập biên bản kỷ luật (hình thức "Đình chỉ" tự giải phóng giường).
+7. **Tìm kiếm:** không phân biệt hoa/thường; mã phòng gõ `P.A1-03`, `A1-03` hay `a1 03` đều khớp.
+8. **Thống kê (`BaoCaoController`):** công suất phòng, tiền cọc, công nợ, sự cố và biểu đồ Chart.js.
 
-### 2.2. Phân hệ Trí tuệ Nhân tạo (3 Chức năng AI)
-1. **🤖 Chatbot AI Hỏi đáp Nội quy KTX (`ChatbotController`):** Trả lời tự động quy định KTX từ `knowledge_base.json` và số liệu thực tế từ CSDL (đã lọc ẩn thông tin nhạy cảm `CCCD`, `SĐT`).
-2. **✨ AI Gợi ý Xếp phòng (`PhongController.GoiYXepPhongAI`):** Phân tích danh sách phòng còn giường trống theo tiêu chí (Loại phòng, Khu/Tầng, Số lượng SV) và đề xuất Top phòng tối ưu.
-3. **📊 AI Tóm tắt Phản ánh/Sự cố (`PortalController.TomTatSuCoAI`):** Tự động phân nhóm các sự cố đang chờ xử lý thành nhóm Điện, Nước, Nội thất và đề xuất thứ tự ưu tiên khắc phục.
+### 2.2. Phân hệ AI
+1. **🤖 Chatbot (`ChatbotController`):** hỏi đáp nội quy từ `knowledge_base.json` và tra cứu dữ liệu từ CSDL; số điện thoại của sinh viên khác được che, CCCD bị ẩn trong câu trả lời. Chatbot có thể thực hiện một số thao tác (gửi yêu cầu chuyển phòng, tạo báo cáo sự cố) qua `ExecuteAction` sau khi người dùng xác nhận.
+2. **✨ Gợi ý xếp phòng (`PhongController.GoiYXepPhongAI`):** chọn 1–3 phòng còn giường theo loại phòng, khu/tầng và số sinh viên cần xếp.
+3. **📊 Tóm tắt sự cố (`PortalController.TomTatSuCoAI`):** chia các sự cố đang chờ xử lý thành nhóm Điện, Nước, Khác và nêu sự cố cần xử lý trước.
 
 ---
 
-## 📁 3. CẤU TRÚC THƯ MỤC DỰ ÁN
+## 📁 3. CẤU TRÚC THƯ MỤC
 ```text
-domitory-management/
-├── Dockerfile                      <-- Cấu hình đóng gói Docker container
-├── docker-compose.yml              <-- Khởi chạy nhanh bằng Docker Compose
-├── README.md                       <-- Hướng dẫn cài đặt và thuyết minh dự án
-├── tailieu.md                      <-- Tài liệu Phân tích Thiết kế (ERD, UseCase, Kiến trúc, Test Cases)
-├── CLAUDE.md                       <-- Quy chuẩn kiến trúc & 5 Luật nghiệp vụ cốt lõi
-├── QLKTX.sln                       <-- File Solution Visual Studio
-└── QLKTX/                          <-- Thư mục Mã nguồn chính ASP.NET Core 8.0
-    ├── Controllers/                <-- Các Controller xử lý nghiệp vụ & AI
-    │   ├── HomeController.cs           (Dashboard Admin)
-    │   ├── DNController.cs             (Đăng nhập, Đăng xuất, Quên mật khẩu, Liên hệ)
-    │   ├── SinhVienController.cs       (Quản lý Sinh viên, Lịch sử & Import/Export Excel)
-    │   ├── PhongController.cs          (Quản lý Phòng, Lọc Tòa/Tầng & AI Gợi ý xếp phòng)
-    │   ├── HopDongController.cs        (Quản lý Hợp đồng nội trú)
-    │   ├── CoSoVatChatController.cs    (Quản lý Cơ sở vật chất)
-    │   ├── ViPhamController.cs         (Quản lý Kỷ luật / Vi phạm nội quy)
-    │   ├── BaoCaoController.cs         (Báo cáo thống kê Công suất, Công nợ, Sự cố)
-    │   ├── PortalController.cs         (Cổng Sinh viên, Hóa đơn, Sự cố & AI Tóm tắt sự cố)
-    │   └── ChatbotController.cs        (Trợ lý AI RAG hỏi đáp nội quy & tra cứu KTX)
-    ├── Models/                     <-- Định nghĩa Entities, DbContext & AI Prompts
-    │   ├── ApplicationDbContext.cs     (EF Core DbContext kết nối SQL Server)
-    │   ├── DbInitializer.cs            (Tự động khởi tạo dữ liệu mẫu Seed Data)
-    │   ├── AIPrompts.cs                (Quản lý tập trung System/User Prompts cho 3 tính năng AI)
-    │   ├── AdminAuthorizeAttribute.cs  (Filter bảo vệ phân quyền các trang Quản trị/Kế toán)
-    │   └── SinhVien.cs, Phong.cs, HopDong.cs, HoaDon.cs, BaoCaoSuCo.cs, ViPham.cs...
-    ├── Views/                      <-- Giao diện Razor Pages (.cshtml)
-    ├── wwwroot/                    <-- Static files (CSS, JS, Uploads ảnh, data/knowledge_base.json)
-    ├── NhatkysudungAI.md           <-- Nhật ký Prompt, 3 vòng tối ưu & Review code bằng AI
-    ├── appsettings.json            <-- Cấu hình Database & Ollama AI Service
-    ├── appsettings.Example.json    <-- File mẫu cấu hình môi trường
-    └── Program.cs                  <-- Khởi chạy ứng dụng, DI & Middleware Pipeline
+nhom6_moi/
+├── Dockerfile, docker-compose.yml   <-- Đóng gói và chạy bằng Docker
+├── README.md                        <-- Hướng dẫn cài đặt (file này)
+├── CLAUDE.md, prompt.md             <-- Quy tắc kiến trúc & nghiệp vụ dùng làm ngữ cảnh cho AI
+├── tailieu.md                       <-- Tài liệu phân tích thiết kế, kịch bản kiểm thử
+├── NhatkysudungAI.md                <-- Nhật ký sử dụng AI
+├── KET_QUA_KIEM_THU.txt             <-- Kết quả kiểm thử
+├── QLKTX.sln
+├── tests/
+│   ├── QLKTX.Tests/                 <-- Dự án kiểm thử xUnit
+│   └── run_tests.ps1                <-- Script kiểm thử tổng hợp
+└── QLKTX/                           <-- Mã nguồn ASP.NET Core 8.0
+    ├── Controllers/                 <-- DN, Account, Home, Phong, SinhVien, HopDong, CoSoVatChat,
+    │                                    ViPham, BaoCao, Portal, Chatbot
+    ├── Models/                      <-- Entity, ApplicationDbContext, DbInitializer, AIPrompts,
+    │                                    SafetyGuardrails, PasswordHelper, HoaDonCalculator, AdminAuthorizeAttribute
+    ├── Views/                       <-- Razor Views (.cshtml)
+    ├── Migrations/                  <-- Lịch sử migration EF Core
+    ├── wwwroot/                     <-- CSS, JS, ảnh, data/knowledge_base.json, uploads/suco
+    ├── appsettings.json             <-- Chuỗi kết nối CSDL & cấu hình Ollama
+    ├── appsettings.Example.json     <-- File cấu hình mẫu
+    └── Program.cs                   <-- DI, Session, Middleware
 ```
 
 ---
 
-## 🛠 4. HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY DỰ ÁN
+## 🛠 4. CÀI ĐẶT VÀ CHẠY
 
-### 1. Yêu cầu môi trường
-- **.NET 8.0 SDK**
-- **SQL Server** (SQL Server LocalDB hoặc SQL Server Express/Developer)
-- **Ollama** (Khuyến khích cài đặt để trải nghiệm LLM; nếu chưa bật Ollama, hệ thống vẫn hoạt động 100% nhờ cơ chế **Smart Fallback**).
+### 4.1. Yêu cầu
+- **.NET 8.0 SDK** và công cụ `dotnet-ef` (`dotnet tool install --global dotnet-ef`)
+- **SQL Server** (LocalDB, Express hoặc Developer)
+- **Ollama** (không bắt buộc). Khi Ollama không chạy, các chức năng AI vẫn trả kết quả dựng từ dữ liệu CSDL, nhưng không có câu văn do AI viết.
 
-### 2. Các bước khởi chạy
-**Bước 1: Khởi động dịch vụ AI Ollama (Tùy chọn)**
+### 4.2. Các bước
+**Bước 1: Khởi động Ollama (không bắt buộc)**
 ```bash
-ollama run llama3
+ollama pull llama3
+ollama serve
 ```
 
-**Bước 2: Cấu hình chuỗi kết nối (Nếu cần)**
-- Kiểm tra file `QLKTX/appsettings.json` (mẫu tại `QLKTX/appsettings.Example.json`). Mặc định hệ thống kết nối sẵn tới `(localdb)\mssqllocaldb`.
+**Bước 2: Cấu hình**
+- Kiểm tra `QLKTX/appsettings.json` (mẫu ở `QLKTX/appsettings.Example.json`). Mặc định kết nối `(localdb)\mssqllocaldb`, Ollama tại `http://127.0.0.1:11434/api/chat`, model `llama3`.
 
-**Bước 3: Khởi tạo CSDL và Chạy ứng dụng**
+**Bước 3: Tạo CSDL và chạy**
 ```bash
 cd QLKTX
 dotnet ef database update
 dotnet run
 ```
-- Mở trình duyệt truy cập: **`http://localhost:5013`**
+- Mở trình duyệt: **`http://localhost:5013`**. Lần chạy đầu, `DbInitializer` tự nạp dữ liệu mẫu.
 
-*(Hoặc chạy qua Docker: `docker compose up --build -d`)*
+**Chạy bằng Docker:** `docker compose up --build -d` (gồm SQL Server và web; Ollama chạy trên máy host, web gọi qua `host.docker.internal:11434`).
+
+**Chạy kiểm thử:**
+```bash
+dotnet test tests/QLKTX.Tests
+```
 
 ---
 
-## 🔑 5. THÔNG TIN TÀI KHOẢN DEMO (AUTO SEED DATA)
+## 🔑 5. TÀI KHOẢN DEMO (DỮ LIỆU MẪU)
 
-Khi khởi chạy lần đầu, hệ thống tự động tạo dữ liệu mẫu đầy đủ. Bạn có thể đăng nhập với các tài khoản sau:
-
-| Vai trò | Tên đăng nhập | Mật khẩu | Quyền hạn chính |
+| Vai trò | Tên đăng nhập | Mật khẩu | Quyền chính |
 | :--- | :---: | :---: | :--- |
-| **Ban Quản lý (Admin)** | `admin` | `123` | Toàn quyền quản lý Phòng, Sinh viên, Hợp đồng, Kỷ luật, Duyệt sự cố, AI Gợi ý phòng & AI Tóm tắt sự cố. |
-| **Kế toán (Accountant)** | `ketoan` | `123` | Quản lý Hợp đồng, Lập hóa đơn tiền phòng & điện nước, Theo dõi công nợ & Báo cáo thống kê. |
-| **Sinh viên (Student)** | `DTC001` *(tới `DTC040`)* | `123` | Truy cập Cổng Sinh viên (`/Portal`), xem phòng ở, thanh toán hóa đơn, gửi báo cáo sự cố, xin chuyển phòng & hỏi đáp Chatbot AI. |
+| **Ban Quản lý (Admin)** | `admin` | `123` | Toàn quyền: phòng, sinh viên, hợp đồng, kỷ luật, duyệt sự cố, AI gợi ý phòng, AI tóm tắt sự cố |
+| **Kế toán** | `ketoan` | `123` | Hợp đồng, lập hóa đơn tiền phòng & điện nước, theo dõi công nợ, thống kê; không sửa phòng/sinh viên/kỷ luật |
+| **Sinh viên** | `DTC001`, `DTC002`, … | `123` | Cổng sinh viên (`/Portal`): xem phòng, thanh toán hóa đơn, gửi sự cố, gửi yêu cầu phòng, hỏi chatbot |
+
+> Đăng nhập được bằng tên đăng nhập hoặc mã sinh viên. Dữ liệu mẫu có sinh viên đang ở mã `DTC001` trở đi và sinh viên đã rời đi mã `DTC801`–`DTC825`.
 
 ---
-*Dự án thực hiện bởi sinh viên Nguyễn Khánh Duy — Học phần Ứng dụng Trí tuệ Nhân tạo (AIA331).*
+*Nhóm 06 — Học phần Ứng dụng Trí tuệ Nhân tạo (AIA331).*

@@ -1,25 +1,25 @@
 ================================================================================
-            BÁO CÁO KẾT QUẢ KIỂM THỬ TOÀN DIỆN DỰ ÁN QLKTX (AIA331)
+                  KẾT QUẢ KIỂM THỬ DỰ ÁN QLKTX (AIA331)
 ================================================================================
-Thời gian kiểm thử  : 2026-10-28 23:44:00
-Hệ điều hành        : Windows 11 Pro (x64)
-Môi trường thực thi : .NET 8.0 SDK / SQL Server LocalDB / Ollama LLM (llama3) / xUnit
-Người / Agent test  : Lead Software Architect & AI Systems Specialist
+Thời gian kiểm thử  : Script run_tests.ps1: 2026-10-28 23:44 | xUnit: 2026-10-30
+Hệ điều hành        : Windows 11 (x64)
+Môi trường thực thi : .NET 8.0 / SQL Server LocalDB / xUnit (EF Core InMemory); Ollama tắt khi chạy xUnit
 Mã đề tài           : 80309 - Hệ thống Quản lý Ký túc xá Tích hợp AI
 Học phần            : Ứng dụng Trí tuệ Nhân tạo - AIA331
 Trường              : Trường ĐH Công nghệ Thông tin & Truyền thông - ĐH Thái Nguyên
-Sinh viên thực hiện : Nguyễn Khánh Duy
+Nhóm thực hiện      : Nhóm 06 (Nguyễn Khánh Duy, Vũ Văn Dũng, Dương Văn Chung)
 --------------------------------------------------------------------------------
 
 I. BẢNG TỔNG HỢP KẾT QUẢ KIỂM THỬ
-- Tổng số Kịch bản Script tự động (run_tests.ps1) : 26 / 26 PASS (100%)
-- Tổng số Kiểm thử xUnit (QLKTX.Tests.csproj)     : 53 / 53 PASS (100%)
-  + Unit Tests (Tính phí & Hóa đơn)               : 16 / 16 PASS (100%)
-  + Unit Tests (Phòng & Đồng bộ Sĩ số X/Y)        : 4 / 4 PASS (100%)
-  + Unit Tests (Safety Guardrails & AI Fallback)  : 23 / 23 PASS (100%)
-  + Integration Tests (Bảo mật & Health Checks)   : 10 / 10 PASS (100%)
-- Trạng thái biên dịch mã nguồn                   : 0 Error(s), 100% Sạch lỗi
-- Trạng thái chung                                : ĐẠT CHUẨN TỐI ĐA (10.0/10.0 RUBRIC AIA331)
+- Kịch bản script tự động (run_tests.ps1, 28/10)  : 26 / 26 PASS
+- Kiểm thử xUnit (QLKTX.Tests, 30/10)             : 64 / 64 PASS
+  + Unit Tests (Tính phí & Hóa đơn)               : 20 / 20 PASS
+  + Unit Tests (Phòng & Đồng bộ Sĩ số X/Y)        : 4 / 4 PASS
+  + Unit Tests (Safety Guardrails & AI Fallback)  : 19 / 19 PASS
+  + Integration Tests (Bảo mật & Health Checks)   : 10 / 10 PASS
+  + Integration Tests (AI & Nghiệp vụ)            : 3 / 3 PASS
+  + Unit Tests (Định tuyến Chatbot)               : 8 / 8 PASS
+- Biên dịch mã nguồn                              : 0 lỗi
 
 --------------------------------------------------------------------------------
 II. CHI TIẾT KỊCH BẢN KIỂM THỬ TỰ ĐỘNG (POWERSHELL SUITE)
@@ -35,28 +35,28 @@ TC_PHONG_03 | Ngăn chặn sai  | PASS       | Chặn hành động xếp thêm 
 TC_PHONG_04 | Xóa mềm        | PASS       | Trả phòng / Xóa mềm chuyển TinhTrangLuuTru = "Đã rời đi", mở lại "Còn chỗ".
 TC_PHONG_05 | Tìm kiếm thông | PASS       | Tra cứu phòng thông minh: Chuẩn hóa ký tự (P.A1-03, a1 03 -> A103) chính xác.
 TC_HD_01    | Tính phí       | PASS       | Công thức tính tiền điện nước chuẩn: (ChiSoMoi - ChiSoCu) * DonGia (2.500đ/kWh).
-TC_HD_02    | Biên / Sai     | PASS       | Từ chối tạo hóa đơn nếu chỉ số mới <= chỉ số cũ (chống hóa đơn âm triệt để).
+TC_HD_02    | Biên / Sai     | PASS       | Từ chối tạo hóa đơn nếu chỉ số mới <= chỉ số cũ (chống hóa đơn âm).
 TC_HD_03    | Bảo mật        | PASS       | Thanh toán hóa đơn trên Portal bắt buộc nhập đúng mật khẩu cá nhân mới xử lý.
 TC_SC_01    | Sự cố có ảnh   | PASS       | Tiếp nhận sự cố có ảnh -> Lưu trữ an toàn tệp tin vào wwwroot/uploads/suco/.
 TC_SC_02    | Sự cố ảnh null | PASS       | Tiếp nhận sự cố không ảnh -> Gán chuỗi rỗng an toàn, không văng ngoại lệ.
 TC_VP_01    | Kỷ luật        | PASS       | Lập biên bản mức "Đình chỉ" -> Tự động cập nhật hồ sơ và giải phóng chỗ phòng.
 TC_AI_01    | RAG Knowledge  | PASS       | Cơ sở tri thức RAG (knowledge_base.json) đủ 7 chủ đề nội quy, giờ giấc, biểu phí.
-TC_AI_02    | Chống bịa đặt  | PASS       | System Prompt (AIPrompts.cs) giới hạn phạm vi, chống Hallucination tuyệt đối.
+TC_AI_02    | Chống bịa đặt  | PASS       | System Prompt (AIPrompts.cs) giới hạn phạm vi, yêu cầu chỉ dùng dữ liệu được cung cấp.
 TC_AI_03    | AI Gợi ý phòng | PASS       | PhongController.GoiYXepPhongAI lọc phòng trống + Smart Fallback khi Ollama tắt.
-TC_AI_04    | AI Tóm tắt SC  | PASS       | PortalController.TomTatSuCoAI gom nhóm Điện/Nước/Nội thất + phân cấp ưu tiên.
-TC_AI_05    | Quyền riêng tư | PASS       | Che số điện thoại bạn cùng phòng (098****567), ẩn hoàn toàn CCCD và mật khẩu.
+TC_AI_04    | AI Tóm tắt SC  | PASS       | PortalController.TomTatSuCoAI gom nhóm Điện/Nước/Khác + phân cấp ưu tiên.
+TC_AI_05    | Quyền riêng tư | PASS       | Che số điện thoại sinh viên khác (098****567), che CCCD trong câu trả lời AI.
 TC_HTTP_01  | Môi trường     | PASS       | Cấu hình cổng khởi chạy port 5013 sẵn sàng trong launchSettings.json.
 TC_HTTP_02  | Docker Compose | PASS       | Cấu hình mạng extra_hosts kết nối SQL Server máy chủ từ container Docker.
 TC_HTTP_03  | Docker Health  | PASS       | Bổ sung cấu hình healthcheck theo dõi endpoint /health chu kỳ 30s, timeout 10s.
 TC_XUNIT_01 | Guardrails     | PASS       | Module SafetyGuardrails.cs triển khai 3 tầng Input, Output (PII), Execution.
 TC_XUNIT_02 | Health Checks  | PASS       | Đăng ký DatabaseHealthCheck và OllamaHealthCheck với endpoint /health JSON.
-TC_XUNIT_03 | SDLC Factory   | PASS       | Hồ sơ kiến trúc AI_AGENT_FACTORY.md và workflow .github/workflows chuẩn mực.
-TC_XUNIT_04 | xUnit Exec     | PASS       | 53/53 kiểm thử xUnit chạy thành công 100% trong 2 giây.
+TC_XUNIT_03 | SDLC Factory   | PASS       | Có hồ sơ AI_AGENT_FACTORY.md và workflow .github/workflows/ai-sdlc-factory.yml.
+TC_XUNIT_04 | xUnit Exec     | PASS       | 53/53 kiểm thử xUnit đạt (thời điểm 28/10; hiện là 64 test, xem mục III).
 --------------------------------------------------------------------------------
 
-III. CHI TIẾT BỘ KIỂM THỬ XUNIT (.NET 8.0 TEST SUITE - 53 TESTS)
+III. CHI TIẾT BỘ KIỂM THỬ XUNIT (.NET 8.0 - 64 TESTS, CHẠY NGÀY 30/10/2026)
 --------------------------------------------------------------------------------
-1. HoaDonCalculationsTests (16 Tests):
+1. HoaDonCalculationsTests (20 Tests):
    - TinhTienDienNuoc_HopLe_TraVeKetQuaChinhXac: 4 Test Cases (các cặp chỉ số và đơn giá khác nhau) -> PASS
    - TinhTienDienNuoc_ChiSoMoiNhoHonHoacBangChiSoCu_NemNgoaiLe: 3 Test Cases (chỉ số lùi, bằng nhau, số 0) -> PASS
    - KiemTraChiSoHopLe_XacThucDieuKienBienChinhXac: 6 Test Cases (chỉ số hợp lệ, bằng nhau, âm, null) -> PASS
@@ -70,7 +70,7 @@ III. CHI TIẾT BỘ KIỂM THỬ XUNIT (.NET 8.0 TEST SUITE - 53 TESTS)
    - XoaMemSinhVien_ChuyenDaRoiDi_GiamSiSoVaMoLaiConCho: Sinh viên trả phòng chuyển "Đã rời đi", sĩ số giảm 1, phòng mở lại "Còn chỗ" -> PASS
    - DinhChiKyLuatSinhVien_TuDongGiaiPhongGiuongTrong: Sinh viên bị đình chỉ chuyển TinhTrangLuuTru = "Đình chỉ", giường được giải phóng, phòng mở lại "Còn chỗ" -> PASS
 
-3. AIFallbackAndPrivacyTests (23 Tests):
+3. AIFallbackAndPrivacyTests (19 Tests):
    - MaskPhone_DinhDangChuan_CheMoChinhXac: 6 Test Cases (10 số, 11 số, đầu +84, có dấu gạch ngang, khoảng trắng) -> PASS
    - MaskPhone_SoDienThoaiRongHoacNull_TraVeRong: 1 Test Case -> PASS
    - FilterAiContext_LoaiBoHoanToanCCCDVaMatKhau_KhoiContextAI: 1 Test Case -> PASS
@@ -82,16 +82,30 @@ III. CHI TIẾT BỘ KIỂM THỬ XUNIT (.NET 8.0 TEST SUITE - 53 TESTS)
 4. SecurityAndEndpointIntegrationTests (10 Tests - WebApplicationFactory):
    - GetDiagEndpoint_TraVeHttp200OKVaNoiDungMongDoi: Gọi GET /_diag -> HTTP 200 OK -> PASS
    - GetHealthEndpoint_TraVeHttp200OKVaJsonChiTiet: Gọi GET /health -> HTTP 200 OK & JSON cấu trúc chi tiết -> PASS
-   - RouteQuanTri_ChuaDangNhap_BiChanVaRedirect302VeDangNhap: 8 Test Cases (/Phong, /Phong/Index, /SinhVien, /SinhVien/Index, /HopDong, /HopDong/Index, /ViPham, /ViPham/Index) -> 100% trả về HTTP 302 Redirect về trang đăng nhập -> PASS
+   - RouteQuanTri_ChuaDangNhap_BiChanVaRedirect302VeDangNhap: 8 Test Cases (/Phong, /Phong/Index, /SinhVien, /SinhVien/Index, /HopDong, /HopDong/Index, /ViPham, /ViPham/Index) -> đều trả về HTTP 302 Redirect về trang đăng nhập -> PASS
+
+5. AIAndBusinessIntegrationTests (3 Tests - WebApplicationFactory):
+   - TestCase1_GoiYXepPhongAI_TraVeHttp200VaRecommendedRooms -> PASS
+   - TestCase2_TomTatSuCoAI_TraVeHttp200VaCauTrucPhanLoaiSuCoHopLe -> PASS
+   - TestCase3_ThanhToan_MatKhauSai_ChanGiaoDichVaBaoLoiTempDataVaView -> PASS
+
+6. ChatbotRoutingTests (8 Tests - Ollama tắt):
+   - Câu "tìm hiểu về giờ đóng cửa và giá điện nước" (Admin & Sinh viên): trả lời đủ 2 ý, không trả về công nợ -> PASS (2 Test Cases)
+   - Câu 3 ý (giờ đóng cửa, giá nước, phí gửi xe): đủ cả 3 ý -> PASS
+   - "cho tôi hỏi giờ đóng cửa": không bị hiểu thành báo sự cố -> PASS
+   - Admin "cho tôi hỏi nội quy": không bị chặn như câu hỏi cá nhân -> PASS
+   - Câu vừa hỏi hóa đơn vừa hỏi giờ đóng cửa: trả hóa đơn kèm nội quy liên quan -> PASS
+   - Admin "báo cáo sự cố đang chờ xử lý": không bị hiểu thành báo cáo tổng quan -> PASS
+   - Admin "danh sách hóa đơn chưa thanh toán": vẫn trả số liệu công nợ -> PASS
 
 --------------------------------------------------------------------------------
 IV. ĐÁNH GIÁ CÁC QUY TẮC BẤT KHẢ XÂM PHẠM (BUSINESS RULES AUDIT)
-1. Cơ chế Soft Delete               : ĐẠT 100% - Bảo toàn khóa ngoại CSDL, không xóa vật lý sinh viên.
-2. Cơ chế Đồng bộ Sĩ số X/Y         : ĐẠT 100% - Sĩ số chỉ đếm sinh viên "Đang ở", tự động chuyển "Còn chỗ" / "Đã đầy".
-3. Tính toàn vẹn Hóa đơn & Tài chính: ĐẠT 100% - Kiểm soát chặt chẽ ChiSoMoi > ChiSoCu, bắt buộc mật khẩu khi thanh toán.
-4. Cơ chế Rào chắn An toàn AI       : ĐẠT 100% - Input Guardrails chặn Prompt Injection, Output Guardrails che PII, Execution Guardrails Timeout 8s & Smart Fallback.
-5. Giám sát & Vận hành (Observability): ĐẠT 100% - Endpoint /health tích hợp sẵn sàng, Docker healthcheck tự phục hồi sau 30s.
+1. Cơ chế Soft Delete               : ĐẠT - Bảo toàn khóa ngoại CSDL, không xóa vật lý sinh viên.
+2. Cơ chế Đồng bộ Sĩ số X/Y         : ĐẠT - Sĩ số chỉ đếm sinh viên "Đang ở", tự động chuyển "Còn chỗ" / "Đã đầy".
+3. Tính toàn vẹn Hóa đơn & Tài chính: ĐẠT - Kiểm soát chặt chẽ ChiSoMoi > ChiSoCu, bắt buộc mật khẩu khi thanh toán.
+4. Cơ chế Rào chắn An toàn AI       : ĐẠT - Input Guardrails chặn Prompt Injection, Output Guardrails che PII, Execution Guardrails giới hạn thời gian (30s chatbot, 45s gợi ý phòng/tóm tắt sự cố) & Smart Fallback.
+5. Giám sát & Vận hành (Observability): ĐẠT - Endpoint /health tích hợp sẵn sàng, Docker healthcheck kiểm tra định kỳ 30s.
 
 --------------------------------------------------------------------------------
 V. KẾT LUẬN
-Hệ thống Quản lý Ký túc xá Tích hợp AI (QLKTX) đã hoàn thành toàn diện các hạng mục theo đúng Rubric đánh giá cao nhất của học phần AIA331 (Mã đề tài: 80309), sẵn sàng bảo vệ đồ án trước Hội đồng chấm thi.
+Toàn bộ kịch bản script và 64 test xUnit đều đạt. Các phần chưa được kiểm thử tự động: giao diện (kiểm tra thủ công), chất lượng câu trả lời của mô hình llama3 (test chạy khi Ollama tắt nên chỉ kiểm tra phương án dự phòng), và giới hạn số lượt gọi AI (chưa cài đặt).

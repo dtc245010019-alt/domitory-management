@@ -81,18 +81,22 @@ Nền tảng web quản trị lưu trú ký túc xá toàn diện theo phong cá
 | **Frontend / UI** | Razor Views (`.cshtml`) + Bootstrap 5 + Bootstrap Icons | Giao diện đồng bộ chuẩn SaaS (`site.css`), Responsive, Modal & Toast |
 | **Biểu đồ & Báo cáo** | Chart.js + ClosedXML (`0.105.0`) | Biểu đồ thống kê trực quan trên Dashboard & Import/Export file Excel (`.xlsx`) |
 | **Xác thực & Phiên** | ASP.NET Core Session (`HttpContext.Session`) | Phân quyền truy cập theo Session (`Admin_DangNhap`, `MaSV_DangNhap`, `VaiTro`) |
-| **AI Engine (Chatbot)** | Ollama Local LLM (`llama3`) + RAG Knowledge Base | Phân tích Intent, truy vấn DB trực tiếp & Fallback về `data/knowledge_base.json` |
+| **AI Engine (Chatbot)** | Ollama Local LLM (`llama3`) + RAG Knowledge Base | Phân tích Intent, truy vấn DB trực tiếp & Fallback về `wwwroot/data/knowledge_base.json` |
+| **Kiểm thử** | xUnit + Moq + EF Core InMemory | Dự án `tests/QLKTX.Tests`, chạy bằng `dotnet test tests/QLKTX.Tests` |
 
 ### Sơ đồ Cấu trúc thư mục thực tế
 
 ```text
-d:\domitory-management\
+nhom6_moi\
 ├── CLAUDE.md                           <- Quy chuẩn kiến trúc & hướng dẫn hành vi cho AI Agent
+├── README.md, tailieu.md, NhatkysudungAI.md, KET_QUA_KIEM_THU.txt  <- Tài liệu dự án
+├── Dockerfile, docker-compose.yml      <- Đóng gói Docker (web + SQL Server; Ollama chạy trên máy host)
+├── tests/QLKTX.Tests/                  <- Kiểm thử xUnit (đơn vị & tích hợp)
 └── QLKTX/                              <- Thư mục dự án ASP.NET Core MVC chính
     ├── Controllers/                    <- Tầng điều phối HTTP Request, kiểm tra Session & truy vấn DB
     │   ├── HomeController.cs           <- Dashboard tổng quan dành cho Admin
     │   ├── DNController.cs             <- Đăng nhập (Admin & Sinh viên), Đăng xuất, Quên mật khẩu, Liên hệ
-    │   ├── AccountController.cs        <- Xử lý xác thực bổ trợ
+    │   ├── AccountController.cs        <- Chỉ chuyển hướng Login/Logout về DNController (tương thích đường dẫn cũ)
     │   ├── SinhVienController.cs       <- CRUD Sinh viên đang ở, Lịch sử rời KTX (LichSu), Import/Export Excel
     │   ├── PhongController.cs          <- Quản lý phòng ở, theo dõi sức chứa & sĩ số thực tế (X/Y)
     │   ├── HopDongController.cs        <- Quản lý hợp đồng nội trú & thời hạn hiệu lực
@@ -100,10 +104,15 @@ d:\domitory-management\
     │   ├── ViPhamController.cs         <- Ghi nhận và xử lý kỷ luật / vi phạm nội quy
     │   ├── BaoCaoController.cs         <- Thống kê tổng hợp & biểu đồ phân tích
     │   ├── PortalController.cs         <- Cổng Sinh viên (Index, HoaDon, BaoCaoSuCo) & Quản lý Hóa đơn/Sự cố Admin
-    │   └── ChatbotController.cs        <- API Chatbot AI (Ollama llama3 + DB Query + Knowledge Base Fallback)
+    │   └── ChatbotController.cs        <- API Chatbot AI: Ask (hỏi đáp) & ExecuteAction (thao tác sau khi người dùng xác nhận)
     ├── Models/                         <- Data Entities, DbContext & Khởi tạo dữ liệu
-    │   ├── ApplicationDbContext.cs     <- EF Core DbContext quản lý các DbSet
-    │   ├── DbInitializer.cs            <- Tự động migrate & seed dữ liệu mẫu khi khởi chạy
+    │   ├── ApplicationDbContext.cs     <- EF Core DbContext quản lý các DbSet (mọi khóa ngoại DeleteBehavior.Restrict)
+    │   ├── DbInitializer.cs            <- Seed dữ liệu mẫu khi khởi chạy (KHÔNG tự migrate, phải chạy `dotnet ef database update`)
+    │   ├── AdminAuthorizeAttribute.cs  <- Bộ lọc phân quyền trang quản trị; `OnlyAdmin = true` chặn tài khoản Kế toán
+    │   ├── PasswordHelper.cs           <- Băm & kiểm tra mật khẩu (SHA-256 + salt)
+    │   ├── AIPrompts.cs                <- System prompt & khuôn prompt của 3 chức năng AI
+    │   ├── SafetyGuardrails.cs         <- Chặn prompt injection, giới hạn độ dài, che CCCD/SĐT trong câu trả lời AI
+    │   ├── HoaDonCalculator.cs         <- Tính tiền điện nước / tiền phòng
     │   ├── SinhVien.cs                 <- Thực thể Sinh viên (MaSV, HoTen, Lop, MaPhong, TinhTrangLuuTru...)
     │   ├── Phong.cs                    <- Thực thể Phòng (MaPhong, LoaiPhong, SoLuongGiuong, GiaPhong, TinhTrang...)
     │   ├── HopDong.cs                  <- Thực thể Hợp đồng lưu trú
@@ -111,7 +120,7 @@ d:\domitory-management\
     │   ├── BaoCaoSuCo.cs               <- Thực thể Báo cáo sự cố hỏng hóc thiết bị
     │   ├── CoSoVatChat.cs              <- Thực thể Cơ sở vật chất
     │   ├── ViPham.cs                   <- Thực thể Vi phạm kỷ luật
-    │   ├── TaiKhoan.cs                 <- Thực thể Tài khoản đăng nhập (TenDangNhap, MatKhau, VaiTro, MaSV)
+    │   ├── TaiKhoan.cs                 <- Thực thể Tài khoản đăng nhập (TenDangNhap, MatKhau, Quyen: Admin/KeToan/SinhVien, MaSV)
     │   └── LoginViewModel.cs           <- ViewModel đăng nhập
     ├── Views/                          <- Tầng giao diện Razor Views (.cshtml)
     │   ├── Shared/
@@ -128,15 +137,15 @@ d:\domitory-management\
     │   ├── Portal/                     <- Index, HoaDon, BaoCaoSuCo (SV) & QuanLyHoaDonAdmin, QuanLySuCoAdmin (Admin)
     │   └── DN/                         <- Dangnhap, QuenMK, LienheQuanly
     ├── Migrations/                     <- Lịch sử EF Core Migrations
-    ├── data/
-    │   └── knowledge_base.json         <- Cơ sở tri thức cục bộ cho Chatbot AI
     ├── wwwroot/                        <- Tài nguyên tĩnh (Static Assets)
     │   ├── css/site.css                <- Hệ thống biến CSS (:root) & class chuẩn QLKTX SaaS Design System
     │   ├── js/site.js                  <- Logic tương tác client-side chung
+    │   ├── data/knowledge_base.json    <- Cơ sở tri thức cục bộ cho Chatbot AI
     │   ├── images/                     <- Ảnh nền campus và tài nguyên minh họa
     │   └── uploads/suco/               <- Hình ảnh đính kèm khi sinh viên gửi báo cáo sự cố
     ├── Program.cs                      <- Cấu hình DI, EF Core, Session Cookie Policy & Middleware Pipeline
-    └── appsettings.json                <- Chuỗi kết nối SQL Server (DefaultConnection) & cấu hình Logging
+    ├── appsettings.json                <- Chuỗi kết nối SQL Server (DefaultConnection), cấu hình Ollama (BaseUrl, Model) & Logging
+    └── appsettings.Example.json        <- File cấu hình mẫu (không chứa thông tin thật)
 ```
 
 ### Vai trò người dùng (RBAC) & Quản lý Phiên (Session)
@@ -146,7 +155,8 @@ Hệ thống phân quyền dựa trên `HttpContext.Session` được thiết l�
 | Vai trò | Session Keys nhận diện | Layout sử dụng | Phạm vi quyền hạn |
 | --- | --- | --- | --- |
 | **Admin (Ban Quản lý)** | `Admin_DangNhap = "true"`<br>`VaiTro = "Admin"` | `_Layout.cshtml` | Toàn quyền CRUD Sinh viên, xem Lịch sử sinh viên đã rời, Quản lý Phòng, Hợp đồng, Cơ sở vật chất, Kỷ luật, duyệt Báo cáo sự cố (`QuanLySuCoAdmin`) và quản lý Hóa đơn (`QuanLyHoaDonAdmin`). |
-| **Student (Sinh viên)** | `MaSV_DangNhap = <MaSV>`<br>`VaiTro = "Student"` | `_StudentLayout.cshtml` | Truy cập Cổng Sinh viên (`Portal/Index`), xem thông tin thẻ lưu trú & phòng hiện tại, tra cứu và thanh toán hóa đơn cá nhân (`Portal/HoaDon`), gửi báo cáo hỏng thiết bị kèm ảnh (`Portal/BaoCaoSuCo`), hỏi đáp Chatbot AI. |
+| **Kế toán** | `Admin_DangNhap = "true"`<br>`VaiTro = "KeToan"` | `_Layout.cshtml` | Xem phòng, sinh viên, thống kê; quản lý Hợp đồng và Hóa đơn. Bị chặn ở mọi action gắn `[AdminAuthorize(OnlyAdmin = true)]` (thêm/sửa/xóa phòng, sinh viên, cơ sở vật chất, kỷ luật, xử lý sự cố). |
+| **Student (Sinh viên)** | `MaSV_DangNhap = <MaSV>`<br>`VaiTro = "SinhVien"` | `_StudentLayout.cshtml` | Truy cập Cổng Sinh viên (`Portal/Index`), xem thông tin thẻ lưu trú & phòng hiện tại, tra cứu và thanh toán hóa đơn cá nhân (`Portal/HoaDon`), gửi báo cáo hỏng thiết bị kèm ảnh (`Portal/BaoCaoSuCo`), hỏi đáp Chatbot AI. |
 
 ### Quy ước Đặt tên & Ngôn ngữ
 
@@ -188,7 +198,8 @@ Mọi thay đổi code trong dự án **QLKTX** tuyệt đối không được v
 - **Nguyên tắc:** Khi đăng nhập Admin, hệ thống chỉ gán `Session["Admin_DangNhap"] = "true"`, **không** có `Session["MaSV_DangNhap"]`.
 - **Thực thi:**
   - Các action dành cho Sinh viên (`Portal/Index`, `Portal/HoaDon`, `Portal/BaoCaoSuCo`) kiểm tra `EnsureStudentSession()`.
-  - Các menu trên Sidebar/Topbar của Admin (`_Layout.cshtml`) tuyệt đối **không** được trỏ vào route của sinh viên, mà phải trỏ vào `Portal/QuanLyHoaDonAdmin` và `Portal/QuanLySuCoAdmin` (sử dụng `EnsureAdminSession()`).
+  - Các menu trên Sidebar/Topbar của Admin (`_Layout.cshtml`) tuyệt đối **không** được trỏ vào route của sinh viên, mà phải trỏ vào `Portal/QuanLyHoaDonAdmin` (kiểm tra bằng `EnsureAdminSession()`) và `Portal/QuanLySuCoAdmin` (gắn `[AdminAuthorize(OnlyAdmin = true)]`).
+  - Các controller quản trị còn lại được bảo vệ bằng `[AdminAuthorize]`; action chỉ dành cho Ban Quản lý (không cho Kế toán) gắn thêm `OnlyAdmin = true`.
   - Cấu hình Session Cookie trong `Program.cs` chỉ được đăng ký `AddSession` **1 lần duy nhất** với `SameSiteMode.Lax`, `SecurePolicy = SameAsRequest` và đặt `app.UseSession()` đúng vị trí giữa `UseRouting()` và `UseAuthorization()`.
 
 ### Luật 4: Chuẩn hóa dữ liệu Đăng nhập và Tìm kiếm thông minh
@@ -212,6 +223,8 @@ Mọi thay đổi code trong dự án **QLKTX** tuyệt đối không được v
    - Không tự ý thêm cột mới hoặc thay đổi kiểu dữ liệu trong các class Entity nếu không thực hiện đầy đủ quy trình Migration của EF Core.
 
 ### Ranh giới & Cơ chế Fallback cho Chatbot AI (`ChatbotController`)
-- **Chỉ đọc dữ liệu (Read-Only):** Chatbot chỉ được phép truy vấn (`SELECT` / `Count` / `AsNoTracking`) từ `ApplicationDbContext` để trả lời thông tin thống kê, phòng trống, nội quy; tuyệt đối không thực hiện thao tác ghi/xóa dữ liệu từ lời nhắc của người dùng.
-- **Bảo mật thông tin:** Không bao giờ đưa dữ liệu bảng `TaiKhoan` (mật khẩu) hoặc thông tin nhạy cảm vào ngữ cảnh prompt gửi sang LLM.
-- **Fallback đa tầng bắt buộc:** Khi gọi Ollama (`http://localhost:11434/api/chat`), luôn bọc trong `try-catch` và kết hợp tra cứu từ `data/knowledge_base.json` để đảm bảo tính năng hỗ trợ sinh viên vẫn phản hồi ổn định ngay cả khi dịch vụ AI cục bộ chưa khởi động.
+- **Hỏi đáp chỉ đọc (`Ask`):** Luồng hỏi đáp chỉ được truy vấn (`SELECT` / `Count` / `AsNoTracking`) từ `ApplicationDbContext`; không bao giờ ghi/xóa dữ liệu trực tiếp từ nội dung câu hỏi hay từ câu trả lời của LLM.
+- **Ghi dữ liệu chỉ qua `ExecuteAction`:** Mọi thao tác ghi từ khung chat (gửi yêu cầu phòng, tạo báo cáo sự cố, Admin cập nhật trạng thái sự cố) phải đi qua `ChatbotController.ExecuteAction`, chỉ chạy khi người dùng bấm xác nhận trên action card, có session hợp lệ, và sinh viên chỉ thao tác trên dữ liệu của chính mình. Chatbot **không bao giờ** được thanh toán hóa đơn hoặc xóa dữ liệu; không thêm loại thao tác ghi mới khi chưa được yêu cầu.
+- **Bảo mật thông tin:** Không bao giờ đưa dữ liệu bảng `TaiKhoan` (mật khẩu) hoặc thông tin nhạy cảm vào ngữ cảnh prompt gửi sang LLM; câu trả lời AI phải đi qua `SafetyGuardrails.ScrubPII` / `SanitizeHallucinations`.
+- **Fallback đa tầng bắt buộc:** Khi gọi Ollama (`http://localhost:11434/api/chat`), luôn bọc trong `try-catch` và kết hợp tra cứu từ `wwwroot/data/knowledge_base.json` để đảm bảo tính năng hỗ trợ sinh viên vẫn phản hồi ổn định ngay cả khi dịch vụ AI cục bộ chưa khởi động.
+- **Phân loại câu hỏi:** Câu hỏi thuần nội quy/biểu phí (`IsPolicyOnlyQuestion`) phải được trả lời từ cơ sở tri thức, không được rơi vào các nhánh tra số liệu (hóa đơn, công nợ…); khi sửa luồng phân loại phải chạy lại `ChatbotRoutingTests`.
